@@ -1,0 +1,30 @@
+{
+  "name": "activity-compliance-app",
+  "version": "1.0.0",
+  "private": true,
+  "main": "expo/AppEntry.js",
+  "scripts": {
+    "start": "expo start",
+    "typecheck": "tsc --noEmit",
+    "web": "expo start --web",
+    "android": "expo start --android",
+    "ios": "expo start --ios"
+  },
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "^2.2.0",
+    "@react-navigation/native": "^7.2.2",
+    "@react-navigation/native-stack": "^7.14.12",
+    "expo": "~54.0.0",
+    "expo-image-picker": "~17.0.11",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-native": "^0.81.5",
+    "react-native-safe-area-context": "~5.6.0",
+    "react-native-screens": "~4.16.0",
+    "react-native-web": "~0.21.0"
+  },
+  "devDependencies": {
+    "@types/react": "~19.1.10",
+    "typescript": "^5.3.3"
+  }
+}

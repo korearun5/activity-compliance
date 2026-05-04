@@ -1,0 +1,45 @@
+spring:
+  application:
+    name: activity-compliance-backend
+  datasource:
+    url: ${APP_DB_URL:jdbc:postgresql://localhost:5432/activity_platform}
+    username: ${APP_DB_USERNAME:activity_app}
+    password: ${APP_DB_PASSWORD:activity_app}
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+        jdbc:
+          time_zone: UTC
+
+server:
+  port: ${APP_PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  pattern:
+    level: "%5p [requestId:%X{requestId:-}]"
+
+app:
+  auth:
+    issuer: ${APP_JWT_ISSUER:activity-compliance}
+    access-token-ttl: ${APP_ACCESS_TOKEN_TTL:PT30M}
+    refresh-token-ttl: ${APP_REFRESH_TOKEN_TTL:P7D}
+    secret: ${APP_JWT_SECRET:dev-only-change-this-secret-key-before-production}
+  seed:
+    enabled: ${APP_SEED_ENABLED:true}
+  storage:
+    local:
+      root-path: ${APP_LOCAL_STORAGE_PATH:./storage/local}
+      max-upload-bytes: ${APP_MAX_UPLOAD_BYTES:10485760}

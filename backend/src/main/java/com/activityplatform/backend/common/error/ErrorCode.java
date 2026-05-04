@@ -1,0 +1,12 @@
+package com.activityplatform.backend.common.error;
+
+public enum ErrorCode {
+  ACCESS_DENIED,
+  AUTH_INVALID_CREDENTIALS,
+  DUPLICATE_RESOURCE,
+  FILE_STORAGE_FAILED,
+  INTERNAL_ERROR,
+  RESOURCE_NOT_FOUND,
+  VALIDATION_FAILED
+}
+

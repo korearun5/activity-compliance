@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: activity-platform-postgres
+    environment:
+      POSTGRES_DB: activity_platform
+      POSTGRES_USER: activity_app
+      POSTGRES_PASSWORD: activity_app
+    ports:
+      - "5432:5432"
+    volumes:
+      - activity-platform-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U activity_app -d activity_platform"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  activity-platform-postgres-data:
+
