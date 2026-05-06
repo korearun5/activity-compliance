@@ -12,27 +12,14 @@ import {
 } from "react-native";
 
 import { getErrorMessage } from "../core/errors/AppError";
-import { UserProfileInput } from "../core/model/types";
 
 type LoginScreenProps = {
   onLogin: (username: string, password: string) => Promise<void>;
-  onSignup: (data: {
-    username: string;
-    password: string;
-    profile: UserProfileInput;
-  }) => Promise<void>;
 };
 
-type AuthMode = "login" | "signup";
-
-export function LoginScreen({ onLogin, onSignup }: LoginScreenProps) {
-  const [mode, setMode] = useState<AuthMode>("login");
+export function LoginScreen({ onLogin }: LoginScreenProps) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [region, setRegion] = useState("");
-  const [village, setVillage] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
@@ -45,30 +32,11 @@ export function LoginScreen({ onLogin, onSignup }: LoginScreenProps) {
       return;
     }
 
-    if (mode === "signup" && (!name.trim() || !phone.trim() || !region.trim() || !village.trim())) {
-      setError("Enter name, phone, region, and village.");
-      return;
-    }
-
     setIsSubmitting(true);
     setError("");
 
     try {
-      if (mode === "signup") {
-        await onSignup({
-          username: trimmedUsername,
-          password,
-          profile: {
-            displayName: name.trim(),
-            locationName: region.trim(),
-            phone: phone.trim(),
-            siteName: village.trim()
-          }
-        });
-      } else {
-        await onLogin(trimmedUsername, password);
-      }
-
+      await onLogin(trimmedUsername, password);
       setPassword("");
     } catch (authError) {
       setError(getErrorMessage(authError, "Unable to continue."));
@@ -85,79 +53,18 @@ export function LoginScreen({ onLogin, onSignup }: LoginScreenProps) {
       >
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.shell}>
-            <Text style={styles.eyebrow}>
-              {mode === "signup" ? "Farmer signup" : "Welcome"}
-            </Text>
-            <Text style={styles.title}>
-              {mode === "signup" ? "Create Farmer Account" : "Role Login"}
-            </Text>
+            <Text style={styles.eyebrow}>Welcome</Text>
+            <Text style={styles.title}>Sign in</Text>
             <Text style={styles.copy}>
-              {mode === "signup"
-                ? "Create a local farmer profile. Later this same flow will connect to Spring Boot."
-                : "Try admin/admin123, user/user123, or a farmer account you created."}
+              Use the username and password assigned by your administrator.
             </Text>
-
-            <View style={styles.modeRow}>
-              <Pressable
-                style={[
-                  styles.modeButton,
-                  mode === "login" && styles.modeButtonActive
-                ]}
-                onPress={() => {
-                  setMode("login");
-                  setError("");
-                }}
-              >
-                <Text
-                  style={[
-                    styles.modeButtonText,
-                    mode === "login" && styles.modeButtonTextActive
-                  ]}
-                >
-                  Login
-                </Text>
-              </Pressable>
-              <Pressable
-                style={[
-                  styles.modeButton,
-                  mode === "signup" && styles.modeButtonActive
-                ]}
-                onPress={() => {
-                  setMode("signup");
-                  setError("");
-                }}
-              >
-                <Text
-                  style={[
-                    styles.modeButtonText,
-                    mode === "signup" && styles.modeButtonTextActive
-                  ]}
-                >
-                  Farmer signup
-                </Text>
-              </Pressable>
-            </View>
 
             <View style={styles.form}>
-              {mode === "signup" ? (
-                <>
-                  <Field label="Farmer name" value={name} onChange={setName} />
-                  <Field
-                    label="Phone"
-                    value={phone}
-                    onChange={setPhone}
-                    keyboardType="phone-pad"
-                  />
-                  <Field label="Region" value={region} onChange={setRegion} />
-                  <Field label="Village" value={village} onChange={setVillage} />
-                </>
-              ) : null}
-
               <Field
                 label="Username"
                 value={username}
                 onChange={setUsername}
-                placeholder={mode === "signup" ? "Create username" : "admin or user"}
+                placeholder="Enter username"
               />
 
               <View style={styles.field}>
@@ -166,9 +73,7 @@ export function LoginScreen({ onLogin, onSignup }: LoginScreenProps) {
                   <TextInput
                     onChangeText={setPassword}
                     onSubmitEditing={handleSubmit}
-                    placeholder={
-                      mode === "signup" ? "Create password" : "Enter password"
-                    }
+                    placeholder="Enter password"
                     secureTextEntry={!isPasswordVisible}
                     style={styles.passwordInput}
                     value={password}
@@ -198,11 +103,7 @@ export function LoginScreen({ onLogin, onSignup }: LoginScreenProps) {
                 onPress={handleSubmit}
               >
                 <Text style={styles.primaryButtonText}>
-                  {isSubmitting
-                    ? "Please wait..."
-                    : mode === "signup"
-                      ? "Create account"
-                      : "Log in"}
+                  {isSubmitting ? "Please wait..." : "Log in"}
                 </Text>
               </Pressable>
             </View>
@@ -280,32 +181,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
     marginBottom: 22
-  },
-  modeRow: {
-    backgroundColor: "#e8eef2",
-    borderRadius: 8,
-    flexDirection: "row",
-    gap: 4,
-    marginBottom: 18,
-    padding: 4
-  },
-  modeButton: {
-    alignItems: "center",
-    borderRadius: 6,
-    flex: 1,
-    minHeight: 42,
-    justifyContent: "center"
-  },
-  modeButtonActive: {
-    backgroundColor: "#ffffff"
-  },
-  modeButtonText: {
-    color: "#53666f",
-    fontSize: 14,
-    fontWeight: "800"
-  },
-  modeButtonTextActive: {
-    color: "#172126"
   },
   form: {
     gap: 14

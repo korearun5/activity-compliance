@@ -63,7 +63,7 @@ export function findEvidenceForTask<TEvidence extends EvidenceLike>(
     (evidence) =>
       (evidence.activityId ?? evidence.cycleId) === activityId &&
       (evidence.taskId ?? evidence.stepId) === taskId &&
-      evidence.status === "done"
+      isAcceptedEvidenceStatus(evidence.status)
   );
 }
 
@@ -92,3 +92,6 @@ export function toActivityTaskStatus(status: string): TaskStatus {
 
 export type { ActivityTask };
 
+function isAcceptedEvidenceStatus(status: EvidenceStatus) {
+  return status === "done" || status === "approved" || status === "pending";
+}

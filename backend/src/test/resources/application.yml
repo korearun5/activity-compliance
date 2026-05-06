@@ -1,0 +1,7 @@
+app:
+  auth:
+    secret: test-only-jwt-secret-with-minimum-required-length
+  storage:
+    provider: local
+    local:
+      root-path: ./target/test-storage

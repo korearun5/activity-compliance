@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
+    <!-- Example suppression for false positives from OWASP Dependency Check
+         Remove suppression once vulnerability is verified as false positive -->
+    
+    <!-- If a CVE affects a dependency but is not exploitable in your context -->
+    <!-- <suppress until="2025-12-31T00:00:00Z">
+        <notes>False positive: vulnerability requires specific configuration not used</notes>
+        <cve>CVE-2021-XXXXX</cve>
+    </suppress> -->
+</suppressions>

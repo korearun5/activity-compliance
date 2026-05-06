@@ -6,39 +6,46 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.UUID;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 @Service
+@ConditionalOnProperty(prefix = "app.storage", name = "provider", havingValue = "local", matchIfMissing = true)
 public class LocalFileStorageService implements FileStorageService {
+  private final StorageFilePlanner filePlanner;
   private final LocalFileStorageProperties properties;
 
-  public LocalFileStorageService(LocalFileStorageProperties properties) {
+  public LocalFileStorageService(
+      StorageFilePlanner filePlanner,
+      LocalFileStorageProperties properties
+  ) {
+    this.filePlanner = filePlanner;
     this.properties = properties;
   }
 
   @Override
   public StoredFile store(FileStorageRequest request) {
-    validate(request);
+    StorageFilePlan plan = filePlanner.plan(request);
+    Path root = Path.of(properties.getRootPath()).toAbsolutePath().normalize();
+    Path target = root.resolve(plan.storageKey()).normalize();
 
-    String extension = extensionOf(request.originalFilename());
-    String storageKey = Path.of(
-        request.tenantId().toString(),
-        request.ownerType(),
-        request.ownerId().toString(),
-        UUID.randomUUID() + extension
-    ).toString().replace('\\', '/');
-    Path target = Path.of(properties.getRootPath()).resolve(storageKey).normalize();
+    if (!target.startsWith(root)) {
+      throw new ApplicationException(
+          ErrorCode.VALIDATION_FAILED,
+          "Resolved storage path is not allowed.",
+          HttpStatus.BAD_REQUEST
+      );
+    }
 
     try {
       Files.createDirectories(target.getParent());
       Files.copy(request.inputStream(), target, StandardCopyOption.REPLACE_EXISTING);
       return new StoredFile(
-          storageKey,
-          request.originalFilename(),
-          request.contentType(),
-          request.sizeBytes()
+          plan.storageKey(),
+          plan.originalFilename(),
+          plan.contentType(),
+          plan.sizeBytes()
       );
     } catch (IOException exception) {
       throw new ApplicationException(
@@ -48,28 +55,4 @@ public class LocalFileStorageService implements FileStorageService {
       );
     }
   }
-
-  private void validate(FileStorageRequest request) {
-    if (request.sizeBytes() <= 0 || request.sizeBytes() > properties.getMaxUploadBytes()) {
-      throw new ApplicationException(
-          ErrorCode.VALIDATION_FAILED,
-          "Uploaded file size is not allowed.",
-          HttpStatus.BAD_REQUEST
-      );
-    }
-  }
-
-  private String extensionOf(String filename) {
-    if (filename == null || filename.isBlank()) {
-      return "";
-    }
-
-    int dotIndex = filename.lastIndexOf('.');
-    if (dotIndex < 0 || dotIndex == filename.length() - 1) {
-      return "";
-    }
-
-    return filename.substring(dotIndex).replaceAll("[^A-Za-z0-9.]", "");
-  }
 }
-

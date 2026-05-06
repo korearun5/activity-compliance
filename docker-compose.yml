@@ -1,0 +1,78 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: activity_platform
+      POSTGRES_USER: activity_app
+      POSTGRES_PASSWORD: activity_app
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U activity_app -d activity_platform"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "${APP_POSTGRES_PORT:-55432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  minio:
+    image: ${MINIO_IMAGE:-minio/minio:latest}
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: activity_minio
+      MINIO_ROOT_PASSWORD: activity_minio_password
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      APP_DB_URL: jdbc:postgresql://postgres:5432/activity_platform
+      APP_DB_USERNAME: activity_app
+      APP_DB_PASSWORD: activity_app
+      APP_JWT_SECRET: docker-development-jwt-secret-change-before-any-shared-env
+      APP_CORS_ALLOWED_ORIGIN_WEB: http://localhost:19006
+      APP_STORAGE_PROVIDER: minio
+      APP_MINIO_ENDPOINT: http://minio:9000
+      APP_MINIO_BUCKET: activity-platform
+      APP_MINIO_ACCESS_KEY: activity_minio
+      APP_MINIO_SECRET_KEY: activity_minio_password
+      APP_MINIO_SECURE: "false"
+      APP_MINIO_CREATE_BUCKET_IF_MISSING: "true"
+    ports:
+      - "8080:8080"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend.Dockerfile
+    depends_on:
+      - backend
+    environment:
+      EXPO_PUBLIC_API_BASE_URL: http://localhost:8080
+      EXPO_PUBLIC_API_VERSION: v1
+      EXPO_PUBLIC_DEFAULT_TENANT_CODE: default
+      EXPO_PUBLIC_DEFAULT_LOCALE: en-IN
+    ports:
+      - "19006:19006"
+      - "8081:8081"
+
+volumes:
+  postgres-data:
+  minio-data:

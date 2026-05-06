@@ -8,7 +8,9 @@ export const storageKeys = {
     records: `${namespace}:activity:records`
   },
   auth: {
+    accessToken: `${namespace}:auth:access-token`,
     localAccounts: `${namespace}:auth:local-accounts`,
+    refreshToken: `${namespace}:auth:refresh-token`,
     sessionRole: `${namespace}:auth:session-role`,
     sessionUsername: `${namespace}:auth:session-username`
   },
@@ -43,4 +45,3 @@ export const storageKeys = {
     users: `${namespace}:registry:users`
   }
 } as const;
-

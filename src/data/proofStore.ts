@@ -1,6 +1,6 @@
 import { readJsonArray, writeJson } from "../core/storage/jsonStore";
 import { storageKeys } from "../core/storage/storageKeys";
-import { ProofSubmission } from "./farmDemoData";
+import { ProofSubmission } from "./agricultureConfig";
 
 export async function getSavedProofs(): Promise<ProofSubmission[]> {
   return readJsonArray<ProofSubmission>([

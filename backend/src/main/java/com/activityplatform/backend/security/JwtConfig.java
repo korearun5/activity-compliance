@@ -17,7 +17,11 @@ import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 public class JwtConfig {
   @Bean
   public SecretKey jwtSecretKey(AuthProperties properties) {
-    return new SecretKeySpec(properties.getSecret().getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+    byte[] secretBytes = properties.getSecret().getBytes(StandardCharsets.UTF_8);
+    if (secretBytes.length < 32) {
+      throw new IllegalStateException("APP_JWT_SECRET must be at least 32 bytes for HS256.");
+    }
+    return new SecretKeySpec(secretBytes, "HmacSHA256");
   }
 
   @Bean

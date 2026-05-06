@@ -1,0 +1,7 @@
+.expo
+backend/target
+coverage
+dist
+node_modules
+storage
+expo-web.log

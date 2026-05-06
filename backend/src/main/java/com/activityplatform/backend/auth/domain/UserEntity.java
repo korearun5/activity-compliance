@@ -106,16 +106,60 @@ public class UserEntity {
     return displayName;
   }
 
+  public String getPhone() {
+    return phone;
+  }
+
+  public String getLocationName() {
+    return locationName;
+  }
+
+  public String getSiteName() {
+    return siteName;
+  }
+
   public String getStatus() {
     return status;
+  }
+
+  public Instant getCreatedAt() {
+    return createdAt;
+  }
+
+  public Instant getUpdatedAt() {
+    return updatedAt;
   }
 
   public Set<RoleEntity> getRoles() {
     return roles;
   }
 
+  public void updateProfile(
+      String displayName,
+      String phone,
+      String locationName,
+      String siteName,
+      Instant updatedAt
+  ) {
+    this.displayName = displayName;
+    this.phone = phone;
+    this.locationName = locationName;
+    this.siteName = siteName;
+    this.updatedAt = updatedAt;
+  }
+
+  public void updateStatus(String status, Instant updatedAt) {
+    this.status = status;
+    this.updatedAt = updatedAt;
+  }
+
   public void addRole(RoleEntity role) {
     roles.add(role);
   }
-}
 
+  public void replaceRoles(Set<RoleEntity> roles, Instant updatedAt) {
+    this.roles.clear();
+    this.roles.addAll(roles);
+    this.updatedAt = updatedAt;
+  }
+}

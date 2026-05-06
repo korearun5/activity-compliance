@@ -1,6 +1,6 @@
 import { readJsonArray, writeJson } from "../core/storage/jsonStore";
 import { storageKeys } from "../core/storage/storageKeys";
-import { CropCycle } from "./farmDemoData";
+import { CropCycle } from "./agricultureConfig";
 
 export async function getSavedCropCycles(): Promise<CropCycle[]> {
   return readJsonArray<CropCycle>([

@@ -5,85 +5,337 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View
 } from "react-native";
 
+import { getErrorMessage } from "../core/errors/AppError";
+import { EvidenceStatus, UserProfileInput } from "../core/model/types";
 import {
-  countFarmerCycles,
-  countFarmerProofs,
-  getRegisteredFarmers,
-  RegisteredFarmer
+  countParticipantActivities,
+  countParticipantProofs,
+  createRegisteredParticipant,
+  CreateRegisteredParticipantInput,
+  getRegisteredParticipants,
+  RegisteredParticipant,
+  updateRegisteredParticipantStatus
 } from "../data/adminRegistryStore";
 import { getSavedCropCycles } from "../data/cropCycleStore";
-import { CropCycle, cropCycles, ProofSubmission } from "../data/farmDemoData";
+import { CropCycle, ProofSubmission } from "../data/agricultureConfig";
 import { getSavedProofs } from "../data/proofStore";
+import {
+  exportBackendReport,
+  getBackendReportSummary,
+  ReportExport,
+  ReportSummary
+} from "../data/reportStore";
+import {
+  BackendWorkflow,
+  BackendWorkflowStatus,
+  CreateBackendWorkflowInput,
+  getBackendActivities,
+  getBackendProofs,
+  getBackendWorkflowDefinitions,
+  hasBackendSession,
+  reviewBackendProof,
+  startBackendActivity,
+  StartBackendActivityInput,
+  updateBackendWorkflowStatus,
+  createBackendWorkflowDefinition
+} from "../data/workflowActivityStore";
+import { AdminNotificationsTab } from "./AdminNotificationsTab";
+import { AdminRolesTab } from "./AdminRolesTab";
+import { AdminWorkflowsTab } from "./AdminWorkflowsTab";
 import { StatusBadge } from "../ui/StatusBadge";
 
 type AdminHomeScreenProps = {
   onLogout: () => void;
 };
 
-type AdminTab = "overview" | "farmers" | "reports";
-
-const demoFarmers: RegisteredFarmer[] = [
-  {
-    displayName: "Ravi Kumar",
-    locationName: "North Block",
-    username: "user",
-    name: "Ravi Kumar",
-    phone: "+91 98765 43210",
-    region: "North Block",
-    siteName: "Rampur",
-    village: "Rampur",
-    status: "Active"
-  }
-];
+type AdminTab =
+  | "notifications"
+  | "overview"
+  | "participants"
+  | "reports"
+  | "roles"
+  | "workflows";
 
 export function AdminHomeScreen({ onLogout }: AdminHomeScreenProps) {
   const [activeTab, setActiveTab] = useState<AdminTab>("overview");
-  const [registeredFarmers, setRegisteredFarmers] = useState<RegisteredFarmer[]>(
-    []
-  );
+  const [registeredParticipants, setRegisteredParticipants] = useState<
+    RegisteredParticipant[]
+  >([]);
   const [savedCycles, setSavedCycles] = useState<CropCycle[]>([]);
   const [savedProofs, setSavedProofs] = useState<ProofSubmission[]>([]);
+  const [workflowDefinitions, setWorkflowDefinitions] = useState<BackendWorkflow[]>(
+    []
+  );
+  const [canReviewEvidence, setCanReviewEvidence] = useState(false);
+  const [reportSummary, setReportSummary] = useState<ReportSummary | null>(null);
+  const [adminDataError, setAdminDataError] = useState("");
+  const [participantFormError, setParticipantFormError] = useState("");
+  const [reportExport, setReportExport] = useState<ReportExport | null>(null);
+  const [reportExportError, setReportExportError] = useState("");
+  const [reviewError, setReviewError] = useState("");
+  const [workflowFormError, setWorkflowFormError] = useState("");
+  const [activityStartError, setActivityStartError] = useState("");
+  const [isCreatingParticipant, setIsCreatingParticipant] = useState(false);
+  const [isCreatingWorkflow, setIsCreatingWorkflow] = useState(false);
+  const [isStartingActivity, setIsStartingActivity] = useState(false);
+  const [exportingReportFormat, setExportingReportFormat] = useState<
+    ReportExport["format"] | null
+  >(null);
+  const [reviewingProofId, setReviewingProofId] = useState<string | null>(null);
+  const [updatingWorkflowId, setUpdatingWorkflowId] = useState<string | null>(null);
+  const [updatingParticipantUsername, setUpdatingParticipantUsername] = useState<
+    string | null
+  >(null);
 
   useEffect(() => {
     async function loadAdminData() {
-      const [farmers, cycles, proofs] = await Promise.all([
-        getRegisteredFarmers(),
-        getSavedCropCycles(),
-        getSavedProofs()
-      ]);
+      let participantLoadError = "";
 
-      setRegisteredFarmers(farmers);
-      setSavedCycles(cycles);
-      setSavedProofs(proofs);
+      try {
+        const participants = await getRegisteredParticipants();
+        setRegisteredParticipants(participants);
+      } catch (error) {
+        participantLoadError = getErrorMessage(
+          error,
+          "Unable to load participant profiles."
+        );
+        setAdminDataError(participantLoadError);
+      }
+
+      try {
+        const hasToken = await hasBackendSession();
+        const [cycles, proofs, summary, workflows] = hasToken
+          ? await loadBackendAdminData()
+          : await loadLocalAdminData();
+
+        setSavedCycles(cycles);
+        setSavedProofs(proofs);
+        setWorkflowDefinitions(workflows);
+        setCanReviewEvidence(hasToken);
+        setReportSummary(summary);
+        setAdminDataError(participantLoadError);
+        setReviewError("");
+        setWorkflowFormError("");
+        setActivityStartError("");
+      } catch (error) {
+        const [cycles, proofs] = await Promise.all([
+          getSavedCropCycles(),
+          getSavedProofs()
+        ]);
+        setSavedCycles(cycles);
+        setSavedProofs(proofs);
+        setWorkflowDefinitions([]);
+        setCanReviewEvidence(false);
+        setReportSummary(null);
+        const activityLoadError = getErrorMessage(
+          error,
+          "Unable to load activity and report data."
+        );
+        setAdminDataError(
+          participantLoadError
+            ? `${participantLoadError} ${activityLoadError}`
+            : activityLoadError
+        );
+      }
     }
 
     loadAdminData();
   }, []);
 
-  const farmers = registeredFarmers.length ? registeredFarmers : demoFarmers;
-  const allCycles = [...savedCycles, ...cropCycles];
+  async function handleCreateParticipant({
+    password,
+    profile,
+    username
+  }: CreateRegisteredParticipantInput) {
+    setIsCreatingParticipant(true);
+    setParticipantFormError("");
+
+    try {
+      const participant = await createRegisteredParticipant({
+        password,
+        profile,
+        username
+      });
+      upsertParticipant(participant);
+      return true;
+    } catch (error) {
+      setParticipantFormError(
+        getErrorMessage(error, "Unable to create participant profile.")
+      );
+      return false;
+    } finally {
+      setIsCreatingParticipant(false);
+    }
+  }
+
+  async function handleToggleParticipantStatus(participant: RegisteredParticipant) {
+    const nextStatus = participant.status === "Active" ? "Inactive" : "Active";
+    setUpdatingParticipantUsername(participant.username);
+    setParticipantFormError("");
+
+    try {
+      const updatedParticipant = await updateRegisteredParticipantStatus(
+        participant,
+        nextStatus
+      );
+      upsertParticipant(updatedParticipant);
+    } catch (error) {
+      setParticipantFormError(
+        getErrorMessage(error, "Unable to update participant status.")
+      );
+    } finally {
+      setUpdatingParticipantUsername(null);
+    }
+  }
+
+  async function handleReviewProof(
+    proof: ProofSubmission,
+    status: "APPROVED" | "REJECTED"
+  ) {
+    setReviewingProofId(proof.id);
+    setReviewError("");
+
+    try {
+      const reviewedProof = await reviewBackendProof({
+        evidenceId: proof.id,
+        status
+      });
+
+      setSavedProofs((currentProofs) =>
+        currentProofs.map((item) =>
+          item.id === proof.id
+            ? {
+                ...item,
+                ...reviewedProof,
+                crop: item.crop,
+                locationName: item.locationName,
+                region: item.region,
+                workflowName: item.workflowName
+              }
+            : item
+        )
+      );
+    } catch (error) {
+      setReviewError(getErrorMessage(error, "Unable to review proof record."));
+    } finally {
+      setReviewingProofId(null);
+    }
+  }
+
+  async function handleExportReport(format: ReportExport["format"]) {
+    setExportingReportFormat(format);
+    setReportExportError("");
+
+    try {
+      setReportExport(await exportBackendReport(format));
+    } catch (error) {
+      const label = format === "PDF" ? "PDF" : "Excel";
+      setReportExportError(getErrorMessage(error, `Unable to export ${label} report.`));
+    } finally {
+      setExportingReportFormat(null);
+    }
+  }
+
+  async function handleCreateWorkflow(input: CreateBackendWorkflowInput) {
+    setIsCreatingWorkflow(true);
+    setWorkflowFormError("");
+
+    try {
+      const workflow = await createBackendWorkflowDefinition(input);
+      setWorkflowDefinitions((currentWorkflows) => [
+        workflow,
+        ...currentWorkflows.filter((item) => item.id !== workflow.id)
+      ]);
+      return true;
+    } catch (error) {
+      setWorkflowFormError(
+        getErrorMessage(error, "Unable to create workflow definition.")
+      );
+      return false;
+    } finally {
+      setIsCreatingWorkflow(false);
+    }
+  }
+
+  async function handleUpdateWorkflowStatus(
+    workflowId: string,
+    status: BackendWorkflowStatus
+  ) {
+    setUpdatingWorkflowId(workflowId);
+    setWorkflowFormError("");
+
+    try {
+      const workflow = await updateBackendWorkflowStatus(workflowId, status);
+      setWorkflowDefinitions((currentWorkflows) =>
+        currentWorkflows.map((item) => (item.id === workflow.id ? workflow : item))
+      );
+    } catch (error) {
+      setWorkflowFormError(
+        getErrorMessage(error, "Unable to update workflow status.")
+      );
+    } finally {
+      setUpdatingWorkflowId(null);
+    }
+  }
+
+  async function handleStartActivity(input: StartBackendActivityInput) {
+    setIsStartingActivity(true);
+    setActivityStartError("");
+
+    try {
+      const cycle = await startBackendActivity(input);
+      setSavedCycles((currentCycles) => [
+        cycle,
+        ...currentCycles.filter((item) => item.id !== cycle.id)
+      ]);
+
+      try {
+        setReportSummary(await getBackendReportSummary());
+      } catch {
+        // The activity is created even if the summary refresh fails.
+      }
+
+      return true;
+    } catch (error) {
+      setActivityStartError(getErrorMessage(error, "Unable to start activity."));
+      return false;
+    } finally {
+      setIsStartingActivity(false);
+    }
+  }
+
+  function upsertParticipant(participant: RegisteredParticipant) {
+    setRegisteredParticipants((currentParticipants) => [
+      participant,
+      ...currentParticipants.filter(
+        (item) => item.username.toLowerCase() !== participant.username.toLowerCase()
+      )
+    ]);
+  }
+
+  const participants = registeredParticipants;
+  const allCycles = savedCycles;
   const runningCycles = allCycles.filter((cycle) => cycle.status === "running");
-  const completedCycles = allCycles.filter(
-    (cycle) => cycle.status === "completed"
-  );
+  const completedCycles = allCycles.filter((cycle) => cycle.status === "completed");
   const proofRecords = savedProofs;
-  const regions = [...new Set(farmers.map((farmer) => farmer.region))];
+  const regions = [...new Set(participants.map((participant) => participant.region))];
   const crops = [...new Set(allCycles.map((cycle) => cycle.crop))];
   const complianceScore = calculateComplianceScore(allCycles, proofRecords);
 
   const summary = useMemo(
     () => [
-      { label: "Farmers", value: String(farmers.length) },
+      { label: "Participants", value: String(participants.length) },
       { label: "Running cycles", value: String(runningCycles.length) },
       { label: "Completed", value: String(completedCycles.length) },
       { label: "Proof records", value: String(proofRecords.length) }
     ],
     [
       completedCycles.length,
-      farmers.length,
+      participants.length,
       proofRecords.length,
       runningCycles.length
     ]
@@ -101,7 +353,7 @@ export function AdminHomeScreen({ onLogout }: AdminHomeScreenProps) {
               <Text style={styles.eyebrow}>Admin dashboard</Text>
               <Text style={styles.title}>Process Verification</Text>
               <Text style={styles.copy}>
-                Track farmers, crop progress, proof records, and report-ready
+                Track participants, activity progress, proof records, and report-ready
                 compliance evidence.
               </Text>
             </View>
@@ -127,15 +379,15 @@ export function AdminHomeScreen({ onLogout }: AdminHomeScreenProps) {
           <View style={styles.tabRow}>
             {[
               ["overview", "Overview"],
-              ["farmers", "Farmers"],
+              ["workflows", "Workflows"],
+              ["participants", "Participants"],
+              ["roles", "Roles"],
+              ["notifications", "Notifications"],
               ["reports", "Reports"]
             ].map(([tab, label]) => (
               <Pressable
                 key={tab}
-                style={[
-                  styles.tabButton,
-                  activeTab === tab && styles.tabButtonActive
-                ]}
+                style={[styles.tabButton, activeTab === tab && styles.tabButtonActive]}
                 onPress={() => setActiveTab(tab as AdminTab)}
               >
                 <Text
@@ -152,17 +404,54 @@ export function AdminHomeScreen({ onLogout }: AdminHomeScreenProps) {
 
           {activeTab === "overview" ? (
             <OverviewTab
-              farmers={farmers}
+              adminDataError={adminDataError}
+              canReviewEvidence={canReviewEvidence}
+              onReviewProof={handleReviewProof}
+              participants={participants}
               proofRecords={proofRecords}
+              reviewError={reviewError}
+              reviewingProofId={reviewingProofId}
               runningCycles={runningCycles}
             />
           ) : null}
 
-          {activeTab === "farmers" ? (
-            <FarmersTab
+          {activeTab === "participants" ? (
+            <ParticipantsTab
               allCycles={allCycles}
-              farmers={farmers}
+              createError={participantFormError}
+              isCreatingParticipant={isCreatingParticipant}
+              onCreateParticipant={handleCreateParticipant}
+              onToggleParticipantStatus={handleToggleParticipantStatus}
+              participants={participants}
               proofRecords={proofRecords}
+              updatingParticipantUsername={updatingParticipantUsername}
+            />
+          ) : null}
+
+          {activeTab === "workflows" ? (
+            <AdminWorkflowsTab
+              activityStartError={activityStartError}
+              canUseBackend={canReviewEvidence}
+              createWorkflowError={workflowFormError}
+              isCreatingWorkflow={isCreatingWorkflow}
+              onCreateWorkflow={handleCreateWorkflow}
+              onStartActivity={handleStartActivity}
+              onUpdateWorkflowStatus={handleUpdateWorkflowStatus}
+              participants={participants}
+              startingActivity={isStartingActivity}
+              updatingWorkflowId={updatingWorkflowId}
+              workflows={workflowDefinitions}
+            />
+          ) : null}
+
+          {activeTab === "roles" ? (
+            <AdminRolesTab canUseBackend={canReviewEvidence} />
+          ) : null}
+
+          {activeTab === "notifications" ? (
+            <AdminNotificationsTab
+              canUseBackend={canReviewEvidence}
+              participants={participants}
             />
           ) : null}
 
@@ -170,7 +459,12 @@ export function AdminHomeScreen({ onLogout }: AdminHomeScreenProps) {
             <ReportsTab
               complianceScore={complianceScore}
               crops={crops}
+              exportingReportFormat={exportingReportFormat}
+              onExportReport={handleExportReport}
               proofRecords={proofRecords}
+              reportExport={reportExport}
+              reportExportError={reportExportError}
+              reportSummary={reportSummary}
               regions={regions}
             />
           ) : null}
@@ -180,108 +474,373 @@ export function AdminHomeScreen({ onLogout }: AdminHomeScreenProps) {
   );
 }
 
+async function loadBackendAdminData(): Promise<
+  [CropCycle[], ProofSubmission[], ReportSummary, BackendWorkflow[]]
+> {
+  const [cycles, summary, workflows] = await Promise.all([
+    getBackendActivities(),
+    getBackendReportSummary(),
+    getBackendWorkflowDefinitions()
+  ]);
+  const proofs = await getBackendProofs(cycles);
+  return [cycles, proofs, summary, workflows];
+}
+
+async function loadLocalAdminData(): Promise<
+  [CropCycle[], ProofSubmission[], ReportSummary | null, BackendWorkflow[]]
+> {
+  const [cycles, proofs] = await Promise.all([
+    getSavedCropCycles(),
+    getSavedProofs()
+  ]);
+  return [cycles, proofs, null, []];
+}
+
 function OverviewTab({
-  farmers,
+  adminDataError,
+  canReviewEvidence,
+  onReviewProof,
+  participants,
   proofRecords,
+  reviewError,
+  reviewingProofId,
   runningCycles
 }: {
-  farmers: RegisteredFarmer[];
+  adminDataError: string;
+  canReviewEvidence: boolean;
+  onReviewProof: (
+    proof: ProofSubmission,
+    status: "APPROVED" | "REJECTED"
+  ) => Promise<void>;
+  participants: RegisteredParticipant[];
   proofRecords: ProofSubmission[];
+  reviewError: string;
+  reviewingProofId: string | null;
   runningCycles: CropCycle[];
 }) {
   return (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Current field activity</Text>
-      {runningCycles.map((cycle) => (
-        <View key={cycle.id} style={styles.reviewCard}>
-          <View style={styles.reviewText}>
-            <Text style={styles.cardTitle}>{cycle.crop}</Text>
-            <Text style={styles.cardDescription}>
-              {cycle.region} - {cycle.plot} - harvest by{" "}
-              {cycle.expectedHarvest}
-            </Text>
-            <Text style={styles.cardMeta}>{cycle.progress}% process progress</Text>
-          </View>
-          <StatusBadge label="Running" />
+      {adminDataError ? (
+        <View style={styles.warningCard}>
+          <Text style={styles.warningText}>{adminDataError}</Text>
         </View>
-      ))}
+      ) : null}
+
+      <Text style={styles.sectionTitle}>Current field activity</Text>
+      {runningCycles.length ? (
+        runningCycles.map((cycle) => (
+          <View key={cycle.id} style={styles.reviewCard}>
+            <View style={styles.reviewText}>
+              <Text style={styles.cardTitle}>{cycle.crop}</Text>
+              <Text style={styles.cardDescription}>
+                {cycle.region} - {cycle.plot} - harvest by {cycle.expectedHarvest}
+              </Text>
+              <Text style={styles.cardMeta}>{cycle.progress}% process progress</Text>
+            </View>
+            <StatusBadge label="Running" />
+          </View>
+        ))
+      ) : (
+        <View style={styles.emptyCard}>
+          <Text style={styles.cardDescription}>
+            No active activities have been started yet.
+          </Text>
+        </View>
+      )}
 
       <Text style={styles.sectionTitle}>Recent proof records</Text>
+      {reviewError ? <Text style={styles.formError}>{reviewError}</Text> : null}
       {proofRecords.length ? (
         proofRecords.map((proof) => (
           <View key={proof.id} style={styles.reviewCard}>
             <View style={styles.reviewText}>
               <Text style={styles.cardTitle}>{proof.action}</Text>
               <Text style={styles.cardDescription}>
-                {proof.farmer} - {proof.crop} - {proof.region}
+                {proof.participantName ?? proof.farmer} - {proof.crop} - {proof.region}
               </Text>
               <Text style={styles.cardMeta}>Submitted {proof.submittedOn}</Text>
+              {proof.note ? (
+                <Text style={styles.cardDescription}>{proof.note}</Text>
+              ) : null}
             </View>
-            <StatusBadge label="Done" tone="good" />
+            <View style={styles.reviewActions}>
+              <StatusBadge
+                label={evidenceStatusLabel(proof.status)}
+                tone={evidenceStatusTone(proof.status)}
+              />
+              {canReviewEvidence &&
+              (proof.status === "pending" || proof.status === "done") ? (
+                <View style={styles.reviewButtonRow}>
+                  <Pressable
+                    accessibilityRole="button"
+                    disabled={reviewingProofId === proof.id}
+                    style={({ pressed }) => [
+                      styles.approveButton,
+                      (pressed || reviewingProofId === proof.id) &&
+                        styles.actionButtonPressed
+                    ]}
+                    onPress={() => onReviewProof(proof, "APPROVED")}
+                  >
+                    <Text style={styles.approveButtonText}>
+                      {reviewingProofId === proof.id ? "Saving..." : "Approve"}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    disabled={reviewingProofId === proof.id}
+                    style={({ pressed }) => [
+                      styles.rejectButton,
+                      (pressed || reviewingProofId === proof.id) &&
+                        styles.actionButtonPressed
+                    ]}
+                    onPress={() => onReviewProof(proof, "REJECTED")}
+                  >
+                    <Text style={styles.rejectButtonText}>Reject</Text>
+                  </Pressable>
+                </View>
+              ) : null}
+            </View>
           </View>
         ))
       ) : (
         <View style={styles.emptyCard}>
           <Text style={styles.cardDescription}>
-            No farmer proof has been submitted yet.
+            No proof records have been submitted yet.
           </Text>
         </View>
       )}
 
-      <Text style={styles.sectionTitle}>Farmers by region</Text>
-      {farmers.map((farmer) => (
-        <View key={farmer.username} style={styles.compactRow}>
-          <Text style={styles.compactTitle}>{farmer.name}</Text>
-          <Text style={styles.compactMeta}>
-            {farmer.region} - {farmer.village}
+      <Text style={styles.sectionTitle}>Participants by region</Text>
+      {participants.length ? (
+        participants.map((participant) => (
+          <View key={participant.username} style={styles.compactRow}>
+            <Text style={styles.compactTitle}>{participant.name}</Text>
+            <Text style={styles.compactMeta}>
+              {participant.region} - {participant.village}
+            </Text>
+          </View>
+        ))
+      ) : (
+        <View style={styles.emptyCard}>
+          <Text style={styles.cardDescription}>
+            No participants are registered yet.
           </Text>
         </View>
-      ))}
+      )}
     </View>
   );
 }
 
-function FarmersTab({
+function ParticipantsTab({
   allCycles,
-  farmers,
-  proofRecords
+  createError,
+  isCreatingParticipant,
+  onCreateParticipant,
+  onToggleParticipantStatus,
+  participants,
+  proofRecords,
+  updatingParticipantUsername
 }: {
   allCycles: CropCycle[];
-  farmers: RegisteredFarmer[];
+  createError: string;
+  isCreatingParticipant: boolean;
+  onCreateParticipant: (data: CreateRegisteredParticipantInput) => Promise<boolean>;
+  onToggleParticipantStatus: (participant: RegisteredParticipant) => Promise<void>;
+  participants: RegisteredParticipant[];
   proofRecords: ProofSubmission[];
+  updatingParticipantUsername: string | null;
 }) {
   return (
     <View style={styles.section}>
-      <View style={styles.startCropCard}>
-        <View style={styles.reviewText}>
-          <Text style={styles.cardTitle}>Farmer management</Text>
+      <CreateParticipantForm
+        error={createError}
+        isSubmitting={isCreatingParticipant}
+        onSubmit={onCreateParticipant}
+      />
+
+      {participants.length ? (
+        participants.map((participant) => (
+          <View key={participant.username} style={styles.participantCard}>
+            <View style={styles.reviewText}>
+              <Text style={styles.cardTitle}>{participant.name}</Text>
+              <Text style={styles.cardDescription}>
+                {participant.region} - {participant.village} - {participant.phone}
+              </Text>
+              <Text style={styles.cardMeta}>
+                {countParticipantActivities(participant, allCycles, "running")} running,{" "}
+                {countParticipantActivities(participant, allCycles, "completed")}{" "}
+                completed, {countParticipantProofs(participant, proofRecords)} proof
+                record(s)
+              </Text>
+            </View>
+            <View style={styles.participantActions}>
+              <StatusBadge
+                label={participant.status}
+                tone={participant.status === "Active" ? "good" : "warning"}
+              />
+              {participant.status !== "Profile pending" ? (
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={updatingParticipantUsername === participant.username}
+                  style={({ pressed }) => [
+                    styles.actionButton,
+                    (pressed || updatingParticipantUsername === participant.username) &&
+                      styles.actionButtonPressed
+                  ]}
+                  onPress={() => onToggleParticipantStatus(participant)}
+                >
+                  <Text style={styles.actionButtonText}>
+                    {updatingParticipantUsername === participant.username
+                      ? "Saving..."
+                      : participant.status === "Active"
+                        ? "Deactivate"
+                        : "Activate"}
+                  </Text>
+                </Pressable>
+              ) : null}
+            </View>
+          </View>
+        ))
+      ) : (
+        <View style={styles.emptyCard}>
           <Text style={styles.cardDescription}>
-            Admin can view farmer profile basics, active crop work, completed
-            cycles, and proof coverage. Add/edit/delete actions will connect to
-            Spring Boot later.
+            No participant profiles are available yet.
           </Text>
         </View>
+      )}
+    </View>
+  );
+}
+
+function CreateParticipantForm({
+  error,
+  isSubmitting,
+  onSubmit
+}: {
+  error: string;
+  isSubmitting: boolean;
+  onSubmit: (data: CreateRegisteredParticipantInput) => Promise<boolean>;
+}) {
+  const [name, setName] = useState("");
+  const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState("");
+  const [region, setRegion] = useState("");
+  const [username, setUsername] = useState("");
+  const [village, setVillage] = useState("");
+  const [localError, setLocalError] = useState("");
+
+  async function handleSubmit() {
+    const profile: UserProfileInput = {
+      displayName: name.trim(),
+      locationName: region.trim(),
+      phone: phone.trim(),
+      siteName: village.trim()
+    };
+
+    if (
+      !username.trim() ||
+      !password ||
+      !profile.displayName ||
+      !profile.phone ||
+      !profile.locationName ||
+      !profile.siteName
+    ) {
+      setLocalError("Enter all participant profile fields.");
+      return;
+    }
+
+    if (password.length < 8) {
+      setLocalError("Password must be at least 8 characters.");
+      return;
+    }
+
+    setLocalError("");
+    const created = await onSubmit({
+      password,
+      profile,
+      username: username.trim()
+    });
+
+    if (created) {
+      setName("");
+      setPassword("");
+      setPhone("");
+      setRegion("");
+      setUsername("");
+      setVillage("");
+    }
+  }
+
+  return (
+    <View style={styles.managementCard}>
+      <Text style={styles.cardTitle}>Create participant</Text>
+      <View style={styles.formGrid}>
+        <AdminField label="Full name" value={name} onChange={setName} />
+        <AdminField
+          label="Phone"
+          value={phone}
+          onChange={setPhone}
+          keyboardType="phone-pad"
+        />
+        <AdminField label="Region" value={region} onChange={setRegion} />
+        <AdminField label="Village" value={village} onChange={setVillage} />
+        <AdminField label="Username" value={username} onChange={setUsername} />
+        <AdminField
+          label="Password"
+          value={password}
+          onChange={setPassword}
+          secureTextEntry
+        />
       </View>
 
-      {farmers.map((farmer) => (
-        <View key={farmer.username} style={styles.farmerCard}>
-          <View style={styles.reviewText}>
-            <Text style={styles.cardTitle}>{farmer.name}</Text>
-            <Text style={styles.cardDescription}>
-              {farmer.region} - {farmer.village} - {farmer.phone}
-            </Text>
-            <Text style={styles.cardMeta}>
-              {countFarmerCycles(farmer, allCycles, "running")} running,{" "}
-              {countFarmerCycles(farmer, allCycles, "completed")} completed,{" "}
-              {countFarmerProofs(farmer, proofRecords)} proof record(s)
-            </Text>
-          </View>
-          <StatusBadge
-            label={farmer.status}
-            tone={farmer.status === "Active" ? "good" : "warning"}
-          />
-        </View>
-      ))}
+      {localError || error ? (
+        <Text style={styles.formError}>{localError || error}</Text>
+      ) : null}
+
+      <View style={styles.formActions}>
+        <Pressable
+          accessibilityRole="button"
+          disabled={isSubmitting}
+          style={({ pressed }) => [
+            styles.createButton,
+            (pressed || isSubmitting) && styles.createButtonPressed
+          ]}
+          onPress={handleSubmit}
+        >
+          <Text style={styles.createButtonText}>
+            {isSubmitting ? "Creating..." : "Create profile"}
+          </Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+function AdminField({
+  keyboardType,
+  label,
+  onChange,
+  secureTextEntry,
+  value
+}: {
+  keyboardType?: "default" | "phone-pad";
+  label: string;
+  onChange: (value: string) => void;
+  secureTextEntry?: boolean;
+  value: string;
+}) {
+  return (
+    <View style={styles.formField}>
+      <Text style={styles.formLabel}>{label}</Text>
+      <TextInput
+        autoCapitalize={label === "Full name" ? "words" : "none"}
+        autoCorrect={false}
+        keyboardType={keyboardType}
+        onChangeText={onChange}
+        secureTextEntry={secureTextEntry}
+        style={styles.formInput}
+        value={value}
+      />
     </View>
   );
 }
@@ -289,35 +848,101 @@ function FarmersTab({
 function ReportsTab({
   complianceScore,
   crops,
+  exportingReportFormat,
+  onExportReport,
   proofRecords,
+  reportExport,
+  reportExportError,
+  reportSummary,
   regions
 }: {
   complianceScore: number;
   crops: string[];
+  exportingReportFormat: ReportExport["format"] | null;
+  onExportReport: (format: ReportExport["format"]) => Promise<void>;
   proofRecords: ProofSubmission[];
+  reportExport: ReportExport | null;
+  reportExportError: string;
+  reportSummary: ReportSummary | null;
   regions: string[];
 }) {
+  const displayedComplianceScore =
+    reportSummary?.approvedEvidencePercent ?? complianceScore;
+  const displayedProofCount = reportSummary?.evidenceRecords ?? proofRecords.length;
+  const displayedRegionCount = reportSummary?.byLocation.length ?? regions.length;
+  const isExportingReport = exportingReportFormat !== null;
+
   return (
     <View style={styles.section}>
       <View style={styles.reportCard}>
         <Text style={styles.cardTitle}>Government evidence report</Text>
         <Text style={styles.cardDescription}>
-          This report will show farmer coverage, crop-cycle progress, proof
-          photo records, and process completion by region and crop.
+          This report will show participant coverage, activity progress, proof photo
+          records, and process completion by region and crop.
         </Text>
         <View style={styles.reportGrid}>
           <View style={styles.reportMetric}>
-            <Text style={styles.reportValue}>{complianceScore}%</Text>
-            <Text style={styles.reportLabel}>Process compliance</Text>
+            <Text style={styles.reportValue}>{displayedComplianceScore}%</Text>
+            <Text style={styles.reportLabel}>Approved evidence</Text>
           </View>
           <View style={styles.reportMetric}>
-            <Text style={styles.reportValue}>{regions.length}</Text>
+            <Text style={styles.reportValue}>{displayedRegionCount}</Text>
             <Text style={styles.reportLabel}>Regions covered</Text>
           </View>
           <View style={styles.reportMetric}>
-            <Text style={styles.reportValue}>{proofRecords.length}</Text>
+            <Text style={styles.reportValue}>{displayedProofCount}</Text>
             <Text style={styles.reportLabel}>Proof records</Text>
           </View>
+          {reportSummary ? (
+            <View style={styles.reportMetric}>
+              <Text style={styles.reportValue}>
+                {reportSummary.taskCompletionPercent}%
+              </Text>
+              <Text style={styles.reportLabel}>Task completion</Text>
+            </View>
+          ) : null}
+        </View>
+        <View style={styles.reportActions}>
+          <View style={styles.reportButtonRow}>
+            <Pressable
+              accessibilityRole="button"
+              disabled={!reportSummary || isExportingReport}
+              style={({ pressed }) => [
+                styles.createButton,
+                (!reportSummary || pressed || isExportingReport) &&
+                  styles.createButtonPressed
+              ]}
+              onPress={() => onExportReport("PDF")}
+            >
+              <Text style={styles.createButtonText}>
+                {exportingReportFormat === "PDF" ? "Exporting PDF..." : "Export PDF"}
+              </Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              disabled={!reportSummary || isExportingReport}
+              style={({ pressed }) => [
+                styles.actionButton,
+                (!reportSummary || pressed || isExportingReport) &&
+                  styles.actionButtonPressed
+              ]}
+              onPress={() => onExportReport("XLSX")}
+            >
+              <Text style={styles.actionButtonText}>
+                {exportingReportFormat === "XLSX"
+                  ? "Exporting Excel..."
+                  : "Export Excel"}
+              </Text>
+            </Pressable>
+          </View>
+          {reportExport ? (
+            <Text style={styles.cardMeta}>
+              Export {reportExport.status.toLowerCase()}: {reportExport.storageKey}
+            </Text>
+          ) : null}
+          {reportExportError ? (
+            <Text style={styles.formError}>{reportExportError}</Text>
+          ) : null}
         </View>
       </View>
 
@@ -333,21 +958,71 @@ function ReportsTab({
           <Text style={styles.filterText}>{item}</Text>
         </View>
       ))}
+
+      {reportSummary ? (
+        <>
+          <Text style={styles.sectionTitle}>Workflow summary</Text>
+          {reportSummary.byWorkflow.length ? (
+            reportSummary.byWorkflow.map((item) => (
+              <View key={item.label} style={styles.filterRow}>
+                <Text style={styles.filterText}>{item.label}</Text>
+                <Text style={styles.cardMeta}>
+                  {item.activities} activities, {item.completedActivities} completed,{" "}
+                  {item.approvedEvidence}/{item.evidenceRecords} approved proof records
+                </Text>
+              </View>
+            ))
+          ) : (
+            <View style={styles.emptyCard}>
+              <Text style={styles.cardDescription}>
+                No workflow activity is available for reporting yet.
+              </Text>
+            </View>
+          )}
+        </>
+      ) : null}
     </View>
   );
 }
 
-function calculateComplianceScore(
-  cycles: CropCycle[],
-  proofs: ProofSubmission[]
-) {
+function calculateComplianceScore(cycles: CropCycle[], proofs: ProofSubmission[]) {
   const totalSteps = cycles.reduce((sum, cycle) => sum + cycle.steps.length, 0);
 
   if (!totalSteps) {
     return 0;
   }
 
-  return Math.round((proofs.length / totalSteps) * 100);
+  const acceptedProofCount = proofs.filter(
+    (proof) => proof.status === "approved" || proof.status === "done"
+  ).length;
+
+  return Math.round((acceptedProofCount / totalSteps) * 100);
+}
+
+function evidenceStatusLabel(status: EvidenceStatus) {
+  switch (status) {
+    case "approved":
+      return "Approved";
+    case "rejected":
+      return "Rejected";
+    case "pending":
+      return "Pending review";
+    default:
+      return "Submitted";
+  }
+}
+
+function evidenceStatusTone(status: EvidenceStatus) {
+  switch (status) {
+    case "approved":
+      return "good";
+    case "rejected":
+      return "danger";
+    case "pending":
+      return "warning";
+    default:
+      return "neutral";
+  }
 }
 
 const styles = StyleSheet.create({
@@ -439,6 +1114,7 @@ const styles = StyleSheet.create({
   tabRow: {
     backgroundColor: "#e8eef2",
     borderRadius: 8,
+    flexWrap: "wrap",
     flexDirection: "row",
     gap: 4,
     marginBottom: 20,
@@ -447,7 +1123,8 @@ const styles = StyleSheet.create({
   tabButton: {
     alignItems: "center",
     borderRadius: 6,
-    flex: 1,
+    flexBasis: 130,
+    flexGrow: 1,
     minHeight: 42,
     justifyContent: "center"
   },
@@ -489,8 +1166,30 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: 16
   },
+  warningCard: {
+    backgroundColor: "#fff8e8",
+    borderColor: "#f0d38a",
+    borderRadius: 8,
+    borderWidth: 1,
+    padding: 14
+  },
+  warningText: {
+    color: "#8a5a00",
+    fontSize: 13,
+    fontWeight: "700"
+  },
   reviewText: {
     flex: 1
+  },
+  reviewActions: {
+    alignItems: "flex-end",
+    gap: 10
+  },
+  reviewButtonRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    justifyContent: "flex-end"
   },
   cardTitle: {
     color: "#172126",
@@ -537,7 +1236,65 @@ const styles = StyleSheet.create({
     gap: 14,
     padding: 16
   },
-  farmerCard: {
+  managementCard: {
+    backgroundColor: "#ffffff",
+    borderColor: "#cfe0df",
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 14,
+    padding: 16
+  },
+  formGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12
+  },
+  formField: {
+    flex: 1,
+    gap: 7,
+    minWidth: 210
+  },
+  formLabel: {
+    color: "#24343b",
+    fontSize: 13,
+    fontWeight: "800"
+  },
+  formInput: {
+    backgroundColor: "#ffffff",
+    borderColor: "#c9d7df",
+    borderRadius: 8,
+    borderWidth: 1,
+    color: "#172126",
+    fontSize: 15,
+    minHeight: 48,
+    paddingHorizontal: 12
+  },
+  formError: {
+    color: "#b42318",
+    fontSize: 13,
+    fontWeight: "700"
+  },
+  formActions: {
+    alignItems: "flex-start"
+  },
+  createButton: {
+    alignItems: "center",
+    backgroundColor: "#1f6f73",
+    borderRadius: 8,
+    justifyContent: "center",
+    minHeight: 46,
+    minWidth: 140,
+    paddingHorizontal: 16
+  },
+  createButtonPressed: {
+    opacity: 0.72
+  },
+  createButtonText: {
+    color: "#ffffff",
+    fontSize: 14,
+    fontWeight: "800"
+  },
+  participantCard: {
     alignItems: "flex-start",
     backgroundColor: "#ffffff",
     borderColor: "#d9e4ea",
@@ -547,6 +1304,57 @@ const styles = StyleSheet.create({
     gap: 12,
     justifyContent: "space-between",
     padding: 16
+  },
+  participantActions: {
+    alignItems: "flex-end",
+    gap: 10
+  },
+  actionButton: {
+    alignItems: "center",
+    borderColor: "#1f6f73",
+    borderRadius: 8,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 38,
+    minWidth: 100,
+    paddingHorizontal: 12
+  },
+  actionButtonPressed: {
+    opacity: 0.64
+  },
+  actionButtonText: {
+    color: "#1f6f73",
+    fontSize: 13,
+    fontWeight: "800"
+  },
+  approveButton: {
+    alignItems: "center",
+    backgroundColor: "#1f6f73",
+    borderRadius: 8,
+    justifyContent: "center",
+    minHeight: 38,
+    minWidth: 92,
+    paddingHorizontal: 12
+  },
+  approveButtonText: {
+    color: "#ffffff",
+    fontSize: 13,
+    fontWeight: "800"
+  },
+  rejectButton: {
+    alignItems: "center",
+    borderColor: "#b42318",
+    borderRadius: 8,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 38,
+    minWidth: 82,
+    paddingHorizontal: 12
+  },
+  rejectButtonText: {
+    color: "#b42318",
+    fontSize: 13,
+    fontWeight: "800"
   },
   reportCard: {
     backgroundColor: "#ffffff",
@@ -560,6 +1368,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 12
+  },
+  reportActions: {
+    alignItems: "flex-start",
+    gap: 8
+  },
+  reportButtonRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10
   },
   reportMetric: {
     minWidth: 150,

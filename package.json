@@ -5,6 +5,9 @@
   "main": "expo/AppEntry.js",
   "scripts": {
     "start": "expo start",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "web": "expo start --web",
     "android": "expo start --android",
@@ -24,7 +27,13 @@
     "react-native-web": "~0.21.0"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/react": "~19.1.10",
-    "typescript": "^5.3.3"
+    "eslint": "^10.3.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.6.0",
+    "prettier": "^3.8.3",
+    "typescript": "^5.3.3",
+    "typescript-eslint": "^8.59.2"
   }
 }

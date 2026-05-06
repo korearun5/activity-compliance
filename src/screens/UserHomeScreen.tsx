@@ -13,6 +13,7 @@ import {
 } from "react-native";
 
 import { appConfig } from "../core/config/appConfig";
+import { getErrorMessage } from "../core/errors/AppError";
 import {
   activateNextPendingTask,
   calculateTaskProgress,
@@ -24,14 +25,23 @@ import { getSavedCropCycles, saveCropCycle } from "../data/cropCycleStore";
 import {
   CropCycle,
   CropStep,
-  cropCycles,
-  cropTemplates,
-  farmerProfile,
-  FarmerProfileField,
+  CropTemplate,
+  profileTemplate,
+  ProfileField,
   ProofSubmission
-} from "../data/farmDemoData";
-import { getFarmerProfile } from "../data/farmerProfileStore";
+} from "../data/agricultureConfig";
+import { getUserProfile } from "../data/profileStore";
 import { getSavedProofs, saveProof } from "../data/proofStore";
+import {
+  getBackendActivities,
+  getBackendActivity,
+  getBackendProofs,
+  getBackendWorkflowTemplates,
+  hasBackendSession,
+  startBackendActivity,
+  uploadBackendProof,
+  upsertProofSubmission
+} from "../data/workflowActivityStore";
 import { StatusBadge } from "../ui/StatusBadge";
 
 type UserHomeScreenProps = {
@@ -39,7 +49,7 @@ type UserHomeScreenProps = {
   onLogout: () => void;
 };
 
-type FarmerTab = "cycles" | "dashboard" | "profile" | "history";
+type ParticipantTab = "cycles" | "dashboard" | "profile" | "history";
 
 type SelectedProof = {
   cycleId: string;
@@ -51,51 +61,76 @@ type SelectedProof = {
 };
 
 export function UserHomeScreen({ username, onLogout }: UserHomeScreenProps) {
-  const [activeTab, setActiveTab] = useState<FarmerTab>("cycles");
+  const [activeTab, setActiveTab] = useState<ParticipantTab>("cycles");
   const [savedProofs, setSavedProofs] = useState<ProofSubmission[]>([]);
   const [savedCycles, setSavedCycles] = useState<CropCycle[]>([]);
-  const [profileFields, setProfileFields] =
-    useState<FarmerProfileField[]>(farmerProfile);
-  const [selectedProof, setSelectedProof] = useState<SelectedProof | null>(
-    null
-  );
+  const [workflowTemplates, setWorkflowTemplates] = useState<CropTemplate[]>([]);
+  const [profileFields, setProfileFields] = useState<ProfileField[]>(profileTemplate);
+  const [selectedProof, setSelectedProof] = useState<SelectedProof | null>(null);
   const [proofNote, setProofNote] = useState("");
   const [proofPhotoUri, setProofPhotoUri] = useState<string | null>(null);
   const [proofError, setProofError] = useState("");
+  const [profileError, setProfileError] = useState("");
   const [isStartCropOpen, setIsStartCropOpen] = useState(false);
-  const [selectedCrop, setSelectedCrop] = useState(cropTemplates[0].crop);
+  const [selectedCrop, setSelectedCrop] = useState("");
   const [plotName, setPlotName] = useState("");
   const [startDate, setStartDate] = useState(toInputDate(new Date()));
   const [startCropError, setStartCropError] = useState("");
   const [completedCropName, setCompletedCropName] = useState<string | null>(null);
 
   useEffect(() => {
-    async function loadLocalData() {
-      const [proofs, cycles, profile] = await Promise.all([
+    async function loadParticipantData() {
+      const hasToken = await hasBackendSession();
+
+      try {
+        const profile = await getUserProfile(username);
+        setProfileFields(profile);
+        setProfileError("");
+      } catch (error) {
+        setProfileFields(profileTemplate);
+        setProfileError(getErrorMessage(error, "Unable to load participant profile."));
+      }
+
+      if (hasToken) {
+        try {
+          const [templates, cycles] = await Promise.all([
+            getBackendWorkflowTemplates(),
+            getBackendActivities()
+          ]);
+          const proofs = await getBackendProofs(cycles);
+
+          setWorkflowTemplates(templates);
+          setSavedCycles(cycles);
+          setSavedProofs(proofs);
+          return;
+        } catch (error) {
+          setStartCropError(
+            getErrorMessage(error, "Unable to load backend activity timeline.")
+          );
+        }
+      }
+
+      const [proofs, cycles] = await Promise.all([
         getSavedProofs(),
-        getSavedCropCycles(),
-        getFarmerProfile(username)
+        getSavedCropCycles()
       ]);
 
+      setWorkflowTemplates([]);
       setSavedProofs(proofs);
       setSavedCycles(cycles);
-      setProfileFields(profile);
     }
 
-    loadLocalData();
+    loadParticipantData();
   }, [username]);
 
-  const farmerName =
-    profileFields.find((field) => field.label === "Name")?.value ||
-    "Farmer";
-  const farmerRegion =
-    profileFields.find((field) => field.label === "Region")?.value ||
-    "North Block";
-
-  const allCycles = useMemo(
-    () => [...savedCycles, ...cropCycles],
-    [savedCycles]
+  const participantName = getProfileValue(profileFields, "Name", "Participant");
+  const participantRegion = getProfileValue(
+    profileFields,
+    "Region",
+    "Unassigned region"
   );
+
+  const allCycles = useMemo(() => savedCycles, [savedCycles]);
 
   const displayCycles = useMemo(
     () =>
@@ -118,12 +153,8 @@ export function UserHomeScreen({ username, onLogout }: UserHomeScreenProps) {
     [allCycles, savedProofs]
   );
 
-  const runningCycles = displayCycles.filter(
-    (cycle) => cycle.status === "running"
-  );
-  const completedCycles = displayCycles.filter(
-    (cycle) => cycle.status === "completed"
-  );
+  const runningCycles = displayCycles.filter((cycle) => cycle.status === "running");
+  const completedCycles = displayCycles.filter((cycle) => cycle.status === "completed");
   const nextActionCount = runningCycles.filter((cycle) =>
     cycle.steps.some((step) => step.status === "next")
   ).length;
@@ -175,14 +206,63 @@ export function UserHomeScreen({ username, onLogout }: UserHomeScreenProps) {
       return;
     }
 
+    if (await hasBackendSession()) {
+      try {
+        const submission = await uploadBackendProof({
+          activityId: selectedProof.cycleId,
+          activityTaskId: selectedProof.stepId,
+          note: proofNote,
+          photoUri: proofPhotoUri
+        });
+        const nextProofs = upsertProofSubmission(savedProofs, {
+          ...submission,
+          action: selectedProof.action,
+          crop: selectedProof.crop,
+          locationName: selectedProof.region,
+          region: selectedProof.region,
+          taskTitle: selectedProof.action,
+          workflowName: selectedProof.crop
+        });
+        setSavedProofs(nextProofs);
+
+        try {
+          const refreshedActivity = await getBackendActivity(selectedProof.cycleId);
+          setSavedCycles((currentCycles) => [
+            refreshedActivity,
+            ...currentCycles.filter((cycle) => cycle.id !== refreshedActivity.id)
+          ]);
+
+          if (refreshedActivity.status === "completed") {
+            setCompletedCropName(refreshedActivity.crop);
+          }
+        } catch {
+          const submittedCycle = allCycles.find(
+            (cycle) => cycle.id === selectedProof.cycleId
+          );
+
+          if (submittedCycle && isCycleComplete(submittedCycle, nextProofs)) {
+            setCompletedCropName(submittedCycle.crop);
+          }
+        }
+
+        setSelectedProof(null);
+        setProofNote("");
+        setProofPhotoUri(null);
+        setProofError("");
+      } catch (error) {
+        setProofError(getErrorMessage(error, "Unable to upload proof photo."));
+      }
+      return;
+    }
+
     const submittedAt = Date.now();
     const submission: ProofSubmission = {
       id: `${selectedProof.cycleId}-${selectedProof.stepId}`,
       cycleId: selectedProof.cycleId,
       stepId: selectedProof.stepId,
       farmerUsername: username ?? undefined,
-      farmer: farmerName,
-      participantName: farmerName,
+      farmer: participantName,
+      participantName,
       participantUsername: username ?? undefined,
       crop: selectedProof.crop,
       workflowName: selectedProof.crop,
@@ -216,8 +296,13 @@ export function UserHomeScreen({ username, onLogout }: UserHomeScreenProps) {
   }
 
   async function handleStartCrop() {
-    const template = cropTemplates.find((item) => item.crop === selectedCrop);
+    const template = workflowTemplates.find((item) => item.crop === selectedCrop);
     const parsedStartDate = new Date(startDate);
+
+    if (!workflowTemplates.length) {
+      setStartCropError("No crop workflow is configured yet.");
+      return;
+    }
 
     if (!template || Number.isNaN(parsedStartDate.getTime())) {
       setStartCropError("Select a crop and enter a valid start date.");
@@ -229,6 +314,34 @@ export function UserHomeScreen({ username, onLogout }: UserHomeScreenProps) {
       return;
     }
 
+    if (await hasBackendSession()) {
+      if (!template.id) {
+        setStartCropError("Selected workflow is missing a backend id.");
+        return;
+      }
+
+      try {
+        const cycle = await startBackendActivity({
+          locationName: participantRegion,
+          startedOn: startDate,
+          unitName: plotName.trim(),
+          workflowDefinitionId: template.id
+        });
+
+        setSavedCycles((currentCycles) => [
+          cycle,
+          ...currentCycles.filter((item) => item.id !== cycle.id)
+        ]);
+        setPlotName("");
+        setStartDate(toInputDate(new Date()));
+        setStartCropError("");
+        setIsStartCropOpen(false);
+      } catch (error) {
+        setStartCropError(getErrorMessage(error, "Unable to start activity."));
+      }
+      return;
+    }
+
     const expectedHarvest = addDays(parsedStartDate, template.durationDays);
     const cycle: CropCycle = {
       id: `${template.crop.toLowerCase()}-${Date.now()}`,
@@ -236,8 +349,8 @@ export function UserHomeScreen({ username, onLogout }: UserHomeScreenProps) {
       participantUsername: username ?? undefined,
       crop: template.crop,
       workflowName: template.crop,
-      region: farmerRegion,
-      locationName: farmerRegion,
+      region: participantRegion,
+      locationName: participantRegion,
       plot: plotName.trim(),
       unitName: plotName.trim(),
       startedOn: formatDisplayDate(parsedStartDate),
@@ -264,8 +377,8 @@ export function UserHomeScreen({ username, onLogout }: UserHomeScreenProps) {
     <SafeAreaView style={styles.screen}>
       <View style={styles.topBar}>
         <View>
-          <Text style={styles.appTitle}>Farmer Dashboard</Text>
-          <Text style={styles.appSubtitle}>{farmerName}</Text>
+          <Text style={styles.appTitle}>Activity Dashboard</Text>
+          <Text style={styles.appSubtitle}>{participantName}</Text>
         </View>
         <Pressable
           accessibilityRole="button"
@@ -286,11 +399,8 @@ export function UserHomeScreen({ username, onLogout }: UserHomeScreenProps) {
         ].map(([tab, label]) => (
           <Pressable
             key={tab}
-            style={[
-              styles.navButton,
-              activeTab === tab && styles.navButtonActive
-            ]}
-            onPress={() => setActiveTab(tab as FarmerTab)}
+            style={[styles.navButton, activeTab === tab && styles.navButtonActive]}
+            onPress={() => setActiveTab(tab as ParticipantTab)}
           >
             <Text
               style={[
@@ -322,6 +432,7 @@ export function UserHomeScreen({ username, onLogout }: UserHomeScreenProps) {
               selectedProof={selectedProof}
               startCropError={startCropError}
               startDate={startDate}
+              workflowTemplates={workflowTemplates}
               setIsStartCropOpen={setIsStartCropOpen}
               setPlotName={setPlotName}
               setProofNote={setProofNote}
@@ -340,7 +451,7 @@ export function UserHomeScreen({ username, onLogout }: UserHomeScreenProps) {
           ) : null}
 
           {activeTab === "profile" ? (
-            <ProfileView profileFields={profileFields} />
+            <ProfileView profileError={profileError} profileFields={profileFields} />
           ) : null}
 
           {activeTab === "history" ? (
@@ -358,12 +469,10 @@ export function UserHomeScreen({ username, onLogout }: UserHomeScreenProps) {
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
             <Text style={styles.modalEyebrow}>Congratulations</Text>
-            <Text style={styles.modalTitle}>
-              {completedCropName} cycle completed
-            </Text>
+            <Text style={styles.modalTitle}>{completedCropName} cycle completed</Text>
             <Text style={styles.modalCopy}>
-              All required process steps are done. This crop has moved to
-              History with its proof records.
+              All required process steps are done. This crop has moved to History with
+              its proof records.
             </Text>
             <Pressable
               style={styles.primaryButton}
@@ -393,6 +502,7 @@ function CyclesView({
   selectedProof,
   startCropError,
   startDate,
+  workflowTemplates,
   setIsStartCropOpen,
   setPlotName,
   setProofNote,
@@ -415,6 +525,7 @@ function CyclesView({
   selectedProof: SelectedProof | null;
   startCropError: string;
   startDate: string;
+  workflowTemplates: CropTemplate[];
   setIsStartCropOpen: (isOpen: boolean) => void;
   setPlotName: (value: string) => void;
   setProofNote: (value: string) => void;
@@ -432,8 +543,8 @@ function CyclesView({
         <View style={styles.sectionHeaderText}>
           <Text style={styles.pageTitle}>Active crop cycles</Text>
           <Text style={styles.pageCopy}>
-            Select a crop, follow each process step, and mark proof done with a
-            photo and note.
+            Select a crop, follow each process step, and mark proof done with a photo
+            and note.
           </Text>
         </View>
         <Pressable
@@ -452,6 +563,7 @@ function CyclesView({
           selectedCrop={selectedCrop}
           startCropError={startCropError}
           startDate={startDate}
+          workflowTemplates={workflowTemplates}
           setPlotName={setPlotName}
           setSelectedCrop={setSelectedCrop}
           setStartDate={setStartDate}
@@ -459,93 +571,101 @@ function CyclesView({
         />
       ) : null}
 
-      {runningCycles.map((cycle) => (
-        <View key={cycle.id} style={styles.cycleCard}>
-          <View style={styles.cardHeader}>
-            <View style={styles.cardHeaderText}>
-              <Text style={styles.cardTitle}>{cycle.crop}</Text>
-              <Text style={styles.cardDescription}>
-                {cycle.plot} - {cycle.startedOn} to {cycle.expectedHarvest}
-              </Text>
+      {runningCycles.length ? (
+        runningCycles.map((cycle) => (
+          <View key={cycle.id} style={styles.cycleCard}>
+            <View style={styles.cardHeader}>
+              <View style={styles.cardHeaderText}>
+                <Text style={styles.cardTitle}>{cycle.crop}</Text>
+                <Text style={styles.cardDescription}>
+                  {cycle.plot} - {cycle.startedOn} to {cycle.expectedHarvest}
+                </Text>
+              </View>
+              <StatusBadge label={`${cycle.progress}%`} tone="neutral" />
             </View>
-            <StatusBadge label={`${cycle.progress}%`} tone="neutral" />
-          </View>
 
-          <View style={styles.progressTrack}>
-            <View style={[styles.progressFill, { width: `${cycle.progress}%` }]} />
-          </View>
+            <View style={styles.progressTrack}>
+              <View style={[styles.progressFill, { width: `${cycle.progress}%` }]} />
+            </View>
 
-          <View style={styles.stepList}>
-            {cycle.steps.map((step) => {
-              const proof = findStepProof(savedProofs, cycle.id, step.id);
-              const canEditProof = proof ? isProofEditable(proof) : false;
-              const canSubmit = step.status === "next" || Boolean(proof);
+            <View style={styles.stepList}>
+              {cycle.steps.map((step) => {
+                const proof = findStepProof(savedProofs, cycle.id, step.id);
+                const canEditProof = proof ? isProofEditable(proof) : false;
+                const canSubmit = step.status === "next" || Boolean(proof);
 
-              return (
-                <View key={step.id} style={styles.stepBlock}>
-                  <View style={styles.stepRow}>
-                    <View style={styles.stepText}>
-                      <Text style={styles.stepTitle}>{step.title}</Text>
-                      <Text style={styles.stepMeta}>{step.due}</Text>
+                return (
+                  <View key={step.id} style={styles.stepBlock}>
+                    <View style={styles.stepRow}>
+                      <View style={styles.stepText}>
+                        <Text style={styles.stepTitle}>{step.title}</Text>
+                        <Text style={styles.stepMeta}>{step.due}</Text>
+                      </View>
+                      <StatusBadge
+                        label={
+                          proof || step.status === "done"
+                            ? "Done"
+                            : step.status === "next"
+                              ? "Needs proof"
+                              : "Upcoming"
+                        }
+                        tone={
+                          proof || step.status === "done"
+                            ? "good"
+                            : step.status === "next"
+                              ? "warning"
+                              : "neutral"
+                        }
+                      />
                     </View>
-                    <StatusBadge
-                      label={
-                        proof || step.status === "done"
-                          ? "Done"
-                          : step.status === "next"
-                            ? "Needs proof"
-                            : "Upcoming"
-                      }
-                      tone={
-                        proof || step.status === "done"
-                          ? "good"
-                          : step.status === "next"
-                            ? "warning"
-                            : "neutral"
-                      }
-                    />
-                  </View>
 
-                  {proof ? <SelfReview proof={proof} /> : null}
+                    {proof ? <SelfReview proof={proof} /> : null}
 
-                  {canSubmit && (!proof || canEditProof) ? (
-                    <View style={styles.stepActions}>
-                      <Pressable
-                        style={proof ? styles.secondaryButton : styles.primaryButton}
-                        onPress={() => onOpenProof(cycle, step)}
-                      >
-                        <Text
-                          style={
-                            proof
-                              ? styles.secondaryButtonText
-                              : styles.primaryButtonText
-                          }
+                    {canSubmit && (!proof || canEditProof) ? (
+                      <View style={styles.stepActions}>
+                        <Pressable
+                          style={proof ? styles.secondaryButton : styles.primaryButton}
+                          onPress={() => onOpenProof(cycle, step)}
                         >
-                          {proof ? "Edit proof" : "Submit proof"}
-                        </Text>
-                      </Pressable>
-                    </View>
-                  ) : null}
+                          <Text
+                            style={
+                              proof
+                                ? styles.secondaryButtonText
+                                : styles.primaryButtonText
+                            }
+                          >
+                            {proof ? "Edit proof" : "Submit proof"}
+                          </Text>
+                        </Pressable>
+                      </View>
+                    ) : null}
 
-                  {selectedProof?.cycleId === cycle.id &&
-                  selectedProof.stepId === step.id ? (
-                    <ProofForm
-                      proofError={proofError}
-                      proofNote={proofNote}
-                      proofPhotoUri={proofPhotoUri}
-                      selectedProof={selectedProof}
-                      setProofNote={setProofNote}
-                      onCancel={onCancelProof}
-                      onPickPhoto={onPickPhoto}
-                      onSubmit={onSubmitProof}
-                    />
-                  ) : null}
-                </View>
-              );
-            })}
+                    {selectedProof?.cycleId === cycle.id &&
+                    selectedProof.stepId === step.id ? (
+                      <ProofForm
+                        proofError={proofError}
+                        proofNote={proofNote}
+                        proofPhotoUri={proofPhotoUri}
+                        selectedProof={selectedProof}
+                        setProofNote={setProofNote}
+                        onCancel={onCancelProof}
+                        onPickPhoto={onPickPhoto}
+                        onSubmit={onSubmitProof}
+                      />
+                    ) : null}
+                  </View>
+                );
+              })}
+            </View>
           </View>
+        ))
+      ) : (
+        <View style={styles.emptyCard}>
+          <Text style={styles.cardDescription}>
+            No active crop cycles yet. Start a crop when field work begins.
+          </Text>
         </View>
-      ))}
+      )}
     </View>
   );
 }
@@ -555,6 +675,7 @@ function StartCropForm({
   selectedCrop,
   startCropError,
   startDate,
+  workflowTemplates,
   setPlotName,
   setSelectedCrop,
   setStartDate,
@@ -564,6 +685,7 @@ function StartCropForm({
   selectedCrop: string;
   startCropError: string;
   startDate: string;
+  workflowTemplates: CropTemplate[];
   setPlotName: (value: string) => void;
   setSelectedCrop: (value: string) => void;
   setStartDate: (value: string) => void;
@@ -573,30 +695,37 @@ function StartCropForm({
     <View style={styles.formCard}>
       <Text style={styles.cardTitle}>Start new crop</Text>
       <Text style={styles.inputLabel}>Crop</Text>
-      <View style={styles.choiceRow}>
-        {cropTemplates.map((template) => (
-          <Pressable
-            key={template.crop}
-            style={[
-              styles.choiceButton,
-              selectedCrop === template.crop && styles.choiceButtonActive
-            ]}
-            onPress={() => setSelectedCrop(template.crop)}
-          >
-            <Text
+      {workflowTemplates.length ? (
+        <View style={styles.choiceRow}>
+          {workflowTemplates.map((template) => (
+            <Pressable
+              key={template.id ?? template.crop}
               style={[
-                styles.choiceButtonText,
-                selectedCrop === template.crop && styles.choiceButtonTextActive
+                styles.choiceButton,
+                selectedCrop === template.crop && styles.choiceButtonActive
               ]}
+              onPress={() => setSelectedCrop(template.crop)}
             >
-              {template.crop}
-            </Text>
-            <Text style={styles.choiceButtonMeta}>
-              {template.durationDays} days
-            </Text>
-          </Pressable>
-        ))}
-      </View>
+              <Text
+                style={[
+                  styles.choiceButtonText,
+                  selectedCrop === template.crop && styles.choiceButtonTextActive
+                ]}
+              >
+                {template.crop}
+              </Text>
+              <Text style={styles.choiceButtonMeta}>{template.durationDays} days</Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : (
+        <View style={styles.emptyCard}>
+          <Text style={styles.cardDescription}>
+            No crop workflow is configured yet. An admin must add the workflow and task
+            list before participants can start work.
+          </Text>
+        </View>
+      )}
 
       <Text style={styles.inputLabel}>Plot name</Text>
       <TextInput
@@ -614,9 +743,7 @@ function StartCropForm({
         value={startDate}
       />
 
-      {startCropError ? (
-        <Text style={styles.errorText}>{startCropError}</Text>
-      ) : null}
+      {startCropError ? <Text style={styles.errorText}>{startCropError}</Text> : null}
 
       <View style={styles.formActions}>
         <Pressable style={styles.primaryButton} onPress={onStartCrop}>
@@ -653,36 +780,47 @@ function DashboardView({
       </View>
 
       <Text style={styles.sectionTitle}>Running crops</Text>
-      {runningCycles.map((cycle) => (
-        <View key={cycle.id} style={styles.cycleCard}>
-          <View style={styles.cardHeader}>
-            <View style={styles.cardHeaderText}>
-              <Text style={styles.cardTitle}>{cycle.crop}</Text>
-              <Text style={styles.cardDescription}>
-                {cycle.plot} - harvest by {cycle.expectedHarvest}
-              </Text>
+      {runningCycles.length ? (
+        runningCycles.map((cycle) => (
+          <View key={cycle.id} style={styles.cycleCard}>
+            <View style={styles.cardHeader}>
+              <View style={styles.cardHeaderText}>
+                <Text style={styles.cardTitle}>{cycle.crop}</Text>
+                <Text style={styles.cardDescription}>
+                  {cycle.plot} - harvest by {cycle.expectedHarvest}
+                </Text>
+              </View>
+              <StatusBadge label={`${cycle.progress}% done`} />
             </View>
-            <StatusBadge label={`${cycle.progress}% done`} />
           </View>
+        ))
+      ) : (
+        <View style={styles.emptyCard}>
+          <Text style={styles.cardDescription}>
+            No running crops are available yet.
+          </Text>
         </View>
-      ))}
+      )}
     </View>
   );
 }
 
 function ProfileView({
+  profileError,
   profileFields
 }: {
-  profileFields: FarmerProfileField[];
+  profileError: string;
+  profileFields: ProfileField[];
 }) {
   return (
     <View style={styles.section}>
       <View>
-        <Text style={styles.pageTitle}>Farmer profile</Text>
+        <Text style={styles.pageTitle}>Participant profile</Text>
         <Text style={styles.pageCopy}>
-          Basic farmer information used for crop records and reports.
+          Basic participant information used for activity records and reports.
         </Text>
       </View>
+      {profileError ? <Text style={styles.errorText}>{profileError}</Text> : null}
       <View style={styles.profileGrid}>
         {profileFields.map((field) => (
           <View key={field.label} style={styles.profileField}>
@@ -701,23 +839,31 @@ function HistoryView({ completedCycles }: { completedCycles: CropCycle[] }) {
       <View>
         <Text style={styles.pageTitle}>History</Text>
         <Text style={styles.pageCopy}>
-          Completed crop cycles live here. Active crop proof remains inside the
-          running crop until that crop is finished.
+          Completed crop cycles live here. Active crop proof remains inside the running
+          crop until that crop is finished.
         </Text>
       </View>
-      {completedCycles.map((cycle) => (
-        <View key={cycle.id} style={styles.cycleCard}>
-          <View style={styles.cardHeader}>
-            <View style={styles.cardHeaderText}>
-              <Text style={styles.cardTitle}>{cycle.crop}</Text>
-              <Text style={styles.cardDescription}>
-                Completed on {cycle.expectedHarvest}
-              </Text>
+      {completedCycles.length ? (
+        completedCycles.map((cycle) => (
+          <View key={cycle.id} style={styles.cycleCard}>
+            <View style={styles.cardHeader}>
+              <View style={styles.cardHeaderText}>
+                <Text style={styles.cardTitle}>{cycle.crop}</Text>
+                <Text style={styles.cardDescription}>
+                  Completed on {cycle.expectedHarvest}
+                </Text>
+              </View>
+              <StatusBadge label="Completed" tone="good" />
             </View>
-            <StatusBadge label="Completed" tone="good" />
           </View>
+        ))
+      ) : (
+        <View style={styles.emptyCard}>
+          <Text style={styles.cardDescription}>
+            Completed crop cycles will appear here.
+          </Text>
         </View>
-      ))}
+      )}
     </View>
   );
 }
@@ -729,17 +875,13 @@ function SelfReview({ proof }: { proof: ProofSubmission }) {
     <View style={styles.reviewBox}>
       <View style={styles.reviewText}>
         <Text style={styles.reviewTitle}>Self review</Text>
-        <Text style={styles.cardDescription}>
-          Submitted {proof.submittedOn}
-        </Text>
+        <Text style={styles.cardDescription}>Submitted {proof.submittedOn}</Text>
         <Text style={styles.cardDescription}>
           {canEditProof
             ? "You can edit this proof for 24 hours."
             : "Proof editing window has closed."}
         </Text>
-        {proof.note ? (
-          <Text style={styles.cardDescription}>{proof.note}</Text>
-        ) : null}
+        {proof.note ? <Text style={styles.cardDescription}>{proof.note}</Text> : null}
       </View>
       {proof.photoUri ? (
         <Image source={{ uri: proof.photoUri }} style={styles.reviewImage} />
@@ -819,11 +961,7 @@ function activateNextPendingStep(steps: CropStep[]) {
   return activateNextPendingTask(steps);
 }
 
-function findStepProof(
-  proofs: ProofSubmission[],
-  cycleId: string,
-  stepId: string
-) {
+function findStepProof(proofs: ProofSubmission[], cycleId: string, stepId: string) {
   return findEvidenceForTask(proofs, cycleId, stepId);
 }
 
@@ -833,6 +971,15 @@ function isCycleComplete(cycle: CropCycle, proofs: ProofSubmission[]) {
 
 function isProofEditable(proof: ProofSubmission) {
   return isEvidenceEditable(proof);
+}
+
+function getProfileValue(
+  profileFields: ProfileField[],
+  label: string,
+  fallback: string
+) {
+  const value = profileFields.find((field) => field.label === label)?.value;
+  return value && value !== "Not set" ? value : fallback;
 }
 
 function addDays(date: Date, days: number) {
@@ -988,6 +1135,13 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     gap: 14,
+    padding: 16
+  },
+  emptyCard: {
+    backgroundColor: "#ffffff",
+    borderColor: "#d9e4ea",
+    borderRadius: 8,
+    borderWidth: 1,
     padding: 16
   },
   cardHeader: {

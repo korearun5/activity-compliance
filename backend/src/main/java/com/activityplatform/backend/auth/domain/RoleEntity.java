@@ -44,8 +44,19 @@ public class RoleEntity {
     return id;
   }
 
+  public TenantEntity getTenant() {
+    return tenant;
+  }
+
   public String getCode() {
     return code;
   }
-}
 
+  public String getName() {
+    return name;
+  }
+
+  public Instant getCreatedAt() {
+    return createdAt;
+  }
+}

@@ -2,6 +2,7 @@ package com.activityplatform.backend.auth.api;
 
 import com.activityplatform.backend.auth.service.AuthService;
 import com.activityplatform.backend.common.api.ApiResponse;
+import com.activityplatform.backend.security.CurrentUser;
 import jakarta.validation.Valid;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -35,5 +36,11 @@ public class AuthController {
     Jwt jwt = (Jwt) authentication.getPrincipal();
     return ApiResponse.success(CurrentUserResponse.from(jwt));
   }
-}
 
+  @PostMapping("/logout")
+  ApiResponse<Void> logout(Authentication authentication) {
+    CurrentUser currentUser = CurrentUser.from(authentication);
+    authService.logout(currentUser);
+    return ApiResponse.success(null);
+  }
+}

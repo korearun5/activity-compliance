@@ -2,6 +2,7 @@ package com.activityplatform.backend.auth.config;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
@@ -19,7 +20,8 @@ public class AuthProperties {
   private Duration refreshTokenTtl = Duration.ofDays(7);
 
   @NotBlank
-  private String secret = "dev-only-change-this-secret-key-before-production";
+  @Size(min = 32, message = "JWT secret must be at least 32 characters.")
+  private String secret;
 
   public String getIssuer() {
     return issuer;
@@ -53,4 +55,3 @@ public class AuthProperties {
     this.secret = secret;
   }
 }
-

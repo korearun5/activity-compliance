@@ -1,0 +1,14 @@
+.git
+.github
+.expo
+.vscode
+node_modules
+backend/target
+backend/backend-run*.log
+expo-web*.log
+storage
+*.log
+.env
+.env.*
+!.env.example
+!.env.production.example

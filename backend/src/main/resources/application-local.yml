@@ -1,0 +1,37 @@
+spring:
+  datasource:
+    url: ${APP_DB_URL:jdbc:postgresql://localhost:55432/activity_platform}
+
+app:
+  auth:
+    secret: ${APP_JWT_SECRET:local-development-only-jwt-secret-change-before-prod}
+  cors:
+    allowed-origins:
+      - ${APP_CORS_ALLOWED_ORIGIN_WEB:http://localhost:19006}
+      - http://localhost:8081
+    allow-credentials: ${APP_CORS_ALLOW_CREDENTIALS:false}
+  seed:
+    enabled: ${APP_SEED_ENABLED:true}
+    tenant-code: ${APP_SEED_TENANT_CODE:default}
+    tenant-name: ${APP_SEED_TENANT_NAME:Local Development Client}
+    users:
+      - username: ${APP_SEED_ADMIN_USERNAME:admin}
+        password: ${APP_SEED_ADMIN_PASSWORD:local-admin-password}
+        display-name: ${APP_SEED_ADMIN_DISPLAY_NAME:Platform Admin}
+        phone: ${APP_SEED_ADMIN_PHONE:}
+        location-name: ${APP_SEED_ADMIN_LOCATION:Head Office}
+        site-name: ${APP_SEED_ADMIN_SITE:Operations}
+        roles:
+          - ADMIN
+      - username: ${APP_SEED_PARTICIPANT_USERNAME:participant}
+        password: ${APP_SEED_PARTICIPANT_PASSWORD:local-participant-password}
+        display-name: ${APP_SEED_PARTICIPANT_DISPLAY_NAME:Field Participant}
+        phone: ${APP_SEED_PARTICIPANT_PHONE:}
+        location-name: ${APP_SEED_PARTICIPANT_LOCATION:North Region}
+        site-name: ${APP_SEED_PARTICIPANT_SITE:Primary Site}
+        roles:
+          - PARTICIPANT
+  storage:
+    provider: ${APP_STORAGE_PROVIDER:local}
+    local:
+      root-path: ${APP_LOCAL_STORAGE_PATH:./storage/local}

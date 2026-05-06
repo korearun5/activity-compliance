@@ -9,10 +9,8 @@ import {
   getSavedUsername,
   login,
   logout,
-  Role,
-  signupParticipant
-} from "./src/auth/demoAuth";
-import { UserProfileInput } from "./src/core/model/types";
+  Role
+} from "./src/auth/authService";
 import { LoginScreen } from "./src/screens/LoginScreen";
 import { RootStackParamList } from "./src/navigation/types";
 import { UserHomeScreen } from "./src/screens/UserHomeScreen";
@@ -42,20 +40,6 @@ export default function App() {
     setUsername(username);
   }
 
-  async function handleSignup({
-    username,
-    password,
-    profile
-  }: {
-    username: string;
-    password: string;
-    profile: UserProfileInput;
-  }) {
-    const signedInRole = await signupParticipant({ username, password, profile });
-    setRole(signedInRole);
-    setUsername(username);
-  }
-
   async function handleLogout() {
     await logout();
     setRole(null);
@@ -77,18 +61,11 @@ export default function App() {
             </Stack.Screen>
           ) : role === "participant" ? (
             <Stack.Screen name="UserHome">
-              {() => (
-                <UserHomeScreen
-                  username={username}
-                  onLogout={handleLogout}
-                />
-              )}
+              {() => <UserHomeScreen username={username} onLogout={handleLogout} />}
             </Stack.Screen>
           ) : (
             <Stack.Screen name="Login">
-              {() => (
-                <LoginScreen onLogin={handleLogin} onSignup={handleSignup} />
-              )}
+              {() => <LoginScreen onLogin={handleLogin} />}
             </Stack.Screen>
           )}
         </Stack.Navigator>

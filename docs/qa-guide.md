@@ -1,0 +1,364 @@
+# QA Guide
+
+## Purpose
+
+This guide defines the current quality checks for the reusable
+activity-compliance platform. It is not a final client acceptance test document.
+It is a working QA guide for development, smoke testing, and basic integration
+testing.
+
+## Current QA Scope
+
+Covered now:
+
+- Frontend type checking.
+- Frontend linting.
+- Backend unit tests.
+- Backend integration tests with PostgreSQL/Testcontainers.
+- Local smoke testing for login and admin participant creation.
+- Basic API smoke testing.
+
+Not final yet:
+
+- Full manual test case catalog.
+- Browser/device matrix.
+- Performance testing.
+- Security penetration testing.
+- Production disaster recovery testing.
+- Final client sign-off scenarios.
+
+## Test Environment
+
+Local services:
+
+| Service         | Default URL / Port                      |
+| --------------- | --------------------------------------- |
+| Expo web        | `http://localhost:19006`                |
+| Spring Boot API | `http://localhost:8080`                 |
+| PostgreSQL      | `localhost:55432`                       |
+| Swagger UI      | `http://localhost:8080/swagger-ui.html` |
+
+Start database:
+
+```powershell
+cd backend
+docker compose up -d
+```
+
+Start backend:
+
+```powershell
+cd backend
+$env:SPRING_PROFILES_ACTIVE="local"
+.\mvnw.cmd spring-boot:run
+```
+
+Start frontend:
+
+```powershell
+npm run web
+```
+
+## Automated Checks
+
+Run from repository root:
+
+```powershell
+npm run typecheck
+npm run lint
+```
+
+Run backend unit tests:
+
+```powershell
+cd backend
+.\mvnw.cmd test
+```
+
+Run backend integration tests:
+
+```powershell
+cd backend
+.\mvnw.cmd -Pintegration-test verify
+```
+
+Expected result:
+
+- All commands exit successfully.
+- No TypeScript errors.
+- No ESLint errors.
+- Backend test summary reports zero failures and zero errors.
+
+## Backend Integration Coverage
+
+Current integration tests cover:
+
+- Activity list/start/not found/unauthorized.
+- Evidence list/not found/upload validation/unauthorized.
+- User create/list/get/update/status/security.
+- Workflow list/create/security/not found/unauthorized.
+
+Current unit tests cover:
+
+- API response envelope.
+- JWT issue/refresh claims.
+- JWT role conversion.
+- Workflow definition logic.
+- Workflow progression logic.
+
+## Local Smoke Test Checklist
+
+### Smoke-01 Backend Health
+
+Steps:
+
+1. Start PostgreSQL.
+2. Start backend with local profile.
+3. Open `http://localhost:8080/actuator/health`.
+
+Expected:
+
+```json
+{
+  "status": "UP"
+}
+```
+
+The response can include liveness/readiness groups depending on actuator output.
+
+### Smoke-02 Admin Login
+
+Steps:
+
+1. Start frontend and backend.
+2. Open `http://localhost:19006`.
+3. Login with a seeded admin.
+
+Expected:
+
+- Admin dashboard opens.
+- User is not sent to participant screen.
+- Browser console has no API login failure.
+
+### Smoke-03 Create Participant
+
+Steps:
+
+1. Login as admin.
+2. Open `Participants` tab.
+3. Enter participant details.
+4. Click `Create profile`.
+
+Expected:
+
+- Form clears after successful creation.
+- New participant appears in the list.
+- Backend returns a user with `PARTICIPANT` role.
+- Response does not include `password` or `passwordHash`.
+
+### Smoke-04 Duplicate Participant Username
+
+Steps:
+
+1. Create participant with username `qa-user`.
+2. Try to create another participant with username `QA-USER`.
+
+Expected:
+
+- Backend returns `409`.
+- UI shows a user-friendly duplicate username message.
+- Only one participant exists for that username.
+
+### Smoke-05 Activate / Deactivate Participant
+
+Steps:
+
+1. Login as admin.
+2. Open participant list.
+3. Click `Deactivate` on an active participant.
+4. Click `Activate`.
+
+Expected:
+
+- Status changes to `Inactive`, then back to `Active`.
+- Backend writes audit events.
+- Participant record remains visible.
+
+### Smoke-06 Participant Login
+
+Steps:
+
+1. Create a participant with known password.
+2. Logout admin.
+3. Login as the participant.
+
+Expected:
+
+- Participant dashboard opens.
+- Admin-only participant management is not available.
+
+### Smoke-07 Participant Profile Loads From Backend
+
+Steps:
+
+1. Create or use a backend participant.
+2. Login as that participant.
+3. Open the `Profile` tab.
+
+Expected:
+
+- Profile shows backend fields from `GET /api/v1/users/me`.
+- Name, phone, region, village/site, and status match the backend user record.
+- The login screen does not offer self-registration.
+
+### Smoke-08 Unauthorized Access
+
+Steps:
+
+1. Call an authenticated API without token.
+2. Call admin user creation as participant.
+
+Expected:
+
+- Missing token returns `401`.
+- Participant role returns `403`.
+
+## API Smoke Testing With PowerShell
+
+Login:
+
+```powershell
+$loginBody = @{
+  tenantCode = "default"
+  username = "admin"
+  password = "arun"
+} | ConvertTo-Json
+
+$login = Invoke-RestMethod `
+  -Method Post `
+  -Uri "http://localhost:8080/api/v1/auth/login" `
+  -ContentType "application/json" `
+  -Body $loginBody
+
+$token = $login.data.accessToken
+```
+
+List users:
+
+```powershell
+Invoke-RestMethod `
+  -Method Get `
+  -Uri "http://localhost:8080/api/v1/users" `
+  -Headers @{ Authorization = "Bearer $token" }
+```
+
+Current profile:
+
+```powershell
+Invoke-RestMethod `
+  -Method Get `
+  -Uri "http://localhost:8080/api/v1/users/me" `
+  -Headers @{ Authorization = "Bearer $token" }
+```
+
+Create participant:
+
+```powershell
+$participantBody = @{
+  username = "qa-participant"
+  password = "password123"
+  displayName = "QA Participant"
+  phone = "+91 90000 00000"
+  locationName = "QA Region"
+  siteName = "QA Village"
+} | ConvertTo-Json
+
+Invoke-RestMethod `
+  -Method Post `
+  -Uri "http://localhost:8080/api/v1/users" `
+  -Headers @{ Authorization = "Bearer $token" } `
+  -ContentType "application/json" `
+  -Body $participantBody
+```
+
+Deactivate participant:
+
+```powershell
+$statusBody = @{ status = "INACTIVE" } | ConvertTo-Json
+
+Invoke-RestMethod `
+  -Method Patch `
+  -Uri "http://localhost:8080/api/v1/users/<userId>/status" `
+  -Headers @{ Authorization = "Bearer $token" } `
+  -ContentType "application/json" `
+  -Body $statusBody
+```
+
+## Regression Checklist Before Handoff
+
+Run:
+
+```powershell
+npm run typecheck
+npm run lint
+cd backend
+.\mvnw.cmd test
+.\mvnw.cmd -Pintegration-test verify
+```
+
+Manual smoke:
+
+- Admin login.
+- Participant creation.
+- Duplicate username handling.
+- Participant activation/deactivation.
+- Participant login.
+- Participant profile tab reads backend profile.
+- Backend health.
+
+## Defect Reporting Format
+
+Use this structure when logging bugs:
+
+```text
+Title:
+Environment:
+Build/branch:
+User/role:
+Steps to reproduce:
+Expected result:
+Actual result:
+Screenshots/logs:
+Severity:
+Notes:
+```
+
+Severity guidance:
+
+- Critical: data loss, security bypass, system unavailable.
+- High: core workflow blocked.
+- Medium: workaround exists but feature is impaired.
+- Low: polish, copy, layout, minor inconsistency.
+
+## Test Data Guidance
+
+Use predictable prefixes:
+
+- `qa-admin-*`
+- `qa-participant-*`
+- `qa-workflow-*`
+- `qa-activity-*`
+
+Do not use real farmer/client personal data in development or screenshots.
+
+## Production QA Items To Add Later
+
+- Full manual test cases by module.
+- Browser and device matrix.
+- API contract tests.
+- Load testing for evidence uploads and reports.
+- Backup/restore test.
+- MinIO storage integration test.
+- Security test checklist.
+- Production deployment verification checklist.
+- Client UAT sign-off scenarios.

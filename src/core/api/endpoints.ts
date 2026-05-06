@@ -15,20 +15,34 @@ export const endpoints = {
   },
   evidence: {
     byId: (evidenceId: string) => `${apiRoot}/evidence/${evidenceId}`,
-    uploadForTask: (activityId: string, taskId: string) =>
-      `${apiRoot}/activities/${activityId}/tasks/${taskId}/evidence`
+    list: `${apiRoot}/evidence`,
+    review: (evidenceId: string) => `${apiRoot}/evidence/${evidenceId}/review`,
+    upload: `${apiRoot}/evidence`
+  },
+  notifications: {
+    list: `${apiRoot}/notifications`,
+    queue: `${apiRoot}/notifications`,
+    status: (notificationId: string) => `${apiRoot}/notifications/${notificationId}/status`
   },
   reports: {
     export: `${apiRoot}/reports/export`,
     summary: `${apiRoot}/reports/summary`
   },
+  roles: {
+    list: `${apiRoot}/roles`,
+    userRoles: (userId: string) => `${apiRoot}/users/${userId}/roles`
+  },
   users: {
     byId: (userId: string) => `${apiRoot}/users/${userId}`,
-    list: `${apiRoot}/users`
+    create: `${apiRoot}/users`,
+    list: `${apiRoot}/users`,
+    me: `${apiRoot}/users/me`,
+    status: (userId: string) => `${apiRoot}/users/${userId}/status`
   },
   workflows: {
     byId: (workflowId: string) => `${apiRoot}/workflows/${workflowId}`,
+    create: `${apiRoot}/workflows`,
+    status: (workflowId: string) => `${apiRoot}/workflows/${workflowId}/status`,
     list: `${apiRoot}/workflows`
   }
 } as const;
-

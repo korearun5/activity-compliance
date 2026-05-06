@@ -1,4 +1,6 @@
 export type AppErrorCode =
+  | "ACCESS_DENIED"
+  | "API_REQUEST_FAILED"
   | "AUTH_INVALID_CREDENTIALS"
   | "AUTH_USERNAME_TAKEN"
   | "DATA_PARSE_FAILED"
@@ -14,7 +16,6 @@ export class AppError extends Error {
   }
 }
 
-export function getErrorMessage(error: unknown, fallback: string) {
+export function getErrorMessage(error: unknown, fallback = "Something went wrong.") {
   return error instanceof Error ? error.message : fallback;
 }
-

@@ -30,6 +30,11 @@ export type PageMeta = {
   totalPages: number;
 };
 
+export type PageResponse<T> = {
+  content: T[];
+  page: PageMeta;
+};
+
 export type SortDirection = "asc" | "desc";
 
 export type PageRequest = {
@@ -40,4 +45,3 @@ export type PageRequest = {
 };
 
 export type Id = string;
-

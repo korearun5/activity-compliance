@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -77,6 +78,18 @@ public class GlobalExceptionHandler {
     );
   }
 
+  @ExceptionHandler(HttpMessageNotReadableException.class)
+  ResponseEntity<ApiResponse<Void>> handleHttpMessageNotReadable(
+      HttpMessageNotReadableException exception
+  ) {
+    return error(
+        HttpStatus.BAD_REQUEST,
+        ErrorCode.VALIDATION_FAILED,
+        "Request body is invalid.",
+        Map.of()
+    );
+  }
+
   @ExceptionHandler(Exception.class)
   ResponseEntity<ApiResponse<Void>> handleUnexpected(Exception exception) {
     log.error("Unhandled backend exception", exception);
@@ -98,4 +111,3 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(status).body(ApiResponse.failure(error));
   }
 }
-

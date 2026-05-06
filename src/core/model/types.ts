@@ -9,7 +9,7 @@ export type Account = {
   username: string;
 };
 
-export type UserStatus = "Active" | "Profile pending";
+export type UserStatus = "Active" | "Inactive" | "Profile pending";
 
 export type UserProfileInput = {
   age?: string;
@@ -18,6 +18,7 @@ export type UserProfileInput = {
   phone: string;
   sex?: string;
   siteName: string;
+  status?: UserStatus;
 };
 
 export type UserProfileField = {
@@ -27,6 +28,7 @@ export type UserProfileField = {
 
 export type ManagedUser = {
   displayName: string;
+  id?: string;
   locationName: string;
   phone: string;
   siteName: string;
@@ -37,7 +39,7 @@ export type ManagedUser = {
 
 export type TaskStatus = "done" | "next" | "pending";
 
-export type ActivityStatus = "running" | "completed";
+export type ActivityStatus = "running" | "completed" | "cancelled";
 
 export type EvidenceStatus = "approved" | "pending" | "rejected" | "done";
 
@@ -67,6 +69,7 @@ export type Activity = {
   expectedCompletion: string;
   id: string;
   locationName: string;
+  participantName?: string;
   participantUsername?: string;
   progress: number;
   startedOn: string;
@@ -79,13 +82,17 @@ export type Activity = {
 
 export type Evidence = {
   activityId?: string;
+  contentType?: string;
   id: string;
   locationName: string;
   note?: string;
+  originalFilename?: string;
   participantName: string;
   participantUsername?: string;
   photoUri?: string;
+  sizeBytes?: number;
   status: EvidenceStatus;
+  storageKey?: string;
   submittedAt?: number;
   submittedOn: string;
   taskId?: string;

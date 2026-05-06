@@ -1,6 +1,7 @@
 package com.activityplatform.backend.auth.service;
 
 import com.activityplatform.backend.auth.config.SeedProperties;
+import com.activityplatform.backend.auth.config.SeedProperties.SeedUser;
 import com.activityplatform.backend.auth.domain.RoleEntity;
 import com.activityplatform.backend.auth.domain.TenantEntity;
 import com.activityplatform.backend.auth.domain.UserEntity;
@@ -9,6 +10,8 @@ import com.activityplatform.backend.auth.repository.TenantRepository;
 import com.activityplatform.backend.auth.repository.UserRepository;
 import com.activityplatform.backend.security.Role;
 import java.time.Instant;
+import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,8 +24,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 public class SeedDataInitializer implements ApplicationRunner {
   private static final Logger log = LoggerFactory.getLogger(SeedDataInitializer.class);
-
-  private static final String DEFAULT_TENANT_CODE = "default";
 
   private final PasswordEncoder passwordEncoder;
   private final RoleRepository roleRepository;
@@ -52,43 +53,30 @@ public class SeedDataInitializer implements ApplicationRunner {
     }
 
     Instant now = Instant.now();
-    TenantEntity tenant = tenantRepository.findByCodeIgnoreCase(DEFAULT_TENANT_CODE)
+    TenantEntity tenant = tenantRepository.findByCodeIgnoreCase(seedProperties.getTenantCode())
         .orElseGet(() -> tenantRepository.save(new TenantEntity(
             UUID.randomUUID(),
-            DEFAULT_TENANT_CODE,
-            "Default Client",
+            seedProperties.getTenantCode(),
+            seedProperties.getTenantName(),
             "ACTIVE",
             now
         )));
 
-    RoleEntity adminRole = upsertRole(tenant, Role.ADMIN, now);
-    RoleEntity participantRole = upsertRole(tenant, Role.PARTICIPANT, now);
-    upsertRole(tenant, Role.SUPERVISOR, now);
+    for (Role role : Role.values()) {
+      upsertRole(tenant, role, now);
+    }
 
-    upsertUser(
-        tenant,
-        "admin",
-        "admin123",
-        "Platform Admin",
-        "+91 00000 00000",
-        "Head Office",
-        "Admin",
-        adminRole,
-        now
-    );
-    upsertUser(
-        tenant,
-        "user",
-        "user123",
-        "Ravi Kumar",
-        "+91 98765 43210",
-        "North Block",
-        "Rampur",
-        participantRole,
-        now
-    );
+    List<SeedUser> validSeedUsers = seedProperties.getUsers().stream()
+        .filter(this::isValidSeedUser)
+        .toList();
 
-    log.info("Seed data ensured for tenant={}", DEFAULT_TENANT_CODE);
+    validSeedUsers.forEach(user -> upsertUser(tenant, user, now));
+
+    log.info(
+        "Seed data ensured for tenant={} userCount={}",
+        seedProperties.getTenantCode(),
+        validSeedUsers.size()
+    );
   }
 
   private RoleEntity upsertRole(TenantEntity tenant, Role role, Instant now) {
@@ -102,42 +90,63 @@ public class SeedDataInitializer implements ApplicationRunner {
         )));
   }
 
-  private void upsertUser(
-      TenantEntity tenant,
-      String username,
-      String rawPassword,
-      String displayName,
-      String phone,
-      String locationName,
-      String siteName,
-      RoleEntity role,
-      Instant now
-  ) {
-    userRepository.findByTenantCodeIgnoreCaseAndUsernameIgnoreCase(tenant.getCode(), username)
+  private void upsertUser(TenantEntity tenant, SeedUser seedUser, Instant now) {
+    List<RoleEntity> roles = seedUser.getRoles().stream()
+        .filter(Objects::nonNull)
+        .filter(this::isValidRole)
+        .map(role -> Role.valueOf(role.toUpperCase()))
+        .map(role -> upsertRole(tenant, role, now))
+        .toList();
+
+    userRepository.findByTenantCodeIgnoreCaseAndUsernameIgnoreCase(
+            tenant.getCode(),
+            seedUser.getUsername()
+        )
         .ifPresentOrElse(
             user -> {
-              if (user.getRoles().stream().noneMatch(existing -> existing.getCode().equals(role.getCode()))) {
+              for (RoleEntity role : roles) {
                 user.addRole(role);
-                userRepository.save(user);
               }
+              userRepository.save(user);
             },
             () -> {
               UserEntity user = new UserEntity(
                   UUID.randomUUID(),
                   tenant,
-                  username,
-                  passwordEncoder.encode(rawPassword),
-                  displayName,
-                  phone,
-                  locationName,
-                  siteName,
+                  seedUser.getUsername(),
+                  passwordEncoder.encode(seedUser.getPassword()),
+                  seedUser.getDisplayName(),
+                  seedUser.getPhone(),
+                  seedUser.getLocationName(),
+                  seedUser.getSiteName(),
                   "ACTIVE",
                   now
               );
-              user.addRole(role);
+              roles.forEach(user::addRole);
               userRepository.save(user);
             }
         );
   }
-}
 
+  private boolean isValidSeedUser(SeedUser seedUser) {
+    return seedUser != null
+        && hasText(seedUser.getUsername())
+        && hasText(seedUser.getPassword())
+        && hasText(seedUser.getDisplayName())
+        && seedUser.getRoles() != null
+        && seedUser.getRoles().stream().filter(Objects::nonNull).anyMatch(this::isValidRole);
+  }
+
+  private boolean isValidRole(String role) {
+    try {
+      Role.valueOf(role.toUpperCase());
+      return true;
+    } catch (IllegalArgumentException exception) {
+      return false;
+    }
+  }
+
+  private boolean hasText(String value) {
+    return value != null && !value.isBlank();
+  }
+}
