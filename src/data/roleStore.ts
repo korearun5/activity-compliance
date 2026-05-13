@@ -4,7 +4,7 @@ import { endpoints } from "../core/api/endpoints";
 import { BackendUserResponse } from "../core/api/userContracts";
 
 export type BackendRole = {
-  code: "ADMIN" | "FIELD_COORDINATOR" | "FPO_MANAGER";
+  code: "ADMIN" | "FIELD_COORDINATOR" | "FPO_MANAGER" | "FARMER";
   createdAt: string;
   id: string;
   name: string;

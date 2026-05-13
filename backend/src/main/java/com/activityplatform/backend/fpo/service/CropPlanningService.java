@@ -95,7 +95,7 @@ public class CropPlanningService {
       CropCatalogRequest request
   ) {
     requireCropPlanningModule(currentUser);
-    requireManager(currentUser);
+    requireCropMasterManager(currentUser);
     String code = normalizeCode(request.code());
     ensureCropCodeAvailable(currentUser.tenantId(), code, null);
     Instant now = Instant.now();
@@ -121,7 +121,7 @@ public class CropPlanningService {
       CropCatalogRequest request
   ) {
     requireCropPlanningModule(currentUser);
-    requireManager(currentUser);
+    requireCropMasterManager(currentUser);
     CropCatalogEntity crop = requireCrop(currentUser, cropId);
     String code = normalizeCode(request.code());
     ensureCropCodeAvailable(currentUser.tenantId(), code, crop.getId());
@@ -145,7 +145,7 @@ public class CropPlanningService {
       FarmRecordStatus status
   ) {
     requireCropPlanningModule(currentUser);
-    requireManager(currentUser);
+    requireCropMasterManager(currentUser);
     CropCatalogEntity crop = requireCrop(currentUser, cropId);
     crop.updateStatus(status, Instant.now());
     CropCatalogEntity saved = cropRepository.save(crop);
@@ -168,7 +168,7 @@ public class CropPlanningService {
       CropSeasonRequest request
   ) {
     requireCropPlanningModule(currentUser);
-    requireManager(currentUser);
+    requireCropMasterManager(currentUser);
     String code = normalizeCode(request.code());
     validateSeasonMonths(request.startMonth(), request.endMonth());
     ensureSeasonCodeAvailable(currentUser.tenantId(), code, request.seasonYear(), null);
@@ -197,7 +197,7 @@ public class CropPlanningService {
       CropSeasonRequest request
   ) {
     requireCropPlanningModule(currentUser);
-    requireManager(currentUser);
+    requireCropMasterManager(currentUser);
     CropSeasonEntity season = requireSeason(currentUser, seasonId);
     String code = normalizeCode(request.code());
     validateSeasonMonths(request.startMonth(), request.endMonth());
@@ -224,7 +224,7 @@ public class CropPlanningService {
       FarmRecordStatus status
   ) {
     requireCropPlanningModule(currentUser);
-    requireManager(currentUser);
+    requireCropMasterManager(currentUser);
     CropSeasonEntity season = requireSeason(currentUser, seasonId);
     season.updateStatus(status, Instant.now());
     CropSeasonEntity saved = seasonRepository.save(season);
@@ -259,6 +259,11 @@ public class CropPlanningService {
     requireCropPlanningModule(currentUser);
     requireManager(currentUser);
     FpoMemberProfileEntity member = requireMember(currentUser, memberId);
+    FpoAccessPolicy.requireMemberMutationAccess(
+        currentUser,
+        member,
+        "You do not have permission to manage this member's crop history."
+    );
     CropCatalogEntity crop = requireActiveCrop(currentUser, request.cropId());
     CropSeasonEntity season = resolveActiveSeason(currentUser, request.seasonId());
     validateCropHistory(request);
@@ -291,6 +296,11 @@ public class CropPlanningService {
     requireCropPlanningModule(currentUser);
     requireManager(currentUser);
     FarmerCropHistoryEntity history = requireCropHistory(currentUser, historyId);
+    FpoAccessPolicy.requireMemberMutationAccess(
+        currentUser,
+        history.getMemberProfile(),
+        "You do not have permission to manage this member's crop history."
+    );
     CropCatalogEntity crop = requireActiveCrop(currentUser, request.cropId());
     CropSeasonEntity season = resolveActiveSeason(currentUser, request.seasonId());
     validateCropHistory(request);
@@ -319,12 +329,21 @@ public class CropPlanningService {
       CropPlanStatus status
   ) {
     requireCropPlanningModule(currentUser);
-    List<SeasonalCropPlanEntity> plans = currentUser.hasAnyRole(Role.ADMIN, Role.FPO_MANAGER, Role.FIELD_COORDINATOR)
-        ? cropPlanRepository.findByTenantIdOrderByCreatedAtDesc(currentUser.tenantId())
-        : cropPlanRepository.findByTenantIdAndMemberProfileIdOrderByCreatedAtDesc(
-            currentUser.tenantId(),
-            ownMember(currentUser).getId()
-        );
+    List<SeasonalCropPlanEntity> plans;
+    if (FpoAccessPolicy.isFpoManager(currentUser)) {
+      plans = cropPlanRepository.findByTenantIdOrderByCreatedAtDesc(currentUser.tenantId());
+    } else if (currentUser.hasAnyRole(Role.FIELD_COORDINATOR)) {
+      plans = cropPlanRepository
+          .findByTenantIdAndMemberProfileCoordinatorUserIdOrderByCreatedAtDesc(
+              currentUser.tenantId(),
+              currentUser.userId()
+          );
+    } else {
+      plans = cropPlanRepository.findByTenantIdAndMemberProfileUserIdOrderByCreatedAtDesc(
+          currentUser.tenantId(),
+          currentUser.userId()
+      );
+    }
 
     return plans.stream()
         .filter(plan -> memberId == null || plan.getMemberProfile().getId().equals(memberId))
@@ -351,6 +370,11 @@ public class CropPlanningService {
     requireCropPlanningModule(currentUser);
     requireManager(currentUser);
     FpoMemberProfileEntity member = requireMember(currentUser, request.memberId());
+    FpoAccessPolicy.requireMemberMutationAccess(
+        currentUser,
+        member,
+        "You do not have permission to manage this member's crop plans."
+    );
     CropCatalogEntity crop = requireActiveCrop(currentUser, request.cropId());
     CropSeasonEntity season = requireActiveSeason(currentUser, request.seasonId());
     validatePlanDates(request);
@@ -384,7 +408,17 @@ public class CropPlanningService {
     requireCropPlanningModule(currentUser);
     requireManager(currentUser);
     SeasonalCropPlanEntity plan = requireCropPlan(currentUser, planId);
+    FpoAccessPolicy.requireMemberMutationAccess(
+        currentUser,
+        plan.getMemberProfile(),
+        "You do not have permission to manage this member's crop plans."
+    );
     FpoMemberProfileEntity member = requireMember(currentUser, request.memberId());
+    FpoAccessPolicy.requireMemberMutationAccess(
+        currentUser,
+        member,
+        "You do not have permission to move this crop plan to the selected member."
+    );
     CropCatalogEntity crop = requireActiveCrop(currentUser, request.cropId());
     CropSeasonEntity season = requireActiveSeason(currentUser, request.seasonId());
     validatePlanDates(request);
@@ -415,6 +449,11 @@ public class CropPlanningService {
     requireCropPlanningModule(currentUser);
     requireManager(currentUser);
     SeasonalCropPlanEntity plan = requireCropPlan(currentUser, planId);
+    FpoAccessPolicy.requireMemberMutationAccess(
+        currentUser,
+        plan.getMemberProfile(),
+        "You do not have permission to update this crop plan status."
+    );
     plan.updateStatus(status, Instant.now());
     SeasonalCropPlanEntity saved = cropPlanRepository.save(plan);
     auditCropPlan(currentUser, saved, AuditAction.FPO_CROP_PLAN_STATUS_CHANGED);
@@ -549,28 +588,24 @@ public class CropPlanningService {
   }
 
   private void requireManager(CurrentUser currentUser) {
-    if (!currentUser.hasAnyRole(Role.ADMIN, Role.FPO_MANAGER, Role.FIELD_COORDINATOR)) {
-      throw new ApplicationException(
-          ErrorCode.ACCESS_DENIED,
-          "Only Phase 1 staff can manage crop planning records.",
-          HttpStatus.FORBIDDEN
-      );
-    }
+    FpoAccessPolicy.requirePhaseOneStaff(
+        currentUser,
+        "Only Phase 1 staff can manage crop planning records."
+    );
+  }
+
+  private void requireCropMasterManager(CurrentUser currentUser) {
+    FpoAccessPolicy.requireFpoManager(
+        currentUser,
+        "Only admins and FPO managers can manage crop master data."
+    );
   }
 
   private void requireManagerOrOwner(CurrentUser currentUser, FpoMemberProfileEntity member) {
-    if (currentUser.hasAnyRole(Role.ADMIN, Role.FPO_MANAGER, Role.FIELD_COORDINATOR)) {
-      return;
-    }
-
-    if (member.getUser().getId().equals(currentUser.userId())) {
-      return;
-    }
-
-    throw new ApplicationException(
-        ErrorCode.ACCESS_DENIED,
-        "You do not have permission to view this member's crop planning records.",
-        HttpStatus.FORBIDDEN
+    FpoAccessPolicy.requireMemberAccess(
+        currentUser,
+        member,
+        "You do not have permission to view this member's crop planning records."
     );
   }
 

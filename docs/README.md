@@ -52,8 +52,8 @@ activity-compliance platform.
 - [Security Assessment](SECURITY_ASSESSMENT.md): current security review notes.
 - [Client Admin Workflow Guide](client-admin-workflow-guide.md): admin workflow
   notes for the agriculture client.
-- [Roles And Supervisors](roles-and-supervisors.md): role meanings, supervisor
-  setup, permissions, and daily usage.
+- [Roles And Supervisors](roles-and-supervisors.md): role meanings,
+  field-coordinator setup, farmer login, permissions, and daily usage.
 
 ## Documentation Status
 

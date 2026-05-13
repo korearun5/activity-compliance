@@ -99,8 +99,8 @@ Both CI workflows support manual `workflow_dispatch` runs for release checks.
 - Database backup and restore have been tested.
 - MinIO bucket backup/lifecycle policy is configured.
 - Audit log retention is documented for the client.
-- First admin/supervisor account is created through seed or controlled admin API.
-- Client workflow definitions are created before participant onboarding.
+- First admin/FPO manager account is created through seed or controlled admin API.
+- Client workflow definitions are created before coordinator/farmer onboarding.
 - Report export storage location is verified.
 - Monitoring/alerting covers backend health, database, MinIO, and error rate.
 
@@ -120,9 +120,9 @@ cd backend
 Then smoke test:
 
 - Admin login.
-- Create participant.
+- Create farmer/member.
 - Create workflow definition.
-- Assign/start participant activity.
+- Assign/start farmer or field-coordinator activity.
 - Participant proof upload.
 - Admin evidence review.
 - Report summary, PDF export, and Excel export.

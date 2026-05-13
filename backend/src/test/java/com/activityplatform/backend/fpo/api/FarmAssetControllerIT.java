@@ -94,6 +94,7 @@ class FarmAssetControllerIT {
     RoleEntity FIELD_COORDINATORRole = roleRepository.save(
         TestDataFactory.role(tenant, Role.FIELD_COORDINATOR)
     );
+    RoleEntity farmerRole = roleRepository.save(TestDataFactory.role(tenant, Role.FARMER));
 
     adminUser = userRepository.save(TestDataFactory.user(
         tenant,
@@ -109,7 +110,14 @@ class FarmAssetControllerIT {
         "FIELD_COORDINATOR User",
         FIELD_COORDINATORRole
     ));
-    member = memberRepository.save(member(tenant, FIELD_COORDINATORUser, adminUser, "MEM-1"));
+    UserEntity farmerUser = userRepository.save(TestDataFactory.user(
+        tenant,
+        "farmer-" + UUID.randomUUID(),
+        passwordEncoder.encode("farmer12345"),
+        "Farmer User",
+        farmerRole
+    ));
+    member = memberRepository.save(member(tenant, farmerUser, FIELD_COORDINATORUser, "MEM-1"));
     enableModule(tenant, ModuleCode.LAND_RECORDS);
 
     TenantEntity disabledTenant = tenantRepository.save(
@@ -286,8 +294,16 @@ class FarmAssetControllerIT {
         roleRepository.findByTenantIdAndCodeIgnoreCase(tenant.getId(), Role.FIELD_COORDINATOR.name())
             .orElseThrow()
     ));
+    UserEntity otherFarmer = userRepository.save(TestDataFactory.user(
+        tenant,
+        "other-farmer-" + UUID.randomUUID(),
+        passwordEncoder.encode("farmer12345"),
+        "Other Farmer",
+        roleRepository.findByTenantIdAndCodeIgnoreCase(tenant.getId(), Role.FARMER.name())
+            .orElseThrow()
+    ));
     FpoMemberProfileEntity otherMember = memberRepository.save(
-        member(tenant, otherFIELD_COORDINATOR, adminUser, "MEM-2")
+        member(tenant, otherFarmer, otherFIELD_COORDINATOR, "MEM-2")
     );
     FarmLandholdingEntity otherLandholding = landholdingRepository.save(new FarmLandholdingEntity(
         UUID.randomUUID(),

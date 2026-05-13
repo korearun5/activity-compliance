@@ -69,6 +69,7 @@ class RoleControllerIT {
     RoleEntity adminRole = roleRepository.save(TestDataFactory.role(tenant, Role.ADMIN));
     RoleEntity FIELD_COORDINATORRole = roleRepository.save(TestDataFactory.role(tenant, Role.FIELD_COORDINATOR));
     RoleEntity FPO_MANAGERRole = roleRepository.save(TestDataFactory.role(tenant, Role.FPO_MANAGER));
+    roleRepository.save(TestDataFactory.role(tenant, Role.FARMER));
 
     adminUser = userRepository.save(TestDataFactory.user(
         tenant,
@@ -106,7 +107,8 @@ class RoleControllerIT {
         .andExpect(jsonPath("$.data[*].code").isArray())
         .andExpect(jsonPath("$.data[?(@.code == 'ADMIN')]").exists())
         .andExpect(jsonPath("$.data[?(@.code == 'FPO_MANAGER')]").exists())
-        .andExpect(jsonPath("$.data[?(@.code == 'FIELD_COORDINATOR')]").exists());
+        .andExpect(jsonPath("$.data[?(@.code == 'FIELD_COORDINATOR')]").exists())
+        .andExpect(jsonPath("$.data[?(@.code == 'FARMER')]").exists());
   }
 
   @Test
@@ -137,6 +139,18 @@ class RoleControllerIT {
             .contentType("application/json")
             .content(jsonMapper.writeValueAsString(new UpdateUserRolesRequest(
                 Set.of(Role.FPO_MANAGER)
+            ))))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error.code").value("VALIDATION_FAILED"));
+  }
+
+  @Test
+  void testAdminCannotCombineFarmerWithStaffRoles() throws Exception {
+    mockMvc.perform(put("/api/v1/users/" + FIELD_COORDINATORUser.getId() + "/roles")
+            .header("Authorization", "Bearer " + adminToken)
+            .contentType("application/json")
+            .content(jsonMapper.writeValueAsString(new UpdateUserRolesRequest(
+                Set.of(Role.FARMER, Role.FIELD_COORDINATOR)
             ))))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.error.code").value("VALIDATION_FAILED"));

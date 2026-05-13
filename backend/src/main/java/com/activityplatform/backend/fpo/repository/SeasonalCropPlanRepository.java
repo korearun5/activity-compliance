@@ -15,5 +15,15 @@ public interface SeasonalCropPlanRepository
       UUID memberProfileId
   );
 
+  List<SeasonalCropPlanEntity> findByTenantIdAndMemberProfileCoordinatorUserIdOrderByCreatedAtDesc(
+      UUID tenantId,
+      UUID coordinatorUserId
+  );
+
+  List<SeasonalCropPlanEntity> findByTenantIdAndMemberProfileUserIdOrderByCreatedAtDesc(
+      UUID tenantId,
+      UUID userId
+  );
+
   Optional<SeasonalCropPlanEntity> findByIdAndTenantId(UUID id, UUID tenantId);
 }

@@ -116,7 +116,11 @@ public class RoleManagementService {
 
   private void validateRoleCombination(Set<Role> roles) {
     if (roles.contains(Role.FIELD_COORDINATOR) && roles.size() > 1) {
-      throw validation("Field coordinator cannot be combined with admin or FPO manager roles.");
+      throw validation("Field coordinator cannot be combined with other roles.");
+    }
+
+    if (roles.contains(Role.FARMER) && roles.size() > 1) {
+      throw validation("Farmer cannot be combined with staff roles.");
     }
   }
 

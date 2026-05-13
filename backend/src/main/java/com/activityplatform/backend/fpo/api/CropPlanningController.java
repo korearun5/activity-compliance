@@ -35,7 +35,7 @@ public class CropPlanningController {
   }
 
   @PostMapping("/crops")
-  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER','FIELD_COORDINATOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER')")
   ApiResponse<CropCatalogResponse> createCrop(
       Authentication authentication,
       @Valid @RequestBody CropCatalogRequest request
@@ -47,7 +47,7 @@ public class CropPlanningController {
   }
 
   @PutMapping("/crops/{cropId}")
-  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER','FIELD_COORDINATOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER')")
   ApiResponse<CropCatalogResponse> updateCrop(
       Authentication authentication,
       @PathVariable UUID cropId,
@@ -61,7 +61,7 @@ public class CropPlanningController {
   }
 
   @PatchMapping("/crops/{cropId}/status")
-  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER','FIELD_COORDINATOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER')")
   ApiResponse<CropCatalogResponse> updateCropStatus(
       Authentication authentication,
       @PathVariable UUID cropId,
@@ -81,7 +81,7 @@ public class CropPlanningController {
   }
 
   @PostMapping("/seasons")
-  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER','FIELD_COORDINATOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER')")
   ApiResponse<CropSeasonResponse> createSeason(
       Authentication authentication,
       @Valid @RequestBody CropSeasonRequest request
@@ -93,7 +93,7 @@ public class CropPlanningController {
   }
 
   @PutMapping("/seasons/{seasonId}")
-  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER','FIELD_COORDINATOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER')")
   ApiResponse<CropSeasonResponse> updateSeason(
       Authentication authentication,
       @PathVariable UUID seasonId,
@@ -107,7 +107,7 @@ public class CropPlanningController {
   }
 
   @PatchMapping("/seasons/{seasonId}/status")
-  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER','FIELD_COORDINATOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER')")
   ApiResponse<CropSeasonResponse> updateSeasonStatus(
       Authentication authentication,
       @PathVariable UUID seasonId,

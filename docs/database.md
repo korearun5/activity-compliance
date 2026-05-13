@@ -8,7 +8,7 @@ For visual class/table diagrams, see
 ## Tables In Use Now
 
 - `tenants`: client/organization boundary.
-- `users`: login users and participant profile basics.
+- `users`: reusable login accounts for staff and farmers.
 - `roles`: tenant-scoped role records.
 - `user_roles`: user-to-role assignments.
 - `platform_modules`: sellable module catalog for modular packaging/pricing.
@@ -27,7 +27,7 @@ For visual class/table diagrams, see
   or one member profile.
 - `workflow_definitions`: admin-defined process templates, such as a crop cycle.
 - `workflow_tasks`: ordered task/stage list for each workflow definition.
-- `activities`: one participant executing one workflow.
+- `activities`: one field coordinator or farmer executing one workflow.
 - `activity_tasks`: runtime task status for one activity.
 - `evidence`: uploaded proof file metadata, notes, review status, and storage key.
 - `audit_events`: append-only compliance trail for user/activity/evidence/report events.
@@ -45,18 +45,18 @@ For visual class/table diagrams, see
 1. Admin creates a row in `workflow_definitions`.
 2. Admin adds ordered rows in `workflow_tasks`.
 3. FPO member records link farmer users to member numbers and village/block/district metadata.
-4. Admin/supervisor records member landholdings in `farm_landholdings`.
-5. Admin/supervisor records GPS-ready plots in `farm_plots`.
-6. Admin/supervisor maintains crop and season masters.
-7. Admin/supervisor records member crop history.
-8. Admin/supervisor creates seasonal crop plans.
-9. Admin/supervisor maintains input catalog and crop input rules.
-10. Admin/supervisor generates input demand estimates from confirmed seasonal
+4. Admin/FPO manager or assigned field coordinator records member landholdings in `farm_landholdings`.
+5. Admin/FPO manager or assigned field coordinator records GPS-ready plots in `farm_plots`.
+6. Admin/FPO manager maintains crop and season masters.
+7. Admin/FPO manager or assigned field coordinator records member crop history.
+8. Admin/FPO manager or assigned field coordinator creates seasonal crop plans.
+9. Admin/FPO manager maintains input catalog and crop input rules.
+10. Admin/FPO manager generates input demand estimates from confirmed seasonal
     crop plans.
-11. Admin/supervisor publishes advisory records through `fpo_advisories`.
-12. Participant starts an `activity` from the active workflow.
+11. Admin/FPO manager publishes advisory records through `fpo_advisories`.
+12. Farmer or field coordinator starts an `activity` from the active workflow.
 13. Backend creates `activity_tasks` from the configured task list.
-14. Participant uploads proof to `evidence`.
+14. Farmer or field coordinator uploads proof to `evidence`.
 15. Backend updates task/activity progress.
 16. Admin reviews proof and later generates reports from these records.
 17. Admin reads `/api/v1/fpo/reports/summary` for consolidated FPO dashboard
@@ -67,11 +67,14 @@ For visual class/table diagrams, see
 The FPO member model is now explicit:
 
 1. `users` stores login identity, password hash, status, and roles.
-2. `fpo_member_profiles` stores farmer/member number, mobile number, village,
-   taluka, district, state, category, coordinator, and profile status.
-3. `farm_landholdings` stores member-level operated/owned area summaries with
+2. `fpo_member_profiles.user_id` links to a `FARMER` login account.
+3. `fpo_member_profiles.coordinator_user_id` links to the assigned
+   `FIELD_COORDINATOR`.
+4. `fpo_member_profiles` stores farmer/member number, mobile number, village,
+   taluka, district, state, category, and profile status.
+5. `farm_landholdings` stores member-level operated/owned area summaries with
    required survey/khasra, ownership, and irrigation values.
-4. `farm_plots` stores individual plot area and required GPS coordinates.
+6. `farm_plots` stores individual plot area and required GPS coordinates.
 
 Landholding and plot records are protected by the `LAND_RECORDS` module. They
 are managed through `/api/v1/fpo/members/{memberId}/landholdings` and

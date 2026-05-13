@@ -157,7 +157,11 @@ class FarmAssetServiceTest {
   @Test
   void listLandholdingsAllowsFIELD_COORDINATORForPhaseOneDataEntry() {
     CurrentUser FIELD_COORDINATOR = currentUser(Role.FIELD_COORDINATOR);
-    FpoMemberProfileEntity member = member(UUID.randomUUID(), user(UUID.randomUUID()));
+    FpoMemberProfileEntity member = member(
+        UUID.randomUUID(),
+        user(UUID.randomUUID()),
+        user(FIELD_COORDINATOR.userId())
+    );
     when(memberRepository.findByIdAndTenantId(member.getId(), tenantId))
         .thenReturn(Optional.of(member));
     when(landholdingRepository.findByTenantIdAndMemberProfileIdOrderByCreatedAtDesc(
@@ -242,6 +246,10 @@ class FarmAssetServiceTest {
   }
 
   private FpoMemberProfileEntity member(UUID memberId, UserEntity user) {
+    return member(memberId, user, null);
+  }
+
+  private FpoMemberProfileEntity member(UUID memberId, UserEntity user, UserEntity coordinator) {
     return new FpoMemberProfileEntity(
         memberId,
         tenant,
@@ -259,7 +267,7 @@ class FarmAssetServiceTest {
         null,
         null,
         "SMALL",
-        null,
+        coordinator,
         FpoMemberStatus.ACTIVE,
         Instant.now()
     );

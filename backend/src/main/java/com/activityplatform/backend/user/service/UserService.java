@@ -81,6 +81,20 @@ public class UserService {
   @Transactional
   public UserResponse createFieldCoordinator(CurrentUser currentUser, CreateUserRequest request) {
     requireManager(currentUser);
+    return createSingleRoleUser(currentUser, request, Role.FIELD_COORDINATOR);
+  }
+
+  @Transactional
+  public UserResponse createFarmer(CurrentUser currentUser, CreateUserRequest request) {
+    requirePhaseOneStaff(currentUser);
+    return createSingleRoleUser(currentUser, request, Role.FARMER);
+  }
+
+  private UserResponse createSingleRoleUser(
+      CurrentUser currentUser,
+      CreateUserRequest request,
+      Role role
+  ) {
     String username = normalizeUsername(request.username());
 
     if (userRepository.existsByTenantIdAndUsernameIgnoreCase(currentUser.tenantId(), username)) {
@@ -93,7 +107,7 @@ public class UserService {
 
     TenantEntity tenant = tenantRepository.findById(currentUser.tenantId())
         .orElseThrow(() -> notFound("Tenant not found."));
-    RoleEntity fieldCoordinatorRole = ensureRole(tenant, Role.FIELD_COORDINATOR);
+    RoleEntity roleEntity = ensureRole(tenant, role);
     Instant now = Instant.now();
     UserEntity user = new UserEntity(
         UUID.randomUUID(),
@@ -107,7 +121,7 @@ public class UserService {
         "ACTIVE",
         now
     );
-    user.addRole(fieldCoordinatorRole);
+    user.addRole(roleEntity);
     UserEntity savedUser = saveUser(user);
 
     auditEventService.record(
@@ -118,12 +132,13 @@ public class UserService {
         AuditAction.USER_CREATED,
         Map.of(
             "username", savedUser.getUsername(),
-            "role", Role.FIELD_COORDINATOR.name()
+            "role", role.name()
         )
     );
 
     log.info(
-        "Field coordinator user created userId={} tenantId={} actorUserId={}",
+        "{} user created userId={} tenantId={} actorUserId={}",
+        role,
         savedUser.getId(),
         tenant.getId(),
         currentUser.userId()
@@ -198,6 +213,16 @@ public class UserService {
       throw new ApplicationException(
           ErrorCode.ACCESS_DENIED,
           "Only admins and FPO managers can manage users.",
+          HttpStatus.FORBIDDEN
+      );
+    }
+  }
+
+  private void requirePhaseOneStaff(CurrentUser currentUser) {
+    if (!currentUser.hasAnyRole(Role.ADMIN, Role.FPO_MANAGER, Role.FIELD_COORDINATOR)) {
+      throw new ApplicationException(
+          ErrorCode.ACCESS_DENIED,
+          "Only Phase 1 staff can create farmer users.",
           HttpStatus.FORBIDDEN
       );
     }

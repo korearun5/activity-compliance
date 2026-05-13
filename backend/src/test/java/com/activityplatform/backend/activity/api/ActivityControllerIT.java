@@ -60,6 +60,7 @@ class ActivityControllerIT {
 
   private String adminToken;
   private String FIELD_COORDINATORToken;
+  private String farmerToken;
   private UUID otherFIELD_COORDINATORId;
   private UUID workflowId;
 
@@ -72,6 +73,7 @@ class ActivityControllerIT {
     RoleEntity FIELD_COORDINATORRole = roleRepository.save(
         TestDataFactory.role(tenant, Role.FIELD_COORDINATOR)
     );
+    RoleEntity farmerRole = roleRepository.save(TestDataFactory.role(tenant, Role.FARMER));
     UserEntity adminUser = userRepository.save(TestDataFactory.user(
         tenant,
         "admin-" + UUID.randomUUID(),
@@ -93,6 +95,13 @@ class ActivityControllerIT {
         "Other User",
         FIELD_COORDINATORRole
     ));
+    UserEntity farmerUser = userRepository.save(TestDataFactory.user(
+        tenant,
+        "farmer-" + UUID.randomUUID(),
+        passwordEncoder.encode("password123"),
+        "Farmer User",
+        farmerRole
+    ));
     WorkflowDefinitionEntity workflow = workflowDefinitionRepository.save(
         TestDataFactory.workflow(
             tenant,
@@ -105,6 +114,7 @@ class ActivityControllerIT {
     otherFIELD_COORDINATORId = otherFIELD_COORDINATOR.getId();
     adminToken = jwtService.issueTokens(adminUser).accessToken();
     FIELD_COORDINATORToken = jwtService.issueTokens(FIELD_COORDINATORUser).accessToken();
+    farmerToken = jwtService.issueTokens(farmerUser).accessToken();
   }
 
   @Test
@@ -141,6 +151,26 @@ class ActivityControllerIT {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.success").value(true))
         .andExpect(jsonPath("$.data.unitName").value("Test Unit"))
+        .andExpect(jsonPath("$.data.status").value("RUNNING"));
+  }
+
+  @Test
+  void testFarmerCanStartOwnActivity() throws Exception {
+    StartActivityRequest request = new StartActivityRequest(
+        workflowId,
+        null,
+        "Farmer Plot",
+        "Wagholi",
+        LocalDate.now()
+    );
+
+    mockMvc.perform(post("/api/v1/activities")
+            .header("Authorization", "Bearer " + farmerToken)
+            .contentType("application/json")
+            .content(jsonMapper.writeValueAsString(request)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data.unitName").value("Farmer Plot"))
         .andExpect(jsonPath("$.data.status").value("RUNNING"));
   }
 

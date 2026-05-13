@@ -26,8 +26,8 @@ These are already implemented and should be reused instead of rebuilt.
 | -------- | ------ | -------------------- | --------------------------------------------- | -------------------------------------------------------------------- |
 | CORE-001 | Done   | Backend foundation   | Spring Boot, PostgreSQL, Flyway, JPA          | Add new FPO schema via Flyway only.                                  |
 | CORE-002 | Done   | Auth                 | JWT login, refresh, current user              | OTP can be added later without replacing JWT.                        |
-| CORE-003 | Done    | Roles                | JWT role infrastructure and role APIs          | Phase 1 roles are aligned to `ADMIN`, `FPO_MANAGER`, `FIELD_COORDINATOR`. |
-| CORE-004 | Done   | User management      | Admin/supervisor can create participant users | Extend with FPO member profile table.                                |
+| CORE-003 | Done    | Roles                | JWT role infrastructure and role APIs          | Phase 1 roles are aligned to `ADMIN`, `FPO_MANAGER`, `FIELD_COORDINATOR`, and `FARMER`. |
+| CORE-004 | Done   | User management      | Admin/FPO manager can create coordinator users; member APIs create farmer users | Extend with FPO member profile table. |
 | CORE-005 | Done   | Workflow definitions | Configurable workflow/task templates          | Reuse for crop activity schedules.                                   |
 | CORE-006 | Done   | Activities           | Activity start and task timeline APIs         | Link FPO crop plans to activities later.                             |
 | CORE-007 | Done   | Evidence             | Proof upload, storage, review                 | Reuse for field photos and plot/crop proof.                          |
@@ -68,7 +68,7 @@ them in this order unless a production defect interrupts the work.
 | Priority | Task ID | Title | Owner Area | Status |
 | -------: | ------- | ----- | ---------- | ------ |
 | 1 | FPO-ALIGN-001 | Replace legacy FPO role assumptions with `ADMIN`, `FPO_MANAGER`, and `FIELD_COORDINATOR` | Backend/Frontend/QA | Done |
-| 2 | FPO-ALIGN-002 | Add FPO ownership, scoped access, and role isolation tests | Backend/QA | Pending |
+| 2 | FPO-ALIGN-002 | Add FPO ownership, scoped access, farmer login, and role isolation tests | Backend/Frontend/QA | Done |
 | 3 | FPO-ALIGN-003 | Align farmer profile fields: taluka/state, Aadhaar optional, status `Suspended`, category labels | Backend/Frontend/QA | Done |
 | 4 | FPO-ALIGN-004 | Add soil profile entry and optional report attachment without carbon calculation | Backend/Frontend/QA | Done |
 | 5 | FPO-ALIGN-005 | Align land/GPS labels and approved ownership/irrigation options | Backend/Frontend/QA | Done |
@@ -103,7 +103,7 @@ will guess fields and formulas.
 | ID      | Status  | Task                               | Output                                                   |
 | ------- | ------- | ---------------------------------- | -------------------------------------------------------- |
 | FPO-000 | Done | Freeze Phase 1 MVP scope           | Locked in the Phase 1 Client Decision Register.          |
-| FPO-001 | Done | Confirm user roles                 | `ADMIN`, `FPO_MANAGER`, `FIELD_COORDINATOR`; no farmer login. |
+| FPO-001 | Done | Confirm user roles                 | `ADMIN`, `FPO_MANAGER`, `FIELD_COORDINATOR`, and `FARMER`; OTP remains Phase 2. |
 | FPO-002 | Done | Confirm farmer/member fields       | Final member profile data dictionary is approved.        |
 | FPO-003 | Done | Confirm land and plot fields       | GPS point-only land data dictionary is approved.         |
 | FPO-004 | Done | Confirm crop list and season names | Crop catalog and season master list are approved.        |
@@ -214,8 +214,9 @@ Backend implementation tasks:
 - Add entity, repository, DTOs, service, controller.
 - Add validation for mobile number and member number.
 - Enforce tenant isolation.
-- Allow admin/supervisor writes.
-- Allow participant to read own member profile.
+- Allow admin/FPO manager writes across the FPO and assigned field coordinator
+  writes for assigned farmers.
+- Allow farmer to read own member profile.
 - Emit audit events:
   - `FPO_MEMBER_CREATED`
   - `FPO_MEMBER_UPDATED`
@@ -224,19 +225,20 @@ Backend implementation tasks:
 Tests:
 
 - Admin can create member.
-- Supervisor can create member if business rule allows.
-- Participant cannot create other member.
+- Assigned field coordinator can create member if business rule allows.
+- Farmer cannot create other member.
 - Duplicate member number returns conflict.
 - Duplicate mobile number returns conflict if mobile uniqueness is confirmed.
 - Tenant isolation works.
 
 Acceptance criteria:
 
-- Admin/supervisor can create, list, update, and change member status through
-  `/api/v1/fpo/members`.
-- Participant can read their own profile through `/api/v1/fpo/members/me`.
-- Member can be linked to an existing participant user or a newly created
-  participant account.
+- Admin/FPO manager can create, list, update, and change member status through
+  `/api/v1/fpo/members`; assigned field coordinators can create and manage
+  assigned farmers.
+- Farmer can read their own profile through `/api/v1/fpo/members/me`.
+- Member is linked to an existing `FARMER` user or a newly created farmer
+  account.
 - `MEMBER_DATA` module guard returns `MODULE_NOT_ENABLED` when disabled.
 - No demo member data appears unless seeded intentionally.
 
@@ -316,8 +318,8 @@ Fields:
 Implementation notes:
 
 - APIs are guarded by the `LAND_RECORDS` module.
-- Admins and supervisors can create/update/status-change records.
-- Participants can read their own member landholdings.
+- Admin/FPO manager and assigned field coordinator can create/update/status-change records.
+- Farmers can read their own member landholdings.
 - Status changes are soft lifecycle changes: `ACTIVE`, `INACTIVE`, or
   `ARCHIVED`.
 - Audit actions are recorded for create, update, and status change.
@@ -371,8 +373,8 @@ Tests:
 
 - Valid coordinate accepted.
 - Invalid coordinate rejected.
-- Participant can view own plots if required.
-- Admin/supervisor can manage plots.
+- Farmer can view own plots if required.
+- Admin/FPO manager and assigned field coordinator can manage plots.
 - Service unit tests reject cross-member landholding assignment.
 
 Acceptance criteria:
@@ -437,7 +439,7 @@ Fields:
 Implementation notes:
 
 - APIs are guarded by the `CROP_PLANNING` module.
-- Admins and supervisors can create, update, and change lifecycle status.
+- Admin/FPO manager can create, update, and change lifecycle status.
 - Crop codes are normalized to uppercase and unique per tenant.
 - Lifecycle status values are `ACTIVE`, `INACTIVE`, and `ARCHIVED`.
 - Audit actions:
@@ -447,7 +449,7 @@ Implementation notes:
 
 Acceptance criteria:
 
-- Done: Admin/supervisor can maintain tenant crop master records.
+- Done: Admin/FPO manager can maintain tenant crop master records.
 - Done: Disabled `CROP_PLANNING` returns `MODULE_NOT_ENABLED`.
 - Done: Integration and service tests cover create/update/status, validation,
   and module-disabled behavior.
@@ -513,8 +515,8 @@ Fields:
 Implementation notes:
 
 - APIs are guarded by the `CROP_PLANNING` module.
-- Admins and supervisors can create/update crop history.
-- Participants can read their own member crop history.
+- Admin/FPO manager and assigned field coordinator can create/update crop history.
+- Farmers can read their own member crop history.
 - New history must reference active crop and active season when a season is
   provided.
 - Audit actions:
@@ -523,8 +525,8 @@ Implementation notes:
 
 Acceptance criteria:
 
-- Done: Admin/supervisor can record previous crops per farmer.
-- Done: Participant can read own crop history.
+- Done: Admin/FPO manager and assigned field coordinator can record previous crops per farmer.
+- Done: Farmer can read own crop history.
 
 ### FPO-304: Add Seasonal Crop Plan APIs
 
@@ -578,9 +580,9 @@ Audit actions:
 Acceptance criteria:
 
 - Done: Admin can see crop plan coverage by crop, village, and season.
-- Done: Admin/supervisor can create, update, view, filter, and change plan
+- Done: Admin/FPO manager and assigned field coordinator can create, update, view, filter, and change plan
   status.
-- Done: Participants can read their own crop plans.
+- Done: Farmers can read their own crop plans.
 
 ### FPO-FE-301: Add Crop Planning UI
 
@@ -631,7 +633,7 @@ Fields:
 Implementation notes:
 
 - APIs are guarded by the `INPUT_DEMAND` module.
-- Admins and supervisors can create, update, list, and change lifecycle status.
+- Admin/FPO manager can create, update, list, and change lifecycle status.
 - Input codes and units are normalized to uppercase.
 - Input codes are unique per tenant.
 - Lifecycle status values are `ACTIVE`, `INACTIVE`, and `ARCHIVED`.
@@ -642,7 +644,7 @@ Implementation notes:
 
 Acceptance criteria:
 
-- Done: Admin/supervisor can maintain tenant input master records.
+- Done: Admin/FPO manager can maintain tenant input master records.
 - Done: Disabled `INPUT_DEMAND` returns `MODULE_NOT_ENABLED`.
 - Done: Service tests cover normalization and audit event metadata.
 
@@ -682,7 +684,7 @@ Implementation notes:
 
 Acceptance criteria:
 
-- Done: Admin/supervisor can define how much input is needed per acre for a
+- Done: Admin/FPO manager can define how much input is needed per acre for a
   crop.
 - Done: Inactive inputs are rejected by service-level validation tests.
 
@@ -901,8 +903,8 @@ Phase 1 rule:
 - Done: Store advisories for in-app use.
 - Done: Keep SMS/WhatsApp delivery out of Phase 1 provider scope.
 - Done: Guard APIs with the `ADVISORY` module.
-- Done: Allow admin/supervisor to create and publish advisories.
-- Done: Allow participants to view only published advisories targeted to all
+- Done: Allow admin/FPO manager to create and publish advisories.
+- Done: Allow farmers to view only published advisories targeted to all
   members, their village, or their own member profile.
 - Done: Audit advisory create and status changes.
 
@@ -1022,7 +1024,7 @@ Acceptance criteria:
 | FPO-QA-002 | Done    | FPO service unit tests       | Calculation and validation tests for current FPO modules.                                                          |
 | FPO-QA-003 | Partial | Frontend type/lint checks    | Commands exist and run in CI; rerun after each UI change.                                                           |
 | FPO-QA-004 | Partial | Excel export verification    | Unit-level workbook fixture checks exist; database fixture row-count checks remain.                                |
-| FPO-QA-005 | Pending | Role access matrix tests     | Admin/supervisor/farmer permissions.                                                                               |
+| FPO-QA-005 | Partial | Role access matrix tests     | Focused backend role isolation exists for admin/FPO manager/coordinator/farmer; frontend/E2E coverage remains.      |
 | FPO-QA-006 | Pending | UAT test catalog             | Manual test script for client UAT.                                                                                 |
 | FPO-QA-007 | Pending | Seed/demo data cleanup check | Confirm no old dummy farmer appears.                                                                               |
 

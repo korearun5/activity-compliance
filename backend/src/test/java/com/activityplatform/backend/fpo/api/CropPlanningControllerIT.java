@@ -106,6 +106,7 @@ class CropPlanningControllerIT {
     RoleEntity FIELD_COORDINATORRole = roleRepository.save(
         TestDataFactory.role(tenant, Role.FIELD_COORDINATOR)
     );
+    RoleEntity farmerRole = roleRepository.save(TestDataFactory.role(tenant, Role.FARMER));
 
     adminUser = userRepository.save(TestDataFactory.user(
         tenant,
@@ -121,7 +122,14 @@ class CropPlanningControllerIT {
         "FIELD_COORDINATOR User",
         FIELD_COORDINATORRole
     ));
-    member = memberRepository.save(member(tenant, FIELD_COORDINATORUser, adminUser, "MEM-1"));
+    UserEntity farmerUser = userRepository.save(TestDataFactory.user(
+        tenant,
+        "farmer-" + UUID.randomUUID(),
+        passwordEncoder.encode("farmer12345"),
+        "Farmer User",
+        farmerRole
+    ));
+    member = memberRepository.save(member(tenant, farmerUser, FIELD_COORDINATORUser, "MEM-1"));
     enableModule(tenant, ModuleCode.CROP_PLANNING);
 
     TenantEntity disabledTenant = tenantRepository.save(

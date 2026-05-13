@@ -1,6 +1,6 @@
 # FPO Phase 1 Data Dictionary
 
-Last updated: 2026-05-13
+Last updated: 2026-05-14
 
 This data dictionary reflects the client-approved Phase 1 scope. It should be
 used with the [Phase 1 Client Decision Register](phase1-client-decision-register.md)
@@ -11,8 +11,8 @@ checks.
 
 | Area | Phase 1 Decision | Current Implementation Status |
 | ---- | ---------------- | ----------------------------- |
-| Roles | `ADMIN`, `FPO_MANAGER`, `FIELD_COORDINATOR`; no farmer login | Role foundation is aligned in app code; scoped FPO ownership tests remain separate. |
-| Farmer profile | Final mandatory fields implemented | Taluka, state, optional Aadhaar, approved gender/category values, Indian mobile normalization, and suspended status are aligned; FPO ownership/scoping remains separate. |
+| Roles | `ADMIN`, `FPO_MANAGER`, `FIELD_COORDINATOR`, `FARMER`; farmer username/password login included, OTP excluded | Role foundation, farmer workflow routing, member ownership, coordinator assignment, and focused role isolation tests are aligned. |
+| Farmer profile | Final mandatory fields implemented | Taluka, state, optional Aadhaar, approved gender/category values, Indian mobile normalization, suspended status, and farmer user linkage are aligned. |
 | Soil profile | Required for existing lab reports; blank allowed | Phase 1 backend API, schema, admin entry UI, optional report link/metadata, and tests are implemented without carbon calculation. |
 | Land/GPS | GPS point only, acres, approved ownership/irrigation values | Phase 1 schema, API validation, admin UI controls, and tests are aligned. |
 | Crop planning | Crop list, seasons, crop year, and statuses approved | Foundation exists; crop year/date/status details need alignment. |
@@ -28,6 +28,7 @@ checks.
 | `ADMIN` | Platform super user. Can see all FPOs, all users, and future modules. |
 | `FPO_MANAGER` | One-FPO staff role. Can manage only assigned FPO data. |
 | `FIELD_COORDINATOR` | Field staff role. Can manage assigned villages/farmers and enter data on farmer behalf. |
+| `FARMER` | Farmer/member login role. Can use username/password in Phase 1 to view own member data and use own workflow/activity area. OTP remains Phase 2. |
 
 ## Farmer Profile
 
@@ -44,7 +45,8 @@ checks.
 | Gender | Yes | `Male`, `Female`, `Other` | Exact display labels. |
 | Farmer category | Yes | `Marginal`, `Small`, `Semi-medium`, `Medium`, `Large` | Based on landholding size. |
 | Status | Yes | `Active`, `Inactive`, `Suspended` | Default `Active`. |
-| Coordinator | No | `FIELD_COORDINATOR` reference | Used for filters and ownership. |
+| Login user | Yes | `FARMER` user reference | Reusable account link for username/password login now and OTP/mobile login later. |
+| Coordinator | No | `FIELD_COORDINATOR` reference | Used for filters and operational ownership. |
 
 Farmer category definitions:
 

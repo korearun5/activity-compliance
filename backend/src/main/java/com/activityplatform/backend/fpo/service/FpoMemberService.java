@@ -68,6 +68,23 @@ public class FpoMemberService {
     tenantModuleService.requireEnabled(currentUser.tenantId(), ModuleCode.MEMBER_DATA);
     requireManager(currentUser);
 
+    if (currentUser.hasAnyRole(Role.FIELD_COORDINATOR)) {
+      if (status == null) {
+        return memberRepository
+            .findByTenantIdAndCoordinatorUserId(currentUser.tenantId(), currentUser.userId(), pageable)
+            .map(FpoMemberResponse::from);
+      }
+
+      return memberRepository
+          .findByTenantIdAndCoordinatorUserIdAndStatus(
+              currentUser.tenantId(),
+              currentUser.userId(),
+              status,
+              pageable
+          )
+          .map(FpoMemberResponse::from);
+    }
+
     if (status == null) {
       return memberRepository.findByTenantId(currentUser.tenantId(), pageable)
           .map(FpoMemberResponse::from);
@@ -111,7 +128,7 @@ public class FpoMemberService {
       throw conflict("This user already has an FPO member profile.");
     }
 
-    UserEntity coordinator = resolveCoordinator(currentUser, request.coordinatorUserId());
+    UserEntity coordinator = resolveCoordinatorForCreate(currentUser, request.coordinatorUserId());
     Instant now = Instant.now();
     FpoMemberProfileEntity member = new FpoMemberProfileEntity(
         UUID.randomUUID(),
@@ -149,6 +166,11 @@ public class FpoMemberService {
     tenantModuleService.requireEnabled(currentUser.tenantId(), ModuleCode.MEMBER_DATA);
     requireManager(currentUser);
     FpoMemberProfileEntity member = requireMember(currentUser, memberId);
+    FpoAccessPolicy.requireMemberMutationAccess(
+        currentUser,
+        member,
+        "You do not have permission to update this FPO member profile."
+    );
     String memberNumber = normalizeRequired(request.memberNumber());
     String mobileNumber = FpoMemberProfileRules.normalizeIndianMobile(request.mobileNumber());
     ensureMemberNumberAvailable(currentUser.tenantId(), memberNumber, member.getId());
@@ -168,7 +190,7 @@ public class FpoMemberService {
         request.dateOfBirth(),
         request.age(),
         FpoMemberProfileRules.normalizeFarmerCategory(request.farmerCategory()),
-        resolveCoordinator(currentUser, request.coordinatorUserId()),
+        resolveCoordinatorForUpdate(currentUser, request.coordinatorUserId(), member.getCoordinatorUser()),
         request.status(),
         Instant.now()
     );
@@ -187,6 +209,11 @@ public class FpoMemberService {
     tenantModuleService.requireEnabled(currentUser.tenantId(), ModuleCode.MEMBER_DATA);
     requireManager(currentUser);
     FpoMemberProfileEntity member = requireMember(currentUser, memberId);
+    FpoAccessPolicy.requireMemberMutationAccess(
+        currentUser,
+        member,
+        "You do not have permission to update this FPO member status."
+    );
     member.updateStatus(status, Instant.now());
     FpoMemberProfileEntity savedMember = memberRepository.save(member);
     auditMember(currentUser, savedMember, AuditAction.FPO_MEMBER_STATUS_CHANGED);
@@ -209,11 +236,11 @@ public class FpoMemberService {
   ) {
     if (request.userId() != null) {
       UserEntity user = requireUser(currentUser, request.userId());
-      requireFieldCoordinatorOnly(user);
+      requireFarmerOnly(user);
       return user;
     }
 
-    UserResponse user = userService.createFieldCoordinator(
+    UserResponse user = userService.createFarmer(
         currentUser,
         new CreateUserRequest(
             request.username(),
@@ -244,26 +271,58 @@ public class FpoMemberService {
         });
   }
 
-  private UserEntity resolveCoordinator(CurrentUser currentUser, UUID coordinatorUserId) {
-    if (coordinatorUserId == null) {
-      return null;
+  private UserEntity resolveCoordinatorForCreate(CurrentUser currentUser, UUID coordinatorUserId) {
+    if (currentUser.hasAnyRole(Role.FIELD_COORDINATOR)) {
+      if (coordinatorUserId != null && !coordinatorUserId.equals(currentUser.userId())) {
+        throw new ApplicationException(
+            ErrorCode.ACCESS_DENIED,
+            "Field coordinators can only assign members to themselves.",
+            HttpStatus.FORBIDDEN
+        );
+      }
+      return requireUser(currentUser, currentUser.userId());
     }
 
+    return coordinatorUserId == null ? null : requireFieldCoordinator(currentUser, coordinatorUserId);
+  }
+
+  private UserEntity resolveCoordinatorForUpdate(
+      CurrentUser currentUser,
+      UUID coordinatorUserId,
+      UserEntity currentCoordinator
+  ) {
+    if (currentUser.hasAnyRole(Role.FIELD_COORDINATOR)) {
+      if (coordinatorUserId != null && !coordinatorUserId.equals(currentUser.userId())) {
+        throw new ApplicationException(
+            ErrorCode.ACCESS_DENIED,
+            "Field coordinators can only keep members assigned to themselves.",
+            HttpStatus.FORBIDDEN
+        );
+      }
+      return requireUser(currentUser, currentUser.userId());
+    }
+
+    return coordinatorUserId == null
+        ? currentCoordinator
+        : requireFieldCoordinator(currentUser, coordinatorUserId);
+  }
+
+  private UserEntity requireFieldCoordinator(CurrentUser currentUser, UUID coordinatorUserId) {
     UserEntity coordinator = requireUser(currentUser, coordinatorUserId);
-    if (!hasAnyRole(coordinator, Role.ADMIN, Role.FPO_MANAGER, Role.FIELD_COORDINATOR)) {
-      throw validation("Coordinator must be an admin, FPO manager, or field coordinator user.");
+    if (!hasAnyRole(coordinator, Role.FIELD_COORDINATOR)) {
+      throw validation("Coordinator must be a field coordinator user.");
     }
     return coordinator;
   }
 
-  private void requireFieldCoordinatorOnly(UserEntity user) {
+  private void requireFarmerOnly(UserEntity user) {
     Set<Role> roles = user.getRoles().stream()
         .map(RoleEntity::getCode)
         .map(Role::valueOf)
         .collect(Collectors.toUnmodifiableSet());
 
-    if (!roles.equals(Set.of(Role.FIELD_COORDINATOR))) {
-      throw validation("FPO members must be linked to field coordinator users until farmer login is added.");
+    if (!roles.equals(Set.of(Role.FARMER))) {
+      throw validation("FPO members must be linked to farmer users.");
     }
   }
 
@@ -322,28 +381,17 @@ public class FpoMemberService {
   }
 
   private void requireManager(CurrentUser currentUser) {
-    if (!currentUser.hasAnyRole(Role.ADMIN, Role.FPO_MANAGER, Role.FIELD_COORDINATOR)) {
-      throw new ApplicationException(
-          ErrorCode.ACCESS_DENIED,
-          "Only Phase 1 staff can manage FPO members.",
-          HttpStatus.FORBIDDEN
-      );
-    }
+    FpoAccessPolicy.requirePhaseOneStaff(
+        currentUser,
+        "Only Phase 1 staff can manage FPO members."
+    );
   }
 
   private void requireManagerOrOwner(CurrentUser currentUser, FpoMemberProfileEntity member) {
-    if (currentUser.hasAnyRole(Role.ADMIN, Role.FPO_MANAGER, Role.FIELD_COORDINATOR)) {
-      return;
-    }
-
-    if (member.getUser().getId().equals(currentUser.userId())) {
-      return;
-    }
-
-    throw new ApplicationException(
-        ErrorCode.ACCESS_DENIED,
-        "You do not have permission to view this FPO member profile.",
-        HttpStatus.FORBIDDEN
+    FpoAccessPolicy.requireMemberAccess(
+        currentUser,
+        member,
+        "You do not have permission to view this FPO member profile."
     );
   }
 

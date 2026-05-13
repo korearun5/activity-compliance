@@ -75,11 +75,13 @@ class FpoMemberControllerIT {
 
   private String adminToken;
   private String FIELD_COORDINATORToken;
+  private String farmerToken;
   private String disabledTenantAdminToken;
   private TenantEntity tenant;
   private TenantEntity disabledTenant;
   private UserEntity adminUser;
   private UserEntity FIELD_COORDINATORUser;
+  private UserEntity farmerUser;
 
   @BeforeEach
   void setup() {
@@ -88,6 +90,7 @@ class FpoMemberControllerIT {
     RoleEntity FIELD_COORDINATORRole = roleRepository.save(
         TestDataFactory.role(tenant, Role.FIELD_COORDINATOR)
     );
+    RoleEntity farmerRole = roleRepository.save(TestDataFactory.role(tenant, Role.FARMER));
 
     adminUser = userRepository.save(TestDataFactory.user(
         tenant,
@@ -102,6 +105,13 @@ class FpoMemberControllerIT {
         passwordEncoder.encode("FIELD_COORDINATOR123"),
         "FIELD_COORDINATOR User",
         FIELD_COORDINATORRole
+    ));
+    farmerUser = userRepository.save(TestDataFactory.user(
+        tenant,
+        "farmer-" + UUID.randomUUID(),
+        passwordEncoder.encode("farmer12345"),
+        "Farmer User",
+        farmerRole
     ));
     enableMemberData(tenant);
 
@@ -121,6 +131,7 @@ class FpoMemberControllerIT {
 
     adminToken = jwtService.issueTokens(adminUser).accessToken();
     FIELD_COORDINATORToken = jwtService.issueTokens(FIELD_COORDINATORUser).accessToken();
+    farmerToken = jwtService.issueTokens(farmerUser).accessToken();
     disabledTenantAdminToken = jwtService.issueTokens(disabledTenantAdmin).accessToken();
   }
 
@@ -152,22 +163,24 @@ class FpoMemberControllerIT {
         .isTrue();
     assertThat(memberRepository.existsByTenantIdAndUserId(tenant.getId(), createdUser.getId()))
         .isTrue();
+    assertThat(createdUser.getRoles()).extracting(RoleEntity::getCode)
+        .containsExactly(Role.FARMER.name());
   }
 
   @Test
-  void testAdminCanLinkExistingFIELD_COORDINATORAndFIELD_COORDINATORCanReadOwnProfile()
+  void testAdminCanLinkExistingFarmerAndFarmerCanReadOwnProfile()
       throws Exception {
     CreateFpoMemberRequest request = createRequestWithExistingUser(
         "MEM-" + UUID.randomUUID(),
-        FIELD_COORDINATORUser.getId()
+        farmerUser.getId()
     );
 
     String response = mockMvc.perform(post("/api/v1/fpo/members")
             .header("Authorization", "Bearer " + adminToken)
             .contentType("application/json")
-            .content(jsonMapper.writeValueAsString(request)))
+        .content(jsonMapper.writeValueAsString(request)))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.data.userId").value(FIELD_COORDINATORUser.getId().toString()))
+        .andExpect(jsonPath("$.data.userId").value(farmerUser.getId().toString()))
         .andReturn()
         .getResponse()
         .getContentAsString();
@@ -177,17 +190,17 @@ class FpoMemberControllerIT {
     );
 
     mockMvc.perform(get("/api/v1/fpo/members/me")
-            .header("Authorization", "Bearer " + FIELD_COORDINATORToken))
+            .header("Authorization", "Bearer " + farmerToken))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.data.id").value(member.id().toString()))
-        .andExpect(jsonPath("$.data.userId").value(FIELD_COORDINATORUser.getId().toString()));
+        .andExpect(jsonPath("$.data.userId").value(farmerUser.getId().toString()));
   }
 
   @Test
   void testListUpdateAndStatusChangeAreTenantScoped() throws Exception {
     CreateFpoMemberRequest createRequest = createRequestWithExistingUser(
         "MEM-" + UUID.randomUUID(),
-        FIELD_COORDINATORUser.getId()
+        farmerUser.getId()
     );
     FpoMemberProfileEntity member = createMember(createRequest);
 
@@ -210,7 +223,7 @@ class FpoMemberControllerIT {
         null,
         34,
         "SMALL",
-        adminUser.getId(),
+        FIELD_COORDINATORUser.getId(),
         FpoMemberStatus.ACTIVE
     );
 
@@ -223,7 +236,7 @@ class FpoMemberControllerIT {
         .andExpect(jsonPath("$.data.mobileNumber").value("8888800000"))
         .andExpect(jsonPath("$.data.taluka").value("Updated Taluka"))
         .andExpect(jsonPath("$.data.stateName").value("Maharashtra"))
-        .andExpect(jsonPath("$.data.coordinatorUserId").value(adminUser.getId().toString()));
+        .andExpect(jsonPath("$.data.coordinatorUserId").value(FIELD_COORDINATORUser.getId().toString()));
 
     mockMvc.perform(patch("/api/v1/fpo/members/" + member.getId() + "/status")
             .header("Authorization", "Bearer " + adminToken)
@@ -287,15 +300,15 @@ class FpoMemberControllerIT {
   }
 
   @Test
-  void testFIELD_COORDINATORCannotCreateMember() throws Exception {
+  void testFIELD_COORDINATORCanCreateAssignedFarmerMember() throws Exception {
     mockMvc.perform(post("/api/v1/fpo/members")
             .header("Authorization", "Bearer " + FIELD_COORDINATORToken)
             .contentType("application/json")
             .content(jsonMapper.writeValueAsString(
                 createRequest("MEM-" + UUID.randomUUID(), "farmer-" + UUID.randomUUID())
             )))
-        .andExpect(status().isForbidden())
-        .andExpect(jsonPath("$.error.code").value("ACCESS_DENIED"));
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.coordinatorUserId").value(FIELD_COORDINATORUser.getId().toString()));
   }
 
   @Test
@@ -344,7 +357,7 @@ class FpoMemberControllerIT {
         null,
         42,
         "MARGINAL",
-        adminUser.getId(),
+        FIELD_COORDINATORUser.getId(),
         FpoMemberStatus.ACTIVE
     );
   }
@@ -370,7 +383,7 @@ class FpoMemberControllerIT {
         null,
         42,
         "MARGINAL",
-        adminUser.getId(),
+        FIELD_COORDINATORUser.getId(),
         FpoMemberStatus.ACTIVE
     );
   }

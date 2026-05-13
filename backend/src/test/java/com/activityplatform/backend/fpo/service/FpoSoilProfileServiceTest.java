@@ -110,7 +110,11 @@ class FpoSoilProfileServiceTest {
   @Test
   void createAllowsBlankSoilValuesWhenNoLabReportExists() {
     CurrentUser coordinator = currentUser(Role.FIELD_COORDINATOR);
-    FpoMemberProfileEntity member = member(UUID.randomUUID(), user(UUID.randomUUID()));
+    FpoMemberProfileEntity member = member(
+        UUID.randomUUID(),
+        user(UUID.randomUUID()),
+        user(coordinator.userId())
+    );
     when(memberRepository.findByIdAndTenantId(member.getId(), tenantId))
         .thenReturn(Optional.of(member));
     when(soilProfileRepository.save(any(FpoSoilProfileEntity.class)))
@@ -164,6 +168,10 @@ class FpoSoilProfileServiceTest {
   }
 
   private FpoMemberProfileEntity member(UUID memberId, UserEntity user) {
+    return member(memberId, user, null);
+  }
+
+  private FpoMemberProfileEntity member(UUID memberId, UserEntity user, UserEntity coordinator) {
     return new FpoMemberProfileEntity(
         memberId,
         tenant,
@@ -181,7 +189,7 @@ class FpoSoilProfileServiceTest {
         null,
         null,
         "SMALL",
-        null,
+        coordinator,
         FpoMemberStatus.ACTIVE,
         Instant.now()
     );

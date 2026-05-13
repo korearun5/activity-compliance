@@ -81,6 +81,11 @@ public class FarmAssetService {
     requireLandRecordsModule(currentUser);
     requireManager(currentUser);
     FpoMemberProfileEntity member = requireMember(currentUser, memberId);
+    FpoAccessPolicy.requireMemberMutationAccess(
+        currentUser,
+        member,
+        "You do not have permission to manage this member's farm records."
+    );
     validateArea(request.totalAreaAcres(), request.cultivableAreaAcres());
     Instant now = Instant.now();
 
@@ -110,6 +115,11 @@ public class FarmAssetService {
     requireLandRecordsModule(currentUser);
     requireManager(currentUser);
     FarmLandholdingEntity landholding = requireLandholding(currentUser, landholdingId);
+    FpoAccessPolicy.requireMemberMutationAccess(
+        currentUser,
+        landholding.getMemberProfile(),
+        "You do not have permission to manage this member's farm records."
+    );
     validateArea(request.totalAreaAcres(), request.cultivableAreaAcres());
     landholding.updateDetails(
         FarmAssetRules.normalizeRequiredText(request.surveyNumber(), "Survey number / Khasra number"),
@@ -134,6 +144,11 @@ public class FarmAssetService {
     requireLandRecordsModule(currentUser);
     requireManager(currentUser);
     FarmLandholdingEntity landholding = requireLandholding(currentUser, landholdingId);
+    FpoAccessPolicy.requireMemberMutationAccess(
+        currentUser,
+        landholding.getMemberProfile(),
+        "You do not have permission to manage this member's farm records."
+    );
     landholding.updateStatus(status, Instant.now());
     FarmLandholdingEntity saved = landholdingRepository.save(landholding);
     auditLandholding(currentUser, saved, AuditAction.FPO_LANDHOLDING_STATUS_CHANGED);
@@ -161,6 +176,11 @@ public class FarmAssetService {
     requireLandRecordsModule(currentUser);
     requireManager(currentUser);
     FpoMemberProfileEntity member = requireMember(currentUser, memberId);
+    FpoAccessPolicy.requireMemberMutationAccess(
+        currentUser,
+        member,
+        "You do not have permission to manage this member's farm records."
+    );
     FarmLandholdingEntity landholding = resolveLandholding(
         currentUser,
         member,
@@ -195,6 +215,11 @@ public class FarmAssetService {
     requireLandRecordsModule(currentUser);
     requireManager(currentUser);
     FarmPlotEntity plot = requirePlot(currentUser, plotId);
+    FpoAccessPolicy.requireMemberMutationAccess(
+        currentUser,
+        plot.getMemberProfile(),
+        "You do not have permission to manage this member's farm records."
+    );
     FarmLandholdingEntity landholding = resolveLandholding(
         currentUser,
         plot.getMemberProfile(),
@@ -225,6 +250,11 @@ public class FarmAssetService {
     requireLandRecordsModule(currentUser);
     requireManager(currentUser);
     FarmPlotEntity plot = requirePlot(currentUser, plotId);
+    FpoAccessPolicy.requireMemberMutationAccess(
+        currentUser,
+        plot.getMemberProfile(),
+        "You do not have permission to manage this member's farm records."
+    );
     plot.updateStatus(status, Instant.now());
     FarmPlotEntity saved = plotRepository.save(plot);
     auditPlot(currentUser, saved, AuditAction.FPO_PLOT_STATUS_CHANGED);
@@ -277,28 +307,17 @@ public class FarmAssetService {
   }
 
   private void requireManager(CurrentUser currentUser) {
-    if (!currentUser.hasAnyRole(Role.ADMIN, Role.FPO_MANAGER, Role.FIELD_COORDINATOR)) {
-      throw new ApplicationException(
-          ErrorCode.ACCESS_DENIED,
-          "Only Phase 1 staff can manage farm land records.",
-          HttpStatus.FORBIDDEN
-      );
-    }
+    FpoAccessPolicy.requirePhaseOneStaff(
+        currentUser,
+        "Only Phase 1 staff can manage farm land records."
+    );
   }
 
   private void requireManagerOrOwner(CurrentUser currentUser, FpoMemberProfileEntity member) {
-    if (currentUser.hasAnyRole(Role.ADMIN, Role.FPO_MANAGER, Role.FIELD_COORDINATOR)) {
-      return;
-    }
-
-    if (member.getUser().getId().equals(currentUser.userId())) {
-      return;
-    }
-
-    throw new ApplicationException(
-        ErrorCode.ACCESS_DENIED,
-        "You do not have permission to view this member's farm records.",
-        HttpStatus.FORBIDDEN
+    FpoAccessPolicy.requireMemberAccess(
+        currentUser,
+        member,
+        "You do not have permission to view this member's farm records."
     );
   }
 

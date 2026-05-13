@@ -1,6 +1,6 @@
 # Phase 1 Client Decision Register
 
-Last updated: 2026-05-13
+Last updated: 2026-05-14
 
 This file records the client-approved Phase 1 scope for the FPO digitization
 release. Treat this as the source of truth for implementation alignment unless
@@ -22,9 +22,9 @@ Use this table to avoid reconnecting with the client for the same questions.
 | Topic | Decision Status | Development Instruction |
 | ----- | --------------- | ----------------------- |
 | Phase 1 scope | Answered | Build only the included Phase 1 items and keep Phase 2 items out. |
-| Role model | Answered | Use `ADMIN`, `FPO_MANAGER`, and `FIELD_COORDINATOR`; do not use `FPO_MANAGER` for FPO Phase 1. |
-| Farmer login | Answered | Do not build farmer login/mobile screens in Phase 1. Staff enter data. |
-| OTP login | Answered | Do not build OTP in Phase 1. Use username and password. |
+| Role model | Answered | Use `ADMIN`, `FPO_MANAGER`, `FIELD_COORDINATOR`, and `FARMER`; do not add a separate `SUPERVISOR` role. |
+| Farmer login | Answered | Include `FARMER` username/password login for Phase 1 workflow/self-view access. Do not build OTP login in Phase 1. |
+| OTP login | Answered | Do not build OTP in Phase 1. Username/password is used for all Phase 1 login roles. |
 | Farmer fields | Answered | Use the approved farmer profile fields in this file. |
 | Geography labels | Answered | Use village, taluka, district, state. Do not ask about block again. |
 | Farmer categories | Answered | Use the approved five categories and definitions. |
@@ -55,8 +55,9 @@ Use this table to avoid reconnecting with the client for the same questions.
 - Basic in-app advisory with text and images.
 - Excel reports with agreed sheets, filters, branding text, and footer.
 - Admin web dashboard.
-- Role-based access for `ADMIN`, `FPO_MANAGER`, and `FIELD_COORDINATOR`.
-- Optional farmer login is excluded; farmers are view-only/no-login in Phase 1.
+- Role-based access for `ADMIN`, `FPO_MANAGER`, `FIELD_COORDINATOR`, and
+  `FARMER`.
+- Farmer username/password login for own workflow/self-view access.
 - Basic soil test data entry for existing lab reports.
 
 ## Excluded Until Phase 2
@@ -72,7 +73,7 @@ Use this table to avoid reconnecting with the client for the same questions.
 - WhatsApp integration.
 - Drone images.
 - Advanced soil biological parameters such as microbial count and necromass.
-- Farmer mobile app and OTP login.
+- OTP/mobile-number login and dedicated farmer mobile app enhancements.
 - Plot polygon drawing or offline GPS capture.
 
 ## Roles
@@ -82,14 +83,16 @@ Use this table to avoid reconnecting with the client for the same questions.
 | `ADMIN` | Platform super user. Can see all FPOs, all farmers, all coordinators, and future platform modules. |
 | `FPO_MANAGER` | Limited to one FPO. Can manage that FPO's farmers, coordinators, crop plans, input demand, reports, and advisories. |
 | `FIELD_COORDINATOR` | Limited to assigned FPO/villages/farmers. Enters farmer profile, land, soil, and crop plan data on behalf of farmers. |
+| `FARMER` | Farmer/member login role. Can login with username/password in Phase 1 and use own workflow/self-view area only. Cannot manage other farmers or master data. |
 
 Notes:
 
-- `FPO_MANAGER` is not used for Phase 1 FPO scope.
+- `SUPERVISOR` is not used for Phase 1 FPO scope; use
+  `FIELD_COORDINATOR`.
 - A person may hold both `ADMIN` and `FPO_MANAGER`, but the roles remain
   logically separate.
-- Phase 1 uses username and password login for staff roles.
-- Farmers do not need login in Phase 1.
+- Phase 1 uses username and password login for staff and farmer roles.
+- OTP/mobile-number login remains Phase 2.
 
 ## Farmer Profile
 

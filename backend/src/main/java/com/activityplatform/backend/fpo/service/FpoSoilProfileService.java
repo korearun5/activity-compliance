@@ -69,6 +69,11 @@ public class FpoSoilProfileService {
     requireMemberDataModule(currentUser);
     requireManager(currentUser);
     FpoMemberProfileEntity member = requireMember(currentUser, memberId);
+    FpoAccessPolicy.requireMemberMutationAccess(
+        currentUser,
+        member,
+        "You do not have permission to manage this member's soil profiles."
+    );
     Instant now = Instant.now();
     FpoSoilProfileEntity profile = new FpoSoilProfileEntity(
         UUID.randomUUID(),
@@ -99,6 +104,11 @@ public class FpoSoilProfileService {
     requireMemberDataModule(currentUser);
     requireManager(currentUser);
     FpoSoilProfileEntity profile = requireSoilProfile(currentUser, soilProfileId);
+    FpoAccessPolicy.requireMemberMutationAccess(
+        currentUser,
+        profile.getMemberProfile(),
+        "You do not have permission to manage this member's soil profiles."
+    );
     profile.updateDetails(
         request.soilOrganicCarbon(),
         request.ph(),
@@ -131,28 +141,17 @@ public class FpoSoilProfileService {
   }
 
   private void requireManager(CurrentUser currentUser) {
-    if (!currentUser.hasAnyRole(Role.ADMIN, Role.FPO_MANAGER, Role.FIELD_COORDINATOR)) {
-      throw new ApplicationException(
-          ErrorCode.ACCESS_DENIED,
-          "Only Phase 1 staff can manage soil profiles.",
-          HttpStatus.FORBIDDEN
-      );
-    }
+    FpoAccessPolicy.requirePhaseOneStaff(
+        currentUser,
+        "Only Phase 1 staff can manage soil profiles."
+    );
   }
 
   private void requireManagerOrOwner(CurrentUser currentUser, FpoMemberProfileEntity member) {
-    if (currentUser.hasAnyRole(Role.ADMIN, Role.FPO_MANAGER, Role.FIELD_COORDINATOR)) {
-      return;
-    }
-
-    if (member.getUser().getId().equals(currentUser.userId())) {
-      return;
-    }
-
-    throw new ApplicationException(
-        ErrorCode.ACCESS_DENIED,
-        "You do not have permission to view this member's soil profiles.",
-        HttpStatus.FORBIDDEN
+    FpoAccessPolicy.requireMemberAccess(
+        currentUser,
+        member,
+        "You do not have permission to view this member's soil profiles."
     );
   }
 

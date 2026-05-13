@@ -21,6 +21,19 @@ public interface FpoMemberProfileRepository
       Pageable pageable
   );
 
+  Page<FpoMemberProfileEntity> findByTenantIdAndCoordinatorUserId(
+      UUID tenantId,
+      UUID coordinatorUserId,
+      Pageable pageable
+  );
+
+  Page<FpoMemberProfileEntity> findByTenantIdAndCoordinatorUserIdAndStatus(
+      UUID tenantId,
+      UUID coordinatorUserId,
+      FpoMemberStatus status,
+      Pageable pageable
+  );
+
   Optional<FpoMemberProfileEntity> findByIdAndTenantId(UUID id, UUID tenantId);
 
   Optional<FpoMemberProfileEntity> findByTenantIdAndUserId(UUID tenantId, UUID userId);

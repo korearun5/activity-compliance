@@ -7,6 +7,7 @@ import com.activityplatform.backend.activity.domain.ActivityStatus;
 import com.activityplatform.backend.activity.domain.ActivityTaskEntity;
 import com.activityplatform.backend.activity.repository.ActivityRepository;
 import com.activityplatform.backend.activity.repository.ActivityTaskRepository;
+import com.activityplatform.backend.auth.domain.RoleEntity;
 import com.activityplatform.backend.auth.domain.UserEntity;
 import com.activityplatform.backend.auth.repository.UserRepository;
 import com.activityplatform.backend.audit.domain.AuditAction;
@@ -162,12 +163,12 @@ public class ActivityService {
       WorkflowDefinitionEntity workflow) {
     Instant now = Instant.now();
     LocalDate startedOn = request.startedOn() == null ? LocalDate.now() : request.startedOn();
-    UserEntity fieldCoordinator = resolveFieldCoordinator(currentUser, request.participantUserId());
+    UserEntity participant = resolveParticipant(currentUser, request.participantUserId());
     ActivityEntity activity = new ActivityEntity(
         UUID.randomUUID(),
         workflow.getTenant(),
         workflow,
-        fieldCoordinator,
+        participant,
         request.unitName().trim(),
         normalizeOptional(request.locationName()),
         startedOn,
@@ -191,28 +192,35 @@ public class ActivityService {
     return activityRepository.save(activity);
   }
 
-  private UserEntity resolveFieldCoordinator(CurrentUser currentUser, UUID fieldCoordinatorUserId) {
-    UUID requestedUserId = fieldCoordinatorUserId == null ? currentUser.userId() : fieldCoordinatorUserId;
+  private UserEntity resolveParticipant(CurrentUser currentUser, UUID participantUserId) {
+    UUID requestedUserId = participantUserId == null ? currentUser.userId() : participantUserId;
 
     if (!currentUser.hasAnyRole(Role.ADMIN, Role.FPO_MANAGER)
         && !requestedUserId.equals(currentUser.userId())) {
       throw new ApplicationException(
           ErrorCode.ACCESS_DENIED,
-          "Field coordinators can only create activities for themselves.",
+          "Participants can only create activities for themselves.",
           HttpStatus.FORBIDDEN);
     }
 
-    UserEntity fieldCoordinator = userRepository.findById(requestedUserId)
-        .orElseThrow(() -> notFound("Field coordinator user not found."));
+    UserEntity participant = userRepository.findById(requestedUserId)
+        .orElseThrow(() -> notFound("Participant user not found."));
 
-    if (!fieldCoordinator.getTenant().getId().equals(currentUser.tenantId())) {
+    if (!participant.getTenant().getId().equals(currentUser.tenantId())) {
       throw new ApplicationException(
           ErrorCode.ACCESS_DENIED,
-          "Field coordinator user belongs to another tenant.",
+          "Participant user belongs to another tenant.",
           HttpStatus.FORBIDDEN);
     }
 
-    return fieldCoordinator;
+    if (!hasAnyRole(participant, Role.FIELD_COORDINATOR, Role.FARMER)) {
+      throw new ApplicationException(
+          ErrorCode.VALIDATION_FAILED,
+          "Activity participant must be a field coordinator or farmer.",
+          HttpStatus.BAD_REQUEST);
+    }
+
+    return participant;
   }
 
   private ActivityEntity requireAccessibleActivity(CurrentUser currentUser, UUID activityId) {
@@ -258,6 +266,18 @@ public class ActivityService {
 
   private String normalizeOptional(String value) {
     return value == null || value.isBlank() ? null : value.trim();
+  }
+
+  private boolean hasAnyRole(UserEntity user, Role... expectedRoles) {
+    List<String> roleCodes = user.getRoles().stream()
+        .map(RoleEntity::getCode)
+        .toList();
+    for (Role role : expectedRoles) {
+      if (roleCodes.contains(role.name())) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private UserEntity actor(CurrentUser currentUser) {

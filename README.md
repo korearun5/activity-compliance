@@ -4,9 +4,10 @@ Expo React Native frontend and Spring Boot backend for a reusable activity-compl
 
 ## Current Scope
 
-- Backend-first login for admin, supervisor, and participant roles.
+- Backend-first login for `ADMIN`, `FPO_MANAGER`, `FIELD_COORDINATOR`, and
+  `FARMER` roles.
 - Configurable backend workflow definitions for crop/activity task lists.
-- Backend activity tracking APIs for participant work.
+- Backend activity tracking APIs for field coordinator and farmer work.
 - Backend evidence APIs for proof upload metadata, local storage, and admin review.
 - Admin overview for users, workflow definitions, assigned activities, proof records,
   and report-ready metrics.
@@ -78,9 +79,10 @@ the release checklist. Use `.env.example` for local Docker defaults and
 `.env.production.example` as the production environment template.
 
 Frontend login tries the Spring Boot backend at `http://localhost:8080` first.
-Public self-signup is disabled; admins and supervisors create participant
-accounts. Participant profile display uses `GET /api/v1/users/me` with local
-fallback only for development/offline prototype use.
+Public self-signup is disabled. Admins/FPO managers create coordinator users;
+member creation creates or links `FARMER` users, and assigned field coordinators
+can create farmers in their scope. Farmer profile display uses backend APIs
+with local fallback only for development/offline prototype use.
 
 See:
 

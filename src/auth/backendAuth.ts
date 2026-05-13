@@ -3,7 +3,7 @@ import { getJson, postJson } from "../core/api/client";
 import { appConfig } from "../core/config/appConfig";
 import { UserRole } from "../core/model/types";
 
-export type BackendRole = "ADMIN" | "FPO_MANAGER" | "FIELD_COORDINATOR";
+export type BackendRole = "ADMIN" | "FPO_MANAGER" | "FIELD_COORDINATOR" | "FARMER";
 
 export type BackendLoginRequest = {
   password: string;
@@ -55,5 +55,9 @@ export function toFrontendRole(roles: BackendRole[]): UserRole {
     return "fpoManager";
   }
 
-  return "fieldCoordinator";
+  if (roles.includes("FIELD_COORDINATOR")) {
+    return "fieldCoordinator";
+  }
+
+  return "farmer";
 }

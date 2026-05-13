@@ -1,4 +1,4 @@
-export type BackendRole = "ADMIN" | "FPO_MANAGER" | "FIELD_COORDINATOR";
+export type BackendRole = "ADMIN" | "FPO_MANAGER" | "FIELD_COORDINATOR" | "FARMER";
 
 export type BackendUserStatus = "ACTIVE" | "INACTIVE";
 
