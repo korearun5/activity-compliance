@@ -115,8 +115,8 @@ public class RoleManagementService {
   }
 
   private void validateRoleCombination(Set<Role> roles) {
-    if (roles.contains(Role.PARTICIPANT) && roles.size() > 1) {
-      throw validation("Participant cannot be combined with admin or supervisor roles.");
+    if (roles.contains(Role.FIELD_COORDINATOR) && roles.size() > 1) {
+      throw validation("Field coordinator cannot be combined with admin or FPO manager roles.");
     }
   }
 
@@ -154,10 +154,10 @@ public class RoleManagementService {
   }
 
   private void requireManager(CurrentUser currentUser) {
-    if (!currentUser.hasAnyRole(Role.ADMIN, Role.SUPERVISOR)) {
+    if (!currentUser.hasAnyRole(Role.ADMIN, Role.FPO_MANAGER)) {
       throw new ApplicationException(
           ErrorCode.ACCESS_DENIED,
-          "Only admins and supervisors can view roles.",
+          "Only admins and FPO managers can view roles.",
           HttpStatus.FORBIDDEN
       );
     }

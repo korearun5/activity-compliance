@@ -36,7 +36,7 @@ public class FarmAssetController {
   }
 
   @PostMapping("/members/{memberId}/landholdings")
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER','FIELD_COORDINATOR')")
   ApiResponse<FarmLandholdingResponse> createLandholding(
       Authentication authentication,
       @PathVariable UUID memberId,
@@ -50,7 +50,7 @@ public class FarmAssetController {
   }
 
   @PutMapping("/landholdings/{landholdingId}")
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER','FIELD_COORDINATOR')")
   ApiResponse<FarmLandholdingResponse> updateLandholding(
       Authentication authentication,
       @PathVariable UUID landholdingId,
@@ -64,7 +64,7 @@ public class FarmAssetController {
   }
 
   @PatchMapping("/landholdings/{landholdingId}/status")
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER','FIELD_COORDINATOR')")
   ApiResponse<FarmLandholdingResponse> updateLandholdingStatus(
       Authentication authentication,
       @PathVariable UUID landholdingId,
@@ -87,7 +87,7 @@ public class FarmAssetController {
   }
 
   @PostMapping("/members/{memberId}/plots")
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER','FIELD_COORDINATOR')")
   ApiResponse<FarmPlotResponse> createPlot(
       Authentication authentication,
       @PathVariable UUID memberId,
@@ -101,7 +101,7 @@ public class FarmAssetController {
   }
 
   @PutMapping("/plots/{plotId}")
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER','FIELD_COORDINATOR')")
   ApiResponse<FarmPlotResponse> updatePlot(
       Authentication authentication,
       @PathVariable UUID plotId,
@@ -115,7 +115,7 @@ public class FarmAssetController {
   }
 
   @PatchMapping("/plots/{plotId}/status")
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER','FIELD_COORDINATOR')")
   ApiResponse<FarmPlotResponse> updatePlotStatus(
       Authentication authentication,
       @PathVariable UUID plotId,

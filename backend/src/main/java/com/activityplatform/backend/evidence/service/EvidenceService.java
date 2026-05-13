@@ -182,7 +182,7 @@ public class EvidenceService {
   }
 
   private boolean canAccess(CurrentUser currentUser, EvidenceEntity evidence) {
-    return currentUser.hasAnyRole(Role.ADMIN, Role.SUPERVISOR)
+    return currentUser.hasAnyRole(Role.ADMIN, Role.FPO_MANAGER)
         || (evidence.getParticipant() != null
             && evidence.getParticipant().getId().equals(currentUser.userId()));
   }

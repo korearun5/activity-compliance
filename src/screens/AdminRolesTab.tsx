@@ -16,7 +16,7 @@ type AdminRolesTabProps = {
   canUseBackend: boolean;
 };
 
-const roleOrder: BackendRoleCode[] = ["ADMIN", "SUPERVISOR", "PARTICIPANT"];
+const roleOrder: BackendRoleCode[] = ["ADMIN", "FPO_MANAGER", "FIELD_COORDINATOR"];
 
 export function AdminRolesTab({ canUseBackend }: AdminRolesTabProps) {
   const [error, setError] = useState("");
@@ -192,10 +192,10 @@ function roleLabel(role: BackendRoleCode) {
   switch (role) {
     case "ADMIN":
       return "Admin";
-    case "SUPERVISOR":
-      return "Supervisor";
+    case "FPO_MANAGER":
+      return "FPO Manager";
     default:
-      return "Participant";
+      return "Field Coordinator";
   }
 }
 

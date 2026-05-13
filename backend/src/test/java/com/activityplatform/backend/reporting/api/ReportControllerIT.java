@@ -84,17 +84,17 @@ class ReportControllerIT {
   private JwtService jwtService;
 
   private String adminToken;
-  private String participantToken;
+  private String FIELD_COORDINATORToken;
   private TenantEntity tenant;
   private UserEntity adminUser;
-  private UserEntity participantUser;
+  private UserEntity FIELD_COORDINATORUser;
 
   @BeforeEach
   void setup() {
     tenant = tenantRepository.save(TestDataFactory.tenant("tenant-" + UUID.randomUUID()));
     RoleEntity adminRole = roleRepository.save(TestDataFactory.role(tenant, Role.ADMIN));
-    RoleEntity participantRole = roleRepository.save(
-        TestDataFactory.role(tenant, Role.PARTICIPANT)
+    RoleEntity FIELD_COORDINATORRole = roleRepository.save(
+        TestDataFactory.role(tenant, Role.FIELD_COORDINATOR)
     );
     adminUser = userRepository.save(TestDataFactory.user(
         tenant,
@@ -103,16 +103,16 @@ class ReportControllerIT {
         "Admin User",
         adminRole
     ));
-    participantUser = userRepository.save(TestDataFactory.user(
+    FIELD_COORDINATORUser = userRepository.save(TestDataFactory.user(
         tenant,
-        "participant-" + UUID.randomUUID(),
+        "FIELD_COORDINATOR-" + UUID.randomUUID(),
         passwordEncoder.encode("password123"),
-        "Participant User",
-        participantRole
+        "FIELD_COORDINATOR User",
+        FIELD_COORDINATORRole
     ));
 
     adminToken = jwtService.issueTokens(adminUser).accessToken();
-    participantToken = jwtService.issueTokens(participantUser).accessToken();
+    FIELD_COORDINATORToken = jwtService.issueTokens(FIELD_COORDINATORUser).accessToken();
   }
 
   @Test
@@ -125,7 +125,7 @@ class ReportControllerIT {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.success").value(true))
         .andExpect(jsonPath("$.data.tenantId").value(tenant.getId().toString()))
-        .andExpect(jsonPath("$.data.participantCount").value(1))
+        .andExpect(jsonPath("$.data.fieldCoordinatorCount").value(1))
         .andExpect(jsonPath("$.data.totalActivities").value(1))
         .andExpect(jsonPath("$.data.completedActivities").value(1))
         .andExpect(jsonPath("$.data.totalTasks").value(1))
@@ -204,16 +204,16 @@ class ReportControllerIT {
   }
 
   @Test
-  void testSummaryForbiddenForParticipant() throws Exception {
+  void testSummaryForbiddenForFIELD_COORDINATOR() throws Exception {
     mockMvc.perform(get("/api/v1/reports/summary")
-            .header("Authorization", "Bearer " + participantToken))
+            .header("Authorization", "Bearer " + FIELD_COORDINATORToken))
         .andExpect(status().isForbidden());
   }
 
   @Test
-  void testExportForbiddenForParticipant() throws Exception {
+  void testExportForbiddenForFIELD_COORDINATOR() throws Exception {
     mockMvc.perform(post("/api/v1/reports/export")
-            .header("Authorization", "Bearer " + participantToken)
+            .header("Authorization", "Bearer " + FIELD_COORDINATORToken)
             .contentType("application/json")
             .content("""
                 {
@@ -242,7 +242,7 @@ class ReportControllerIT {
         UUID.randomUUID(),
         tenant,
         workflow,
-        participantUser,
+        FIELD_COORDINATORUser,
         "Plot 1",
         "Nashik",
         LocalDate.now(),
@@ -264,7 +264,7 @@ class ReportControllerIT {
         UUID.randomUUID(),
         tenant,
         task,
-        participantUser,
+        FIELD_COORDINATORUser,
         "tenant/evidence/file.jpg",
         "file.jpg",
         "image/jpeg",

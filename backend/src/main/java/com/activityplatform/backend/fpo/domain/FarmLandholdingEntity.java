@@ -28,7 +28,7 @@ public class FarmLandholdingEntity {
   @JoinColumn(name = "member_profile_id", nullable = false)
   private FpoMemberProfileEntity memberProfile;
 
-  @Column(name = "survey_number")
+  @Column(name = "survey_number", nullable = false)
   private String surveyNumber;
 
   @Column(name = "total_area_acres", nullable = false)
@@ -37,10 +37,10 @@ public class FarmLandholdingEntity {
   @Column(name = "cultivable_area_acres")
   private BigDecimal cultivableAreaAcres;
 
-  @Column(name = "ownership_type")
+  @Column(name = "ownership_type", nullable = false)
   private String ownershipType;
 
-  @Column(name = "irrigation_source")
+  @Column(name = "irrigation_source", nullable = false)
   private String irrigationSource;
 
   @Enumerated(EnumType.STRING)

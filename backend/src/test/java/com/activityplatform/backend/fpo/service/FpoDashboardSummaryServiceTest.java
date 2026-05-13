@@ -125,18 +125,18 @@ class FpoDashboardSummaryServiceTest {
         new BigDecimal("73.1234567"),
         FarmRecordStatus.ACTIVE
     );
-    FarmPlotEntity activePlotWithoutGps = plot(
+    FarmPlotEntity secondGeoTaggedPlot = plot(
         activeMember,
         new BigDecimal("0.7500"),
-        null,
-        null,
+        new BigDecimal("19.8765000"),
+        new BigDecimal("73.1234000"),
         FarmRecordStatus.ACTIVE
     );
     FarmPlotEntity archivedPlot = plot(
         inactiveMember,
         new BigDecimal("2.0000"),
-        null,
-        null,
+        new BigDecimal("18.5204000"),
+        new BigDecimal("73.8567000"),
         FarmRecordStatus.ARCHIVED
     );
     CropCatalogEntity onion = crop(UUID.randomUUID(), "ONI", "Onion");
@@ -179,7 +179,7 @@ class FpoDashboardSummaryServiceTest {
     when(landholdingRepository.findByTenantIdOrderByCreatedAtDesc(tenantId))
         .thenReturn(List.of(activeLandholding, archivedLandholding));
     when(plotRepository.findByTenantIdOrderByCreatedAtDesc(tenantId))
-        .thenReturn(List.of(geoTaggedPlot, activePlotWithoutGps, archivedPlot));
+        .thenReturn(List.of(geoTaggedPlot, secondGeoTaggedPlot, archivedPlot));
     when(cropPlanRepository.findByTenantIdOrderByCreatedAtDesc(tenantId))
         .thenReturn(List.of(onionPlan, tomatoPlan, draftPlan));
     when(demandEstimateRepository.findByTenantIdOrderByCreatedAtDesc(tenantId))
@@ -196,7 +196,7 @@ class FpoDashboardSummaryServiceTest {
     assertThat(response.totalCultivableAreaAcres()).isEqualByComparingTo("2.5000");
     assertThat(response.totalPlots()).isEqualTo(3);
     assertThat(response.activePlots()).isEqualTo(2);
-    assertThat(response.geoTaggedPlots()).isEqualTo(1);
+    assertThat(response.geoTaggedPlots()).isEqualTo(2);
     assertThat(response.totalPlotAreaAcres()).isEqualByComparingTo("4.0000");
     assertThat(response.activePlotAreaAcres()).isEqualByComparingTo("2.0000");
     assertThat(response.cropPlanCount()).isEqualTo(3);
@@ -227,12 +227,15 @@ class FpoDashboardSummaryServiceTest {
   }
 
   @Test
-  void summaryRejectsParticipantRole() {
-    CurrentUser participant = currentUser(Role.PARTICIPANT);
+  void summaryAllowsFIELD_COORDINATORRoleForPhaseOneAssignedScope() {
+    CurrentUser FIELD_COORDINATOR = currentUser(Role.FIELD_COORDINATOR);
+    when(memberRepository.findByTenantIdOrderByCreatedAtDesc(tenantId)).thenReturn(List.of());
+    when(landholdingRepository.findByTenantIdOrderByCreatedAtDesc(tenantId)).thenReturn(List.of());
+    when(plotRepository.findByTenantIdOrderByCreatedAtDesc(tenantId)).thenReturn(List.of());
+    when(cropPlanRepository.findByTenantIdOrderByCreatedAtDesc(tenantId)).thenReturn(List.of());
+    when(demandEstimateRepository.findByTenantIdOrderByCreatedAtDesc(tenantId)).thenReturn(List.of());
 
-    assertThatThrownBy(() -> service.summary(participant))
-        .isInstanceOf(ApplicationException.class)
-        .hasMessageContaining("Only admins and supervisors");
+    assertThat(service.summary(FIELD_COORDINATOR).totalMembers()).isZero();
   }
 
   private CurrentUser currentUser(Role role) {
@@ -268,9 +271,11 @@ class FpoDashboardSummaryServiceTest {
         user.getDisplayName(),
         user.getPhone(),
         null,
+        null,
         village,
         "North Block",
         "District",
+        "Maharashtra",
         null,
         null,
         null,
@@ -294,8 +299,8 @@ class FpoDashboardSummaryServiceTest {
         "SUR-1",
         totalArea,
         cultivableArea,
-        "OWNED",
-        "CANAL",
+        "Self-owned",
+        "Canal",
         status,
         Instant.now()
     );

@@ -55,15 +55,15 @@ class EvidenceControllerIT {
     TenantEntity tenant = tenantRepository.save(
         TestDataFactory.tenant("tenant-" + UUID.randomUUID())
     );
-    RoleEntity participantRole = roleRepository.save(
-        TestDataFactory.role(tenant, Role.PARTICIPANT)
+    RoleEntity FIELD_COORDINATORRole = roleRepository.save(
+        TestDataFactory.role(tenant, Role.FIELD_COORDINATOR)
     );
     UserEntity user = userRepository.save(TestDataFactory.user(
         tenant,
         "testuser-" + UUID.randomUUID(),
         passwordEncoder.encode("password123"),
         "Test User",
-        participantRole
+        FIELD_COORDINATORRole
     ));
 
     accessToken = jwtService.issueTokens(user).accessToken();

@@ -29,7 +29,7 @@ public class UserController {
   }
 
   @GetMapping
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER')")
   ApiResponse<PageResponse<UserResponse>> list(
       Authentication authentication,
       @PageableDefault(size = 20, page = 0) Pageable pageable
@@ -44,22 +44,22 @@ public class UserController {
   }
 
   @GetMapping("/{userId}")
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER')")
   ApiResponse<UserResponse> get(Authentication authentication, @PathVariable UUID userId) {
     return ApiResponse.success(userService.get(CurrentUser.from(authentication), userId));
   }
 
   @PostMapping
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER')")
   ApiResponse<UserResponse> create(
       Authentication authentication,
       @Valid @RequestBody CreateUserRequest request
   ) {
-    return ApiResponse.success(userService.createParticipant(CurrentUser.from(authentication), request));
+    return ApiResponse.success(userService.createFieldCoordinator(CurrentUser.from(authentication), request));
   }
 
   @PutMapping("/{userId}")
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER')")
   ApiResponse<UserResponse> update(
       Authentication authentication,
       @PathVariable UUID userId,
@@ -69,7 +69,7 @@ public class UserController {
   }
 
   @PatchMapping("/{userId}/status")
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER')")
   ApiResponse<UserResponse> updateStatus(
       Authentication authentication,
       @PathVariable UUID userId,

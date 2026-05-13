@@ -69,8 +69,8 @@ class WorkflowControllerIT {
         TestDataFactory.tenant("tenant-" + UUID.randomUUID())
     );
     RoleEntity adminRole = roleRepository.save(TestDataFactory.role(tenant, Role.ADMIN));
-    RoleEntity participantRole = roleRepository.save(
-        TestDataFactory.role(tenant, Role.PARTICIPANT)
+    RoleEntity FIELD_COORDINATORRole = roleRepository.save(
+        TestDataFactory.role(tenant, Role.FIELD_COORDINATOR)
     );
     UserEntity adminUser = userRepository.save(TestDataFactory.user(
         tenant,
@@ -84,7 +84,7 @@ class WorkflowControllerIT {
         "user-" + UUID.randomUUID(),
         passwordEncoder.encode("user123"),
         "Regular User",
-        participantRole
+        FIELD_COORDINATORRole
     ));
 
     adminToken = jwtService.issueTokens(adminUser).accessToken();

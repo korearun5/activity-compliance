@@ -61,7 +61,7 @@ public class ActivityService {
   @Transactional(readOnly = true)
   public Page<ActivityResponse> list(CurrentUser currentUser, ActivityStatus status, Pageable pageable) {
     Page<ActivityEntity> activities;
-    if (currentUser.hasAnyRole(Role.ADMIN, Role.SUPERVISOR)) {
+    if (currentUser.hasAnyRole(Role.ADMIN, Role.FPO_MANAGER)) {
       activities = status == null
           ? activityRepository.findByTenantId(currentUser.tenantId(), pageable)
           : activityRepository.findByTenantIdAndStatus(currentUser.tenantId(), status, pageable);
@@ -162,12 +162,12 @@ public class ActivityService {
       WorkflowDefinitionEntity workflow) {
     Instant now = Instant.now();
     LocalDate startedOn = request.startedOn() == null ? LocalDate.now() : request.startedOn();
-    UserEntity participant = resolveParticipant(currentUser, request.participantUserId());
+    UserEntity fieldCoordinator = resolveFieldCoordinator(currentUser, request.participantUserId());
     ActivityEntity activity = new ActivityEntity(
         UUID.randomUUID(),
         workflow.getTenant(),
         workflow,
-        participant,
+        fieldCoordinator,
         request.unitName().trim(),
         normalizeOptional(request.locationName()),
         startedOn,
@@ -191,35 +191,35 @@ public class ActivityService {
     return activityRepository.save(activity);
   }
 
-  private UserEntity resolveParticipant(CurrentUser currentUser, UUID participantUserId) {
-    UUID requestedUserId = participantUserId == null ? currentUser.userId() : participantUserId;
+  private UserEntity resolveFieldCoordinator(CurrentUser currentUser, UUID fieldCoordinatorUserId) {
+    UUID requestedUserId = fieldCoordinatorUserId == null ? currentUser.userId() : fieldCoordinatorUserId;
 
-    if (!currentUser.hasAnyRole(Role.ADMIN, Role.SUPERVISOR)
+    if (!currentUser.hasAnyRole(Role.ADMIN, Role.FPO_MANAGER)
         && !requestedUserId.equals(currentUser.userId())) {
       throw new ApplicationException(
           ErrorCode.ACCESS_DENIED,
-          "Participants can only create activities for themselves.",
+          "Field coordinators can only create activities for themselves.",
           HttpStatus.FORBIDDEN);
     }
 
-    UserEntity participant = userRepository.findById(requestedUserId)
-        .orElseThrow(() -> notFound("Participant user not found."));
+    UserEntity fieldCoordinator = userRepository.findById(requestedUserId)
+        .orElseThrow(() -> notFound("Field coordinator user not found."));
 
-    if (!participant.getTenant().getId().equals(currentUser.tenantId())) {
+    if (!fieldCoordinator.getTenant().getId().equals(currentUser.tenantId())) {
       throw new ApplicationException(
           ErrorCode.ACCESS_DENIED,
-          "Participant user belongs to another tenant.",
+          "Field coordinator user belongs to another tenant.",
           HttpStatus.FORBIDDEN);
     }
 
-    return participant;
+    return fieldCoordinator;
   }
 
   private ActivityEntity requireAccessibleActivity(CurrentUser currentUser, UUID activityId) {
     ActivityEntity activity = activityRepository.findByIdAndTenantId(activityId, currentUser.tenantId())
         .orElseThrow(() -> notFound("Activity not found."));
 
-    if (!currentUser.hasAnyRole(Role.ADMIN, Role.SUPERVISOR)
+    if (!currentUser.hasAnyRole(Role.ADMIN, Role.FPO_MANAGER)
         && (activity.getParticipant() == null
             || !activity.getParticipant().getId().equals(currentUser.userId()))) {
       throw new ApplicationException(

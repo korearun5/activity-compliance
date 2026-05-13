@@ -31,7 +31,7 @@ public class NotificationController {
   }
 
   @GetMapping
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER')")
   ApiResponse<PageResponse<NotificationResponse>> list(
       Authentication authentication,
       @RequestParam(required = false) NotificationStatus status,
@@ -46,7 +46,7 @@ public class NotificationController {
   }
 
   @PostMapping
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER')")
   ApiResponse<NotificationResponse> queue(
       Authentication authentication,
       @Valid @RequestBody CreateNotificationRequest request
@@ -55,7 +55,7 @@ public class NotificationController {
   }
 
   @PatchMapping("/{notificationId}/status")
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER')")
   ApiResponse<NotificationResponse> updateStatus(
       Authentication authentication,
       @PathVariable UUID notificationId,

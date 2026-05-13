@@ -53,7 +53,7 @@ class PlatformControllerIT {
   private JwtService jwtService;
 
   private String adminToken;
-  private String supervisorToken;
+  private String FPO_MANAGERToken;
 
   @BeforeEach
   void setup() {
@@ -61,8 +61,8 @@ class PlatformControllerIT {
         TestDataFactory.tenant("tenant-" + UUID.randomUUID())
     );
     RoleEntity adminRole = roleRepository.save(TestDataFactory.role(tenant, Role.ADMIN));
-    RoleEntity supervisorRole = roleRepository.save(
-        TestDataFactory.role(tenant, Role.SUPERVISOR)
+    RoleEntity FPO_MANAGERRole = roleRepository.save(
+        TestDataFactory.role(tenant, Role.FPO_MANAGER)
     );
 
     UserEntity adminUser = userRepository.save(TestDataFactory.user(
@@ -72,16 +72,16 @@ class PlatformControllerIT {
         "Admin User",
         adminRole
     ));
-    UserEntity supervisorUser = userRepository.save(TestDataFactory.user(
+    UserEntity FPO_MANAGERUser = userRepository.save(TestDataFactory.user(
         tenant,
-        "supervisor-" + UUID.randomUUID(),
-        passwordEncoder.encode("supervisor123"),
-        "Supervisor User",
-        supervisorRole
+        "FPO_MANAGER-" + UUID.randomUUID(),
+        passwordEncoder.encode("FPO_MANAGER123"),
+        "FPO_MANAGER User",
+        FPO_MANAGERRole
     ));
 
     adminToken = jwtService.issueTokens(adminUser).accessToken();
-    supervisorToken = jwtService.issueTokens(supervisorUser).accessToken();
+    FPO_MANAGERToken = jwtService.issueTokens(FPO_MANAGERUser).accessToken();
   }
 
   @Test
@@ -127,14 +127,14 @@ class PlatformControllerIT {
   }
 
   @Test
-  void testSupervisorCannotManageTenantModules() throws Exception {
+  void testFPO_MANAGERCannotManageTenantModules() throws Exception {
     TenantModuleSubscriptionRequest request = new TenantModuleSubscriptionRequest(
         TenantModuleSubscriptionStatus.ENABLED,
         null
     );
 
     mockMvc.perform(put("/api/v1/platform/module-subscriptions/MEMBER_DATA")
-            .header("Authorization", "Bearer " + supervisorToken)
+            .header("Authorization", "Bearer " + FPO_MANAGERToken)
             .contentType("application/json")
             .content(jsonMapper.writeValueAsString(request)))
         .andExpect(status().isForbidden())

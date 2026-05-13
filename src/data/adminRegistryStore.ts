@@ -23,25 +23,25 @@ import { storageKeys } from "../core/storage/storageKeys";
 import { saveUserProfile } from "./profileStore";
 import { CropCycle, ProofSubmission } from "./agricultureConfig";
 
-export type RegisteredParticipant = ManagedUser & {
+export type RegisteredFieldCoordinator = ManagedUser & {
   name: string;
   region: string;
   village: string;
 };
 
-export type CreateRegisteredParticipantInput = {
+export type CreateRegisteredFieldCoordinatorInput = {
   password: string;
   profile: UserProfileInput;
   username: string;
 };
 
 export async function registerUser(username: string, profile: UserProfileInput) {
-  const nextParticipant = toRegisteredParticipantFromProfile(username, profile);
+  const nextFieldCoordinator = toRegisteredFieldCoordinatorFromProfile(username, profile);
 
-  return upsertLocalParticipant(nextParticipant);
+  return upsertLocalFieldCoordinator(nextFieldCoordinator);
 }
 
-export async function getRegisteredParticipants(): Promise<RegisteredParticipant[]> {
+export async function getRegisteredFieldCoordinators(): Promise<RegisteredFieldCoordinator[]> {
   const accessToken = await getAccessToken();
 
   if (accessToken) {
@@ -51,12 +51,12 @@ export async function getRegisteredParticipants(): Promise<RegisteredParticipant
         { size: 100, sort: "displayName,asc" },
         { accessToken }
       );
-      const participants = page.content
-        .filter((user) => user.roles.includes("PARTICIPANT"))
-        .map(toRegisteredParticipantFromBackend);
+      const fieldCoordinators = page.content
+        .filter((user) => user.roles.includes("FIELD_COORDINATOR"))
+        .map(toRegisteredFieldCoordinatorFromBackend);
 
-      await writeJson(storageKeys.registry.users, participants);
-      return participants;
+      await writeJson(storageKeys.registry.users, fieldCoordinators);
+      return fieldCoordinators;
     } catch (error) {
       if (!canUseLocalFallback(error)) {
         throw toAdminUserError(error);
@@ -68,14 +68,14 @@ export async function getRegisteredParticipants(): Promise<RegisteredParticipant
     }
   }
 
-  return getLocalRegisteredParticipants();
+  return getLocalRegisteredFieldCoordinators();
 }
 
-export async function createRegisteredParticipant({
+export async function createRegisteredFieldCoordinator({
   password,
   profile,
   username
-}: CreateRegisteredParticipantInput): Promise<RegisteredParticipant> {
+}: CreateRegisteredFieldCoordinatorInput): Promise<RegisteredFieldCoordinator> {
   const trimmedUsername = username.trim();
   const normalizedProfile = normalizeProfile(profile);
   const accessToken = await getAccessToken();
@@ -94,14 +94,14 @@ export async function createRegisteredParticipant({
         },
         { accessToken }
       );
-      const participant = toRegisteredParticipantFromBackend(user);
+      const fieldCoordinator = toRegisteredFieldCoordinatorFromBackend(user);
 
       await Promise.all([
-        saveUserProfile(participant.username, profileFromParticipant(participant)),
-        upsertLocalParticipant(participant)
+        saveUserProfile(fieldCoordinator.username, profileFromFieldCoordinator(fieldCoordinator)),
+        upsertLocalFieldCoordinator(fieldCoordinator)
       ]);
 
-      return participant;
+      return fieldCoordinator;
     } catch (error) {
       if (!canUseLocalFallback(error)) {
         throw toAdminUserError(error);
@@ -113,14 +113,14 @@ export async function createRegisteredParticipant({
     }
   }
 
-  return createLocalParticipant({
+  return createLocalFieldCoordinator({
     password,
     profile: normalizedProfile,
     username: trimmedUsername
   });
 }
 
-export async function updateRegisteredParticipant({
+export async function updateRegisteredFieldCoordinator({
   profile,
   userId,
   username
@@ -128,7 +128,7 @@ export async function updateRegisteredParticipant({
   profile: UserProfileInput;
   userId?: string;
   username: string;
-}): Promise<RegisteredParticipant> {
+}): Promise<RegisteredFieldCoordinator> {
   const normalizedProfile = normalizeProfile(profile);
   const accessToken = await getAccessToken();
 
@@ -144,14 +144,14 @@ export async function updateRegisteredParticipant({
         },
         { accessToken }
       );
-      const participant = toRegisteredParticipantFromBackend(user);
+      const fieldCoordinator = toRegisteredFieldCoordinatorFromBackend(user);
 
       await Promise.all([
-        saveUserProfile(participant.username, profileFromParticipant(participant)),
-        upsertLocalParticipant(participant)
+        saveUserProfile(fieldCoordinator.username, profileFromFieldCoordinator(fieldCoordinator)),
+        upsertLocalFieldCoordinator(fieldCoordinator)
       ]);
 
-      return participant;
+      return fieldCoordinator;
     } catch (error) {
       if (!canUseLocalFallback(error)) {
         throw toAdminUserError(error);
@@ -167,26 +167,26 @@ export async function updateRegisteredParticipant({
   return registerUser(username, normalizedProfile);
 }
 
-export async function updateRegisteredParticipantStatus(
-  participant: RegisteredParticipant,
+export async function updateRegisteredFieldCoordinatorStatus(
+  fieldCoordinator: RegisteredFieldCoordinator,
   status: Extract<UserStatus, "Active" | "Inactive">
-): Promise<RegisteredParticipant> {
+): Promise<RegisteredFieldCoordinator> {
   const accessToken = await getAccessToken();
 
-  if (accessToken && participant.id) {
+  if (accessToken && fieldCoordinator.id) {
     try {
       const user = await apiClient.patch<
         UpdateBackendUserStatusRequest,
         BackendUserResponse
       >(
-        endpoints.users.status(participant.id),
+        endpoints.users.status(fieldCoordinator.id),
         { status: toBackendStatus(status) },
         { accessToken }
       );
-      const updatedParticipant = toRegisteredParticipantFromBackend(user);
+      const updatedFieldCoordinator = toRegisteredFieldCoordinatorFromBackend(user);
 
-      await upsertLocalParticipant(updatedParticipant);
-      return updatedParticipant;
+      await upsertLocalFieldCoordinator(updatedFieldCoordinator);
+      return updatedFieldCoordinator;
     } catch (error) {
       if (!canUseLocalFallback(error)) {
         throw toAdminUserError(error);
@@ -198,27 +198,27 @@ export async function updateRegisteredParticipantStatus(
     }
   }
 
-  return updateLocalParticipantStatus(participant.username, status);
+  return updateLocalFieldCoordinatorStatus(fieldCoordinator.username, status);
 }
 
-async function getLocalRegisteredParticipants(): Promise<RegisteredParticipant[]> {
-  const savedParticipants = await readJsonArray<Partial<RegisteredParticipant>>([
+async function getLocalRegisteredFieldCoordinators(): Promise<RegisteredFieldCoordinator[]> {
+  const savedFieldCoordinators = await readJsonArray<Partial<RegisteredFieldCoordinator>>([
     storageKeys.registry.users,
     storageKeys.legacy.registry.users
   ]);
 
-  return savedParticipants
-    .map(toRegisteredParticipant)
-    .filter((participant): participant is RegisteredParticipant =>
-      Boolean(participant)
+  return savedFieldCoordinators
+    .map(toRegisteredFieldCoordinator)
+    .filter((fieldCoordinator): fieldCoordinator is RegisteredFieldCoordinator =>
+      Boolean(fieldCoordinator)
     );
 }
 
-async function createLocalParticipant({
+async function createLocalFieldCoordinator({
   password,
   profile,
   username
-}: CreateRegisteredParticipantInput): Promise<RegisteredParticipant> {
+}: CreateRegisteredFieldCoordinatorInput): Promise<RegisteredFieldCoordinator> {
   await ensureLocalUsernameAvailable(username);
   const accounts = await readJsonArray<Partial<Account>>([
     storageKeys.auth.localAccounts,
@@ -230,7 +230,7 @@ async function createLocalParticipant({
         typeof account.username !== "string" ||
         account.username.toLowerCase() !== username.toLowerCase()
     ),
-    { password, role: "participant" as const, username }
+    { password, role: "fieldCoordinator" as const, username }
   ];
 
   await writeJson(storageKeys.auth.localAccounts, nextAccounts);
@@ -239,14 +239,14 @@ async function createLocalParticipant({
 }
 
 async function ensureLocalUsernameAvailable(username: string) {
-  const [accounts, participants] = await Promise.all([
+  const [accounts, fieldCoordinators] = await Promise.all([
     readJsonArray<Partial<Account>>([
       storageKeys.auth.localAccounts,
       storageKeys.legacy.auth.localAccounts
     ]),
-    getLocalRegisteredParticipants()
+    getLocalRegisteredFieldCoordinators()
   ]);
-  const usernameExists = [...accounts, ...participants].some(
+  const usernameExists = [...accounts, ...fieldCoordinators].some(
     (item) =>
       typeof item.username === "string" &&
       item.username.toLowerCase() === username.toLowerCase()
@@ -257,37 +257,37 @@ async function ensureLocalUsernameAvailable(username: string) {
   }
 }
 
-async function upsertLocalParticipant(participant: RegisteredParticipant) {
-  const currentParticipants = await getLocalRegisteredParticipants();
-  const nextParticipants = [
-    participant,
-    ...currentParticipants.filter(
-      (item) => item.username.toLowerCase() !== participant.username.toLowerCase()
+async function upsertLocalFieldCoordinator(fieldCoordinator: RegisteredFieldCoordinator) {
+  const currentFieldCoordinators = await getLocalRegisteredFieldCoordinators();
+  const nextFieldCoordinators = [
+    fieldCoordinator,
+    ...currentFieldCoordinators.filter(
+      (item) => item.username.toLowerCase() !== fieldCoordinator.username.toLowerCase()
     )
   ];
 
-  await writeJson(storageKeys.registry.users, nextParticipants);
-  return participant;
+  await writeJson(storageKeys.registry.users, nextFieldCoordinators);
+  return fieldCoordinator;
 }
 
-async function updateLocalParticipantStatus(
+async function updateLocalFieldCoordinatorStatus(
   username: string,
   status: Extract<UserStatus, "Active" | "Inactive">
 ) {
-  const currentParticipants = await getLocalRegisteredParticipants();
-  const participant = currentParticipants.find(
+  const currentFieldCoordinators = await getLocalRegisteredFieldCoordinators();
+  const fieldCoordinator = currentFieldCoordinators.find(
     (item) => item.username.toLowerCase() === username.toLowerCase()
   );
 
-  if (!participant) {
-    throw new AppError("VALIDATION_FAILED", "Participant profile not found.");
+  if (!fieldCoordinator) {
+    throw new AppError("VALIDATION_FAILED", "Field coordinator profile not found.");
   }
 
-  return upsertLocalParticipant({ ...participant, status });
+  return upsertLocalFieldCoordinator({ ...fieldCoordinator, status });
 }
 
-export function countParticipantActivities(
-  participant: RegisteredParticipant,
+export function countFieldCoordinatorActivities(
+  fieldCoordinator: RegisteredFieldCoordinator,
   cycles: CropCycle[],
   status: "running" | "completed"
 ) {
@@ -295,30 +295,30 @@ export function countParticipantActivities(
     (cycle) =>
       cycle.status === status &&
       ((cycle.farmerUsername &&
-        cycle.farmerUsername.toLowerCase() === participant.username.toLowerCase()) ||
+        cycle.farmerUsername.toLowerCase() === fieldCoordinator.username.toLowerCase()) ||
         cycle.participantUsername?.toLowerCase() ===
-          participant.username.toLowerCase() ||
-        cycle.region === participant.region)
+          fieldCoordinator.username.toLowerCase() ||
+        cycle.region === fieldCoordinator.region)
   ).length;
 }
 
-export function countParticipantProofs(
-  participant: RegisteredParticipant,
+export function countFieldCoordinatorProofs(
+  fieldCoordinator: RegisteredFieldCoordinator,
   proofs: ProofSubmission[]
 ) {
   return proofs.filter(
     (proof) =>
-      proof.participantName === participant.name ||
-      proof.farmer === participant.name ||
-      proof.participantUsername?.toLowerCase() === participant.username.toLowerCase() ||
-      proof.farmerUsername?.toLowerCase() === participant.username.toLowerCase() ||
-      (proof.region === participant.region && proof.status === "done")
+      proof.participantName === fieldCoordinator.name ||
+      proof.farmer === fieldCoordinator.name ||
+      proof.participantUsername?.toLowerCase() === fieldCoordinator.username.toLowerCase() ||
+      proof.farmerUsername?.toLowerCase() === fieldCoordinator.username.toLowerCase() ||
+      (proof.region === fieldCoordinator.region && proof.status === "done")
   ).length;
 }
 
-function toRegisteredParticipantFromBackend(
+function toRegisteredFieldCoordinatorFromBackend(
   user: BackendUserResponse
-): RegisteredParticipant {
+): RegisteredFieldCoordinator {
   const displayName = user.displayName;
   const locationName = user.locationName ?? "Not set";
   const siteName = user.siteName ?? "Not set";
@@ -338,10 +338,10 @@ function toRegisteredParticipantFromBackend(
   };
 }
 
-function toRegisteredParticipantFromProfile(
+function toRegisteredFieldCoordinatorFromProfile(
   username: string,
   profile: UserProfileInput
-): RegisteredParticipant {
+): RegisteredFieldCoordinator {
   const normalizedProfile = normalizeProfile(profile);
 
   return {
@@ -357,33 +357,33 @@ function toRegisteredParticipantFromProfile(
   };
 }
 
-function toRegisteredParticipant(
-  participant: Partial<RegisteredParticipant>
-): RegisteredParticipant | null {
-  const username = participant.username;
-  const displayName = participant.displayName ?? participant.name;
-  const locationName = participant.locationName ?? participant.region;
-  const siteName = participant.siteName ?? participant.village;
+function toRegisteredFieldCoordinator(
+  fieldCoordinator: Partial<RegisteredFieldCoordinator>
+): RegisteredFieldCoordinator | null {
+  const username = fieldCoordinator.username;
+  const displayName = fieldCoordinator.displayName ?? fieldCoordinator.name;
+  const locationName = fieldCoordinator.locationName ?? fieldCoordinator.region;
+  const siteName = fieldCoordinator.siteName ?? fieldCoordinator.village;
 
   if (
     typeof username !== "string" ||
     typeof displayName !== "string" ||
     typeof locationName !== "string" ||
     typeof siteName !== "string" ||
-    typeof participant.phone !== "string"
+    typeof fieldCoordinator.phone !== "string"
   ) {
     return null;
   }
 
   return {
     displayName,
-    id: participant.id,
+    id: fieldCoordinator.id,
     locationName,
     name: displayName,
-    phone: participant.phone,
+    phone: fieldCoordinator.phone,
     region: locationName,
     siteName,
-    status: participant.status ?? "Profile pending",
+    status: fieldCoordinator.status ?? "Profile pending",
     username,
     village: siteName
   };
@@ -399,12 +399,12 @@ function normalizeProfile(profile: UserProfileInput): UserProfileInput {
   };
 }
 
-function profileFromParticipant(participant: RegisteredParticipant): UserProfileInput {
+function profileFromFieldCoordinator(fieldCoordinator: RegisteredFieldCoordinator): UserProfileInput {
   return {
-    displayName: participant.displayName,
-    locationName: participant.locationName,
-    phone: participant.phone,
-    siteName: participant.siteName
+    displayName: fieldCoordinator.displayName,
+    locationName: fieldCoordinator.locationName,
+    phone: fieldCoordinator.phone,
+    siteName: fieldCoordinator.siteName
   };
 }
 
@@ -436,22 +436,22 @@ function toAdminUserError(error: unknown) {
     if (error.status === 400) {
       return new AppError(
         "VALIDATION_FAILED",
-        error.message || "Review the participant profile fields."
+        error.message || "Review the field coordinator profile fields."
       );
     }
 
     if (error.status === 401 || error.status === 403) {
       return new AppError(
         "ACCESS_DENIED",
-        error.message || "You do not have permission to manage participants."
+        error.message || "You do not have permission to manage field coordinators."
       );
     }
 
     return new AppError(
       "API_REQUEST_FAILED",
-      error.message || "Unable to manage participant profile."
+      error.message || "Unable to manage field coordinator profile."
     );
   }
 
-  return new AppError("API_REQUEST_FAILED", "Unable to manage participant profile.");
+  return new AppError("API_REQUEST_FAILED", "Unable to manage field coordinator profile.");
 }

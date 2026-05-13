@@ -30,6 +30,7 @@ import com.activityplatform.backend.security.CurrentUser;
 import com.activityplatform.backend.security.Role;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -85,14 +86,14 @@ class FarmAssetServiceTest {
             " SUR-101 ",
             new BigDecimal("3.5000"),
             new BigDecimal("2.7500"),
-            " Owned ",
-            " Canal ",
+            " self-owned ",
+            " canal ",
             null
         )
     );
 
     assertThat(response.surveyNumber()).isEqualTo("SUR-101");
-    assertThat(response.ownershipType()).isEqualTo("Owned");
+    assertThat(response.ownershipType()).isEqualTo("Self-owned");
     assertThat(response.irrigationSource()).isEqualTo("Canal");
     assertThat(response.status()).isEqualTo(FarmRecordStatus.ACTIVE);
     verify(auditEventService).record(
@@ -119,8 +120,8 @@ class FarmAssetServiceTest {
             "SUR-102",
             new BigDecimal("1.0000"),
             new BigDecimal("1.5000"),
-            "Owned",
-            null,
+            "Self-owned",
+            "Canal",
             FarmRecordStatus.ACTIVE
         )
     ))
@@ -130,15 +131,41 @@ class FarmAssetServiceTest {
   }
 
   @Test
-  void listLandholdingsRejectsParticipantWhoDoesNotOwnMemberProfile() {
-    CurrentUser participant = currentUser(Role.PARTICIPANT);
+  void createLandholdingRejectsUnapprovedOwnershipType() {
+    CurrentUser admin = currentUser(Role.ADMIN);
     FpoMemberProfileEntity member = member(UUID.randomUUID(), user(UUID.randomUUID()));
     when(memberRepository.findByIdAndTenantId(member.getId(), tenantId))
         .thenReturn(Optional.of(member));
 
-    assertThatThrownBy(() -> service.listLandholdings(participant, member.getId()))
+    assertThatThrownBy(() -> service.createLandholding(
+        admin,
+        member.getId(),
+        new CreateFarmLandholdingRequest(
+            "SUR-103",
+            new BigDecimal("1.0000"),
+            null,
+            "Owned",
+            "Canal",
+            FarmRecordStatus.ACTIVE
+        )
+    ))
         .isInstanceOf(ApplicationException.class)
-        .hasMessageContaining("permission to view this member's farm records");
+        .hasMessageContaining("Ownership type must be one of");
+    verify(landholdingRepository, never()).save(any());
+  }
+
+  @Test
+  void listLandholdingsAllowsFIELD_COORDINATORForPhaseOneDataEntry() {
+    CurrentUser FIELD_COORDINATOR = currentUser(Role.FIELD_COORDINATOR);
+    FpoMemberProfileEntity member = member(UUID.randomUUID(), user(UUID.randomUUID()));
+    when(memberRepository.findByIdAndTenantId(member.getId(), tenantId))
+        .thenReturn(Optional.of(member));
+    when(landholdingRepository.findByTenantIdAndMemberProfileIdOrderByCreatedAtDesc(
+        tenantId,
+        member.getId()
+    )).thenReturn(List.of());
+
+    assertThat(service.listLandholdings(FIELD_COORDINATOR, member.getId())).isEmpty();
   }
 
   @Test
@@ -159,14 +186,39 @@ class FarmAssetServiceTest {
             otherLandholding.getId(),
             "North plot",
             new BigDecimal("0.7500"),
-            null,
-            null,
+            new BigDecimal("19.8765432"),
+            new BigDecimal("73.1234567"),
             "Loam",
             FarmRecordStatus.ACTIVE
         )
     ))
         .isInstanceOf(ApplicationException.class)
         .hasMessageContaining("Landholding must belong to the selected FPO member");
+    verify(plotRepository, never()).save(any());
+  }
+
+  @Test
+  void createPlotRejectsMissingGpsPoint() {
+    CurrentUser admin = currentUser(Role.ADMIN);
+    FpoMemberProfileEntity selectedMember = member(UUID.randomUUID(), user(UUID.randomUUID()));
+    when(memberRepository.findByIdAndTenantId(selectedMember.getId(), tenantId))
+        .thenReturn(Optional.of(selectedMember));
+
+    assertThatThrownBy(() -> service.createPlot(
+        admin,
+        selectedMember.getId(),
+        new CreateFarmPlotRequest(
+            null,
+            "North plot",
+            new BigDecimal("0.7500"),
+            null,
+            new BigDecimal("73.1234567"),
+            "Loam",
+            FarmRecordStatus.ACTIVE
+        )
+    ))
+        .isInstanceOf(ApplicationException.class)
+        .hasMessageContaining("GPS latitude is required");
     verify(plotRepository, never()).save(any());
   }
 
@@ -198,9 +250,11 @@ class FarmAssetServiceTest {
         user.getDisplayName(),
         user.getPhone(),
         null,
+        null,
         "Rampur",
         "North Block",
         "District",
+        "Maharashtra",
         null,
         null,
         null,
@@ -219,8 +273,8 @@ class FarmAssetServiceTest {
         "SUR-200",
         new BigDecimal("2.0000"),
         new BigDecimal("1.7500"),
-        "Owned",
-        null,
+        "Self-owned",
+        "Canal",
         FarmRecordStatus.ACTIVE,
         Instant.now()
     );

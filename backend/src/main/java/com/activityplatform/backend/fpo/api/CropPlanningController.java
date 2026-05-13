@@ -35,7 +35,7 @@ public class CropPlanningController {
   }
 
   @PostMapping("/crops")
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER','FIELD_COORDINATOR')")
   ApiResponse<CropCatalogResponse> createCrop(
       Authentication authentication,
       @Valid @RequestBody CropCatalogRequest request
@@ -47,7 +47,7 @@ public class CropPlanningController {
   }
 
   @PutMapping("/crops/{cropId}")
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER','FIELD_COORDINATOR')")
   ApiResponse<CropCatalogResponse> updateCrop(
       Authentication authentication,
       @PathVariable UUID cropId,
@@ -61,7 +61,7 @@ public class CropPlanningController {
   }
 
   @PatchMapping("/crops/{cropId}/status")
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER','FIELD_COORDINATOR')")
   ApiResponse<CropCatalogResponse> updateCropStatus(
       Authentication authentication,
       @PathVariable UUID cropId,
@@ -81,7 +81,7 @@ public class CropPlanningController {
   }
 
   @PostMapping("/seasons")
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER','FIELD_COORDINATOR')")
   ApiResponse<CropSeasonResponse> createSeason(
       Authentication authentication,
       @Valid @RequestBody CropSeasonRequest request
@@ -93,7 +93,7 @@ public class CropPlanningController {
   }
 
   @PutMapping("/seasons/{seasonId}")
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER','FIELD_COORDINATOR')")
   ApiResponse<CropSeasonResponse> updateSeason(
       Authentication authentication,
       @PathVariable UUID seasonId,
@@ -107,7 +107,7 @@ public class CropPlanningController {
   }
 
   @PatchMapping("/seasons/{seasonId}/status")
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER','FIELD_COORDINATOR')")
   ApiResponse<CropSeasonResponse> updateSeasonStatus(
       Authentication authentication,
       @PathVariable UUID seasonId,
@@ -132,7 +132,7 @@ public class CropPlanningController {
   }
 
   @PostMapping("/members/{memberId}/crop-history")
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER','FIELD_COORDINATOR')")
   ApiResponse<CropHistoryResponse> createCropHistory(
       Authentication authentication,
       @PathVariable UUID memberId,
@@ -146,7 +146,7 @@ public class CropPlanningController {
   }
 
   @PutMapping("/crop-history/{historyId}")
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER','FIELD_COORDINATOR')")
   ApiResponse<CropHistoryResponse> updateCropHistory(
       Authentication authentication,
       @PathVariable UUID historyId,
@@ -188,7 +188,7 @@ public class CropPlanningController {
   }
 
   @PostMapping("/crop-plans")
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER','FIELD_COORDINATOR')")
   ApiResponse<CropPlanResponse> createCropPlan(
       Authentication authentication,
       @Valid @RequestBody CropPlanRequest request
@@ -200,7 +200,7 @@ public class CropPlanningController {
   }
 
   @PutMapping("/crop-plans/{planId}")
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER','FIELD_COORDINATOR')")
   ApiResponse<CropPlanResponse> updateCropPlan(
       Authentication authentication,
       @PathVariable UUID planId,
@@ -214,7 +214,7 @@ public class CropPlanningController {
   }
 
   @PatchMapping("/crop-plans/{planId}/status")
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER','FIELD_COORDINATOR')")
   ApiResponse<CropPlanResponse> updateCropPlanStatus(
       Authentication authentication,
       @PathVariable UUID planId,

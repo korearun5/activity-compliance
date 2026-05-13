@@ -65,14 +65,14 @@ class NotificationControllerIT {
   private UserRepository userRepository;
 
   private String adminToken;
-  private String participantToken;
-  private UserEntity participantUser;
+  private String FIELD_COORDINATORToken;
+  private UserEntity FIELD_COORDINATORUser;
 
   @BeforeEach
   void setup() {
     TenantEntity tenant = tenantRepository.save(TestDataFactory.tenant("tenant-" + UUID.randomUUID()));
     RoleEntity adminRole = roleRepository.save(TestDataFactory.role(tenant, Role.ADMIN));
-    RoleEntity participantRole = roleRepository.save(TestDataFactory.role(tenant, Role.PARTICIPANT));
+    RoleEntity FIELD_COORDINATORRole = roleRepository.save(TestDataFactory.role(tenant, Role.FIELD_COORDINATOR));
 
     UserEntity adminUser = userRepository.save(TestDataFactory.user(
         tenant,
@@ -81,16 +81,16 @@ class NotificationControllerIT {
         "Admin User",
         adminRole
     ));
-    participantUser = userRepository.save(TestDataFactory.user(
+    FIELD_COORDINATORUser = userRepository.save(TestDataFactory.user(
         tenant,
-        "participant-" + UUID.randomUUID(),
-        passwordEncoder.encode("participant123"),
-        "Participant User",
-        participantRole
+        "FIELD_COORDINATOR-" + UUID.randomUUID(),
+        passwordEncoder.encode("FIELD_COORDINATOR123"),
+        "FIELD_COORDINATOR User",
+        FIELD_COORDINATORRole
     ));
 
     adminToken = jwtService.issueTokens(adminUser).accessToken();
-    participantToken = jwtService.issueTokens(participantUser).accessToken();
+    FIELD_COORDINATORToken = jwtService.issueTokens(FIELD_COORDINATORUser).accessToken();
   }
 
   @Test
@@ -98,7 +98,7 @@ class NotificationControllerIT {
     long auditCount = auditEventRepository.count();
     long notificationCount = notificationEventRepository.count();
     CreateNotificationRequest request = new CreateNotificationRequest(
-        participantUser.getId(),
+        FIELD_COORDINATORUser.getId(),
         NotificationChannel.IN_APP,
         "EVIDENCE_REVIEWED",
         Map.of("status", "APPROVED")
@@ -110,7 +110,7 @@ class NotificationControllerIT {
             .content(jsonMapper.writeValueAsString(request)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.success").value(true))
-        .andExpect(jsonPath("$.data.recipientUserId").value(participantUser.getId().toString()))
+        .andExpect(jsonPath("$.data.recipientUserId").value(FIELD_COORDINATORUser.getId().toString()))
         .andExpect(jsonPath("$.data.channel").value("IN_APP"))
         .andExpect(jsonPath("$.data.templateCode").value("EVIDENCE_REVIEWED"))
         .andExpect(jsonPath("$.data.status").value("QUEUED"))
@@ -145,11 +145,11 @@ class NotificationControllerIT {
     TenantEntity otherTenant = tenantRepository.save(
         TestDataFactory.tenant("tenant-" + UUID.randomUUID())
     );
-    RoleEntity otherRole = roleRepository.save(TestDataFactory.role(otherTenant, Role.PARTICIPANT));
+    RoleEntity otherRole = roleRepository.save(TestDataFactory.role(otherTenant, Role.FIELD_COORDINATOR));
     UserEntity otherUser = userRepository.save(TestDataFactory.user(
         otherTenant,
         "other-" + UUID.randomUUID(),
-        passwordEncoder.encode("participant123"),
+        passwordEncoder.encode("FIELD_COORDINATOR123"),
         "Other User",
         otherRole
     ));
@@ -168,9 +168,9 @@ class NotificationControllerIT {
   }
 
   @Test
-  void testParticipantCannotManageNotifications() throws Exception {
+  void testFIELD_COORDINATORCannotManageNotifications() throws Exception {
     mockMvc.perform(get("/api/v1/notifications")
-            .header("Authorization", "Bearer " + participantToken))
+            .header("Authorization", "Bearer " + FIELD_COORDINATORToken))
         .andExpect(status().isForbidden());
   }
 }

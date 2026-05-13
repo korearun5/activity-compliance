@@ -85,9 +85,9 @@ public class ReportSummaryService {
       List<ActivityEntity> activities,
       List<EvidenceEntity> evidence
   ) {
-    long participantCount = userRepository.countByTenantIdAndRoleCode(
+    long fieldCoordinatorCount = userRepository.countByTenantIdAndRoleCode(
         tenantId,
-        Role.PARTICIPANT.name()
+        Role.FIELD_COORDINATOR.name()
     );
     long totalTasks = activities.stream().mapToLong(activity -> activity.getTasks().size()).sum();
     long completedTasks = activities.stream()
@@ -101,7 +101,7 @@ public class ReportSummaryService {
 
     return new ReportSummaryResponse(
         tenantId,
-        participantCount,
+        fieldCoordinatorCount,
         activities.size(),
         countActivities(activities, ActivityStatus.RUNNING),
         countActivities(activities, ActivityStatus.COMPLETED),
@@ -210,10 +210,10 @@ public class ReportSummaryService {
   }
 
   private void requireManager(CurrentUser currentUser) {
-    if (!currentUser.hasAnyRole(Role.ADMIN, Role.SUPERVISOR)) {
+    if (!currentUser.hasAnyRole(Role.ADMIN, Role.FPO_MANAGER)) {
       throw new ApplicationException(
           ErrorCode.ACCESS_DENIED,
-          "Only admins and supervisors can view report summaries.",
+          "Only admins and FPO managers can view report summaries.",
           HttpStatus.FORBIDDEN
       );
     }

@@ -29,7 +29,8 @@ export const storageKeys = {
     landholdings: `${namespace}:fpo:landholdings`,
     members: `${namespace}:fpo:members`,
     plots: `${namespace}:fpo:plots`,
-    seasons: `${namespace}:fpo:seasons`
+    seasons: `${namespace}:fpo:seasons`,
+    soilProfiles: `${namespace}:fpo:soil-profiles`
   },
   legacy: {
     activity: {

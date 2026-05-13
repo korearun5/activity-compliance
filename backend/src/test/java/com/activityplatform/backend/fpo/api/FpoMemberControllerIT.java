@@ -74,19 +74,19 @@ class FpoMemberControllerIT {
   private JwtService jwtService;
 
   private String adminToken;
-  private String participantToken;
+  private String FIELD_COORDINATORToken;
   private String disabledTenantAdminToken;
   private TenantEntity tenant;
   private TenantEntity disabledTenant;
   private UserEntity adminUser;
-  private UserEntity participantUser;
+  private UserEntity FIELD_COORDINATORUser;
 
   @BeforeEach
   void setup() {
     tenant = tenantRepository.save(TestDataFactory.tenant("tenant-" + UUID.randomUUID()));
     RoleEntity adminRole = roleRepository.save(TestDataFactory.role(tenant, Role.ADMIN));
-    RoleEntity participantRole = roleRepository.save(
-        TestDataFactory.role(tenant, Role.PARTICIPANT)
+    RoleEntity FIELD_COORDINATORRole = roleRepository.save(
+        TestDataFactory.role(tenant, Role.FIELD_COORDINATOR)
     );
 
     adminUser = userRepository.save(TestDataFactory.user(
@@ -96,12 +96,12 @@ class FpoMemberControllerIT {
         "Admin User",
         adminRole
     ));
-    participantUser = userRepository.save(TestDataFactory.user(
+    FIELD_COORDINATORUser = userRepository.save(TestDataFactory.user(
         tenant,
-        "participant-" + UUID.randomUUID(),
-        passwordEncoder.encode("participant123"),
-        "Participant User",
-        participantRole
+        "FIELD_COORDINATOR-" + UUID.randomUUID(),
+        passwordEncoder.encode("FIELD_COORDINATOR123"),
+        "FIELD_COORDINATOR User",
+        FIELD_COORDINATORRole
     ));
     enableMemberData(tenant);
 
@@ -120,12 +120,12 @@ class FpoMemberControllerIT {
     ));
 
     adminToken = jwtService.issueTokens(adminUser).accessToken();
-    participantToken = jwtService.issueTokens(participantUser).accessToken();
+    FIELD_COORDINATORToken = jwtService.issueTokens(FIELD_COORDINATORUser).accessToken();
     disabledTenantAdminToken = jwtService.issueTokens(disabledTenantAdmin).accessToken();
   }
 
   @Test
-  void testAdminCanCreateMemberWithNewParticipantUser() throws Exception {
+  void testAdminCanCreateMemberWithNewFIELD_COORDINATORUser() throws Exception {
     String memberNumber = "MEM-" + UUID.randomUUID();
     String username = "farmer-" + UUID.randomUUID();
     CreateFpoMemberRequest request = createRequest(memberNumber, username);
@@ -138,7 +138,11 @@ class FpoMemberControllerIT {
         .andExpect(jsonPath("$.success").value(true))
         .andExpect(jsonPath("$.data.memberNumber").value(memberNumber))
         .andExpect(jsonPath("$.data.username").value(username.toLowerCase()))
-        .andExpect(jsonPath("$.data.mobileNumber").value("+919999900000"))
+        .andExpect(jsonPath("$.data.mobileNumber").value("9999900000"))
+        .andExpect(jsonPath("$.data.aadhaarNumber").value("123456789012"))
+        .andExpect(jsonPath("$.data.taluka").value("Haveli"))
+        .andExpect(jsonPath("$.data.districtName").value("Pune"))
+        .andExpect(jsonPath("$.data.stateName").value("Maharashtra"))
         .andExpect(jsonPath("$.data.status").value("ACTIVE"));
 
     UserEntity createdUser = userRepository
@@ -151,11 +155,11 @@ class FpoMemberControllerIT {
   }
 
   @Test
-  void testAdminCanLinkExistingParticipantAndParticipantCanReadOwnProfile()
+  void testAdminCanLinkExistingFIELD_COORDINATORAndFIELD_COORDINATORCanReadOwnProfile()
       throws Exception {
     CreateFpoMemberRequest request = createRequestWithExistingUser(
         "MEM-" + UUID.randomUUID(),
-        participantUser.getId()
+        FIELD_COORDINATORUser.getId()
     );
 
     String response = mockMvc.perform(post("/api/v1/fpo/members")
@@ -163,7 +167,7 @@ class FpoMemberControllerIT {
             .contentType("application/json")
             .content(jsonMapper.writeValueAsString(request)))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.data.userId").value(participantUser.getId().toString()))
+        .andExpect(jsonPath("$.data.userId").value(FIELD_COORDINATORUser.getId().toString()))
         .andReturn()
         .getResponse()
         .getContentAsString();
@@ -173,17 +177,17 @@ class FpoMemberControllerIT {
     );
 
     mockMvc.perform(get("/api/v1/fpo/members/me")
-            .header("Authorization", "Bearer " + participantToken))
+            .header("Authorization", "Bearer " + FIELD_COORDINATORToken))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.data.id").value(member.id().toString()))
-        .andExpect(jsonPath("$.data.userId").value(participantUser.getId().toString()));
+        .andExpect(jsonPath("$.data.userId").value(FIELD_COORDINATORUser.getId().toString()));
   }
 
   @Test
   void testListUpdateAndStatusChangeAreTenantScoped() throws Exception {
     CreateFpoMemberRequest createRequest = createRequestWithExistingUser(
         "MEM-" + UUID.randomUUID(),
-        participantUser.getId()
+        FIELD_COORDINATORUser.getId()
     );
     FpoMemberProfileEntity member = createMember(createRequest);
 
@@ -197,9 +201,11 @@ class FpoMemberControllerIT {
         "Updated Farmer",
         "+91 88888 00000",
         null,
+        null,
         "Updated Village",
-        "Updated Block",
+        "Updated Taluka",
         "Updated District",
+        "Maharashtra",
         "FEMALE",
         null,
         34,
@@ -214,17 +220,19 @@ class FpoMemberControllerIT {
             .content(jsonMapper.writeValueAsString(updateRequest)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.data.displayName").value("Updated Farmer"))
-        .andExpect(jsonPath("$.data.mobileNumber").value("+918888800000"))
+        .andExpect(jsonPath("$.data.mobileNumber").value("8888800000"))
+        .andExpect(jsonPath("$.data.taluka").value("Updated Taluka"))
+        .andExpect(jsonPath("$.data.stateName").value("Maharashtra"))
         .andExpect(jsonPath("$.data.coordinatorUserId").value(adminUser.getId().toString()));
 
     mockMvc.perform(patch("/api/v1/fpo/members/" + member.getId() + "/status")
             .header("Authorization", "Bearer " + adminToken)
             .contentType("application/json")
             .content(jsonMapper.writeValueAsString(
-                new UpdateFpoMemberStatusRequest(FpoMemberStatus.INACTIVE)
+                new UpdateFpoMemberStatusRequest(FpoMemberStatus.SUSPENDED)
             )))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.data.status").value("INACTIVE"));
+        .andExpect(jsonPath("$.data.status").value("SUSPENDED"));
 
     mockMvc.perform(get("/api/v1/fpo/members/" + member.getId())
             .header("Authorization", "Bearer " + disabledTenantAdminToken))
@@ -248,9 +256,40 @@ class FpoMemberControllerIT {
   }
 
   @Test
-  void testParticipantCannotCreateMember() throws Exception {
+  void testApprovedFarmerProfileValidationRejectsInvalidCategory() throws Exception {
+    CreateFpoMemberRequest request = new CreateFpoMemberRequest(
+        null,
+        "farmer-" + UUID.randomUUID(),
+        "password123",
+        "MEM-" + UUID.randomUUID(),
+        "Invalid Category Farmer",
+        "+91 99999 00000",
+        null,
+        null,
+        "Wagholi",
+        "Haveli",
+        "Pune",
+        "Maharashtra",
+        "MALE",
+        null,
+        42,
+        "UNAPPROVED",
+        adminUser.getId(),
+        FpoMemberStatus.ACTIVE
+    );
+
     mockMvc.perform(post("/api/v1/fpo/members")
-            .header("Authorization", "Bearer " + participantToken)
+            .header("Authorization", "Bearer " + adminToken)
+            .contentType("application/json")
+            .content(jsonMapper.writeValueAsString(request)))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error.code").value("VALIDATION_FAILED"));
+  }
+
+  @Test
+  void testFIELD_COORDINATORCannotCreateMember() throws Exception {
+    mockMvc.perform(post("/api/v1/fpo/members")
+            .header("Authorization", "Bearer " + FIELD_COORDINATORToken)
             .contentType("application/json")
             .content(jsonMapper.writeValueAsString(
                 createRequest("MEM-" + UUID.randomUUID(), "farmer-" + UUID.randomUUID())
@@ -296,9 +335,11 @@ class FpoMemberControllerIT {
         "New Farmer",
         "+91 99999 00000",
         null,
+        "123456789012",
         "Nashik Village",
-        "Nashik Block",
-        "Nashik District",
+        "Haveli",
+        "Pune",
+        "Maharashtra",
         "MALE",
         null,
         42,
@@ -320,9 +361,11 @@ class FpoMemberControllerIT {
         "Linked Farmer",
         "+91 99999 00000",
         null,
+        null,
         "Linked Village",
-        "Linked Block",
-        "Linked District",
+        "Haveli",
+        "Pune",
+        "Maharashtra",
         "MALE",
         null,
         42,

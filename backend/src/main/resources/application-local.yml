@@ -23,14 +23,22 @@ app:
         site-name: ${APP_SEED_ADMIN_SITE:Operations}
         roles:
           - ADMIN
-      - username: ${APP_SEED_PARTICIPANT_USERNAME:participant}
-        password: ${APP_SEED_PARTICIPANT_PASSWORD:local-participant-password}
-        display-name: ${APP_SEED_PARTICIPANT_DISPLAY_NAME:Field Participant}
-        phone: ${APP_SEED_PARTICIPANT_PHONE:}
-        location-name: ${APP_SEED_PARTICIPANT_LOCATION:North Region}
-        site-name: ${APP_SEED_PARTICIPANT_SITE:Primary Site}
+      - username: ${APP_SEED_FPO_MANAGER_USERNAME:fpo-manager}
+        password: ${APP_SEED_FPO_MANAGER_PASSWORD:local-fpo-manager-password}
+        display-name: ${APP_SEED_FPO_MANAGER_DISPLAY_NAME:Pilot FPO Manager}
+        phone: ${APP_SEED_FPO_MANAGER_PHONE:}
+        location-name: ${APP_SEED_FPO_MANAGER_LOCATION:Wagholi}
+        site-name: ${APP_SEED_FPO_MANAGER_SITE:Pilot FPO}
         roles:
-          - PARTICIPANT
+          - FPO_MANAGER
+      - username: ${APP_SEED_FIELD_COORDINATOR_USERNAME:field-coordinator}
+        password: ${APP_SEED_FIELD_COORDINATOR_PASSWORD:local-field-coordinator-password}
+        display-name: ${APP_SEED_FIELD_COORDINATOR_DISPLAY_NAME:Field Coordinator}
+        phone: ${APP_SEED_FIELD_COORDINATOR_PHONE:}
+        location-name: ${APP_SEED_FIELD_COORDINATOR_LOCATION:Wagholi}
+        site-name: ${APP_SEED_FIELD_COORDINATOR_SITE:Pilot FPO}
+        roles:
+          - FIELD_COORDINATOR
   storage:
     provider: ${APP_STORAGE_PROVIDER:local}
     local:

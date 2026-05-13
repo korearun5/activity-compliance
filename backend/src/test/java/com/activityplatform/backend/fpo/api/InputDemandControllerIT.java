@@ -105,15 +105,15 @@ class InputDemandControllerIT {
   private String disabledTenantAdminToken;
   private TenantEntity tenant;
   private UserEntity adminUser;
-  private UserEntity participantUser;
+  private UserEntity FIELD_COORDINATORUser;
   private FpoMemberProfileEntity member;
 
   @BeforeEach
   void setup() {
     tenant = tenantRepository.save(TestDataFactory.tenant("tenant-" + UUID.randomUUID()));
     RoleEntity adminRole = roleRepository.save(TestDataFactory.role(tenant, Role.ADMIN));
-    RoleEntity participantRole = roleRepository.save(
-        TestDataFactory.role(tenant, Role.PARTICIPANT)
+    RoleEntity FIELD_COORDINATORRole = roleRepository.save(
+        TestDataFactory.role(tenant, Role.FIELD_COORDINATOR)
     );
 
     adminUser = userRepository.save(TestDataFactory.user(
@@ -123,14 +123,14 @@ class InputDemandControllerIT {
         "Admin User",
         adminRole
     ));
-    participantUser = userRepository.save(TestDataFactory.user(
+    FIELD_COORDINATORUser = userRepository.save(TestDataFactory.user(
         tenant,
-        "participant-" + UUID.randomUUID(),
-        passwordEncoder.encode("participant123"),
-        "Participant User",
-        participantRole
+        "FIELD_COORDINATOR-" + UUID.randomUUID(),
+        passwordEncoder.encode("FIELD_COORDINATOR123"),
+        "FIELD_COORDINATOR User",
+        FIELD_COORDINATORRole
     ));
-    member = memberRepository.save(member(tenant, participantUser, adminUser, "MEM-1"));
+    member = memberRepository.save(member(tenant, FIELD_COORDINATORUser, adminUser, "MEM-1"));
     enableModule(tenant, ModuleCode.INPUT_DEMAND);
 
     TenantEntity disabledTenant = tenantRepository.save(
@@ -322,9 +322,11 @@ class InputDemandControllerIT {
         user.getDisplayName(),
         phoneFor(memberNumber),
         null,
+        null,
         "Village",
         "Block",
         "District",
+        "Maharashtra",
         "MALE",
         null,
         42,

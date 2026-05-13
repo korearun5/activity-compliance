@@ -1,4 +1,4 @@
-export const userRoles = ["admin", "supervisor", "participant"] as const;
+export const userRoles = ["admin", "fpoManager", "fieldCoordinator"] as const;
 
 export type UserRole = (typeof userRoles)[number];
 
@@ -9,7 +9,7 @@ export type Account = {
   username: string;
 };
 
-export type UserStatus = "Active" | "Inactive" | "Profile pending";
+export type UserStatus = "Active" | "Inactive" | "Suspended" | "Profile pending";
 
 export type UserProfileInput = {
   age?: string;

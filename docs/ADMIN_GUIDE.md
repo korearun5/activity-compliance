@@ -18,7 +18,7 @@ The Activity Platform supports reusable activity-compliance workflows with a
 current FPO/agriculture module. Core capabilities include:
 
 - Tenant-aware login and user management.
-- Admin, supervisor, and participant roles.
+- Admin, FPO_MANAGER, and FIELD_COORDINATOR roles.
 - Configurable workflows and activity task tracking.
 - Evidence upload and review.
 - Audit logging.
@@ -44,8 +44,8 @@ Default local ports are documented in
 Roles:
 
 - `ADMIN`: full administrative access.
-- `SUPERVISOR`: operational management access for assigned workflows/users.
-- `PARTICIPANT`: field/farmer-facing access.
+- `FPO_MANAGER`: operational management access for assigned workflows/users.
+- `FIELD_COORDINATOR`: field/farmer-facing access.
 
 Admin tasks:
 
@@ -199,7 +199,7 @@ Before client production handoff:
 - Production environment variables are stored in a secret manager.
 - Backups and restore are tested.
 - Monitoring and alerting are live.
-- First admin/supervisor accounts are created through an approved process.
+- First admin/FPO_MANAGER accounts are created through an approved process.
 - Client workflow definitions and FPO master data are loaded.
 - Report export output is verified against approved templates.
 - Open risks are recorded in

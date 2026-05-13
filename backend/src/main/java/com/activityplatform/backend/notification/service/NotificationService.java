@@ -136,10 +136,10 @@ public class NotificationService {
   }
 
   private void requireManager(CurrentUser currentUser) {
-    if (!currentUser.hasAnyRole(Role.ADMIN, Role.SUPERVISOR)) {
+    if (!currentUser.hasAnyRole(Role.ADMIN, Role.FPO_MANAGER)) {
       throw new ApplicationException(
           ErrorCode.ACCESS_DENIED,
-          "Only admins and supervisors can manage notifications.",
+          "Only admins and FPO managers can manage notifications.",
           HttpStatus.FORBIDDEN
       );
     }

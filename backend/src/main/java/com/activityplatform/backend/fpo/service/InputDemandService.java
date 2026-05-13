@@ -621,10 +621,10 @@ public class InputDemandService {
   }
 
   private void requireManager(CurrentUser currentUser) {
-    if (!currentUser.hasAnyRole(Role.ADMIN, Role.SUPERVISOR)) {
+    if (!currentUser.hasAnyRole(Role.ADMIN, Role.FPO_MANAGER, Role.FIELD_COORDINATOR)) {
       throw new ApplicationException(
           ErrorCode.ACCESS_DENIED,
-          "Only admins and supervisors can manage input demand records.",
+          "Only Phase 1 staff can manage input demand records.",
           HttpStatus.FORBIDDEN
       );
     }

@@ -19,7 +19,7 @@ export type ReportSummary = {
   completedActivities: number;
   completedTasks: number;
   evidenceRecords: number;
-  participantCount: number;
+  fieldCoordinatorCount: number;
   pendingReviewEvidence: number;
   rejectedEvidence: number;
   runningActivities: number;

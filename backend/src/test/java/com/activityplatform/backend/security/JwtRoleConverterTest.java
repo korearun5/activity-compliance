@@ -18,7 +18,7 @@ class JwtRoleConverterTest {
         Instant.now(),
         Instant.now().plusSeconds(60),
         Map.of("alg", "HS256"),
-        Map.of("username", "admin", "roles", List.of("ADMIN", "SUPERVISOR"))
+        Map.of("username", "admin", "roles", List.of("ADMIN", "FPO_MANAGER"))
     );
 
     var authentication = converter.convert(jwt);
@@ -26,7 +26,7 @@ class JwtRoleConverterTest {
     assertThat(authentication.getName()).isEqualTo("admin");
     assertThat(authentication.getAuthorities())
         .extracting(Object::toString)
-        .containsExactly("ROLE_ADMIN", "ROLE_SUPERVISOR");
+        .containsExactly("ROLE_ADMIN", "ROLE_FPO_MANAGER");
   }
 }
 

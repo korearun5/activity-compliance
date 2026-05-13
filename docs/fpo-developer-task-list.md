@@ -26,7 +26,7 @@ These are already implemented and should be reused instead of rebuilt.
 | -------- | ------ | -------------------- | --------------------------------------------- | -------------------------------------------------------------------- |
 | CORE-001 | Done   | Backend foundation   | Spring Boot, PostgreSQL, Flyway, JPA          | Add new FPO schema via Flyway only.                                  |
 | CORE-002 | Done   | Auth                 | JWT login, refresh, current user              | OTP can be added later without replacing JWT.                        |
-| CORE-003 | Partial | Roles                | JWT role infrastructure and role APIs          | Align code to Phase 1 roles `ADMIN`, `FPO_MANAGER`, `FIELD_COORDINATOR`. |
+| CORE-003 | Done    | Roles                | JWT role infrastructure and role APIs          | Phase 1 roles are aligned to `ADMIN`, `FPO_MANAGER`, `FIELD_COORDINATOR`. |
 | CORE-004 | Done   | User management      | Admin/supervisor can create participant users | Extend with FPO member profile table.                                |
 | CORE-005 | Done   | Workflow definitions | Configurable workflow/task templates          | Reuse for crop activity schedules.                                   |
 | CORE-006 | Done   | Activities           | Activity start and task timeline APIs         | Link FPO crop plans to activities later.                             |
@@ -67,11 +67,11 @@ them in this order unless a production defect interrupts the work.
 
 | Priority | Task ID | Title | Owner Area | Status |
 | -------: | ------- | ----- | ---------- | ------ |
-| 1 | FPO-ALIGN-001 | Replace legacy FPO role assumptions with `ADMIN`, `FPO_MANAGER`, and `FIELD_COORDINATOR` | Backend/Frontend/QA | Pending |
+| 1 | FPO-ALIGN-001 | Replace legacy FPO role assumptions with `ADMIN`, `FPO_MANAGER`, and `FIELD_COORDINATOR` | Backend/Frontend/QA | Done |
 | 2 | FPO-ALIGN-002 | Add FPO ownership, scoped access, and role isolation tests | Backend/QA | Pending |
-| 3 | FPO-ALIGN-003 | Align farmer profile fields: taluka/state, Aadhaar optional, status `Suspended`, category labels | Backend/Frontend/QA | Pending |
-| 4 | FPO-ALIGN-004 | Add soil profile entry and optional report attachment without carbon calculation | Backend/Frontend/QA | Pending |
-| 5 | FPO-ALIGN-005 | Align land/GPS labels and approved ownership/irrigation options | Backend/Frontend/QA | Pending |
+| 3 | FPO-ALIGN-003 | Align farmer profile fields: taluka/state, Aadhaar optional, status `Suspended`, category labels | Backend/Frontend/QA | Done |
+| 4 | FPO-ALIGN-004 | Add soil profile entry and optional report attachment without carbon calculation | Backend/Frontend/QA | Done |
+| 5 | FPO-ALIGN-005 | Align land/GPS labels and approved ownership/irrigation options | Backend/Frontend/QA | Done |
 | 6 | FPO-ALIGN-006 | Add crop plan `confirmed_at`, crop year string, and optional expected yield | Backend/Frontend/QA | Pending |
 | 7 | FPO-ALIGN-007 | Apply input demand 5% buffer, round-up, and confirmed-only report filtering | Backend/Frontend/QA | Pending |
 | 8 | FPO-ALIGN-008 | Refactor FPO Excel export to the approved three-sheet workbook | Backend/Frontend/QA | Pending |
@@ -942,7 +942,7 @@ technical decisions are approved.
 | CARBON-FE-001  | Done    | Add dummy admin carbon operations tab     | Covers identity, soil, activity verification, carbon potential, and dealers.       |
 | CARBON-FE-002  | Done    | Add dummy farmer carbon tab               | Covers identity, soil score, activity scoring, advisories, and nearby dealers.     |
 | CARBON-BE-001  | Pending | Draft carbon schema/data dictionary       | Wait for formula, soil fields, and methodology confirmation before durable schema. |
-| CARBON-BE-002  | Pending | Add soil profile APIs                     | Can start after schema draft is accepted internally.                               |
+| CARBON-BE-002  | Future  | Add carbon-specific soil scoring APIs     | Phase 1 soil lab-value entry exists; carbon scoring and methodology remain Phase 2. |
 | CARBON-BE-003  | Pending | Add provisional carbon calculator service | Formula must remain flagged as provisional until client approval.                  |
 | CARBON-BE-004  | Pending | Add dealer directory APIs                 | Dummy records are enough until dealer onboarding data is supplied.                 |
 | CARBON-INT-001 | Blocked | OTP/SMS login                             | Needs provider, pricing, sender ID, and templates.                                 |

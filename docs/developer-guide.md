@@ -121,8 +121,8 @@ http://localhost:19006
 ```
 
 The app stores JWT/session data with AsyncStorage. Login tries the backend first.
-Self-signup is disabled; admins and supervisors create participant accounts
-through backend user management. Participant profile display is backend-first via
+Self-signup is disabled; admins and FPO_MANAGERs create FIELD_COORDINATOR accounts
+through backend user management. FIELD_COORDINATOR profile display is backend-first via
 `GET /api/v1/users/me`, with local fallback only for development/offline
 prototype use.
 
@@ -178,8 +178,8 @@ Default local seed values:
 tenantCode: default
 admin username: admin
 admin password: arun
-participant username: participant
-participant password: local-participant-password
+FIELD_COORDINATOR username: FIELD_COORDINATOR
+FIELD_COORDINATOR password: local-FIELD_COORDINATOR-password
 ```
 
 You can override them before starting the backend:
@@ -188,8 +188,8 @@ You can override them before starting the backend:
 $env:SPRING_PROFILES_ACTIVE="local"
 $env:APP_SEED_ADMIN_USERNAME="admin"
 $env:APP_SEED_ADMIN_PASSWORD="your-password"
-$env:APP_SEED_PARTICIPANT_USERNAME="participant"
-$env:APP_SEED_PARTICIPANT_PASSWORD="your-password"
+$env:APP_SEED_FIELD_COORDINATOR_USERNAME="FIELD_COORDINATOR"
+$env:APP_SEED_FIELD_COORDINATOR_PASSWORD="your-password"
 ```
 
 Important: if a user already exists in the database, seeding does not overwrite
@@ -327,7 +327,7 @@ Auth:
 - `POST /api/v1/auth/refresh`
 - `GET /api/v1/auth/me`
 
-User/admin participant management:
+User/admin FIELD_COORDINATOR management:
 
 - `GET /api/v1/users`
 - `POST /api/v1/users`
@@ -461,15 +461,15 @@ Implemented foundation:
 - JWT login/refresh/current user.
 - Role-based security.
 - Tenant-aware users and roles.
-- Admin/supervisor participant profile management.
-- Backend-owned participant profile display through `GET /api/v1/users/me`.
+- Admin/FPO_MANAGER FIELD_COORDINATOR profile management.
+- Backend-owned FIELD_COORDINATOR profile display through `GET /api/v1/users/me`.
 - Platform module subscriptions and module guards.
 - Configurable workflow definitions.
 - Activity timeline tracking.
 - Evidence metadata/upload foundation.
 - Audit events for important state changes.
 - Local PostgreSQL compose setup.
-- Frontend admin participant creation connected to backend.
+- Frontend admin FIELD_COORDINATOR creation connected to backend.
 - FPO member management backend and admin UI.
 - FPO landholding and farm plot backend and admin UI.
 - FPO crop catalog, season, crop history, and seasonal crop plan backend and UI.

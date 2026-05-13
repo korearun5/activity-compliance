@@ -1,6 +1,6 @@
 import { Id } from "./contracts";
 
-export type FpoMemberStatus = "ACTIVE" | "INACTIVE" | "PENDING";
+export type FpoMemberStatus = "ACTIVE" | "INACTIVE" | "SUSPENDED";
 export type FarmRecordStatus = "ACTIVE" | "ARCHIVED" | "INACTIVE";
 export type AdvisoryStatus = "ARCHIVED" | "DRAFT" | "PUBLISHED";
 export type AdvisoryTargetType = "ALL_MEMBERS" | "MEMBER" | "VILLAGE";
@@ -8,8 +8,8 @@ export type NotificationChannel = "EMAIL" | "IN_APP" | "PUSH" | "SMS";
 
 export type FpoMemberResponse = {
   age: number | null;
+  aadhaarNumber: string | null;
   alternateMobileNumber: string | null;
-  blockName: string | null;
   coordinatorName: string | null;
   coordinatorUserId: Id | null;
   createdAt: string;
@@ -22,6 +22,8 @@ export type FpoMemberResponse = {
   memberNumber: string;
   mobileNumber: string;
   status: FpoMemberStatus;
+  stateName: string;
+  taluka: string;
   tenantId: Id;
   updatedAt: string;
   userId: Id;
@@ -31,8 +33,8 @@ export type FpoMemberResponse = {
 
 export type CreateFpoMemberRequest = {
   age?: number;
+  aadhaarNumber?: string;
   alternateMobileNumber?: string;
-  blockName?: string;
   coordinatorUserId?: Id;
   dateOfBirth?: string;
   displayName: string;
@@ -43,6 +45,8 @@ export type CreateFpoMemberRequest = {
   mobileNumber: string;
   password?: string;
   status?: FpoMemberStatus;
+  stateName: string;
+  taluka: string;
   userId?: Id;
   username?: string;
   village: string;
@@ -59,12 +63,12 @@ export type FarmLandholdingResponse = {
   createdAt: string;
   cultivableAreaAcres: number | null;
   id: Id;
-  irrigationSource: string | null;
+  irrigationSource: string;
   memberId: Id;
   memberNumber: string;
-  ownershipType: string | null;
+  ownershipType: string;
   status: FarmRecordStatus;
-  surveyNumber: string | null;
+  surveyNumber: string;
   tenantId: Id;
   totalAreaAcres: number;
   updatedAt: string;
@@ -72,10 +76,10 @@ export type FarmLandholdingResponse = {
 
 export type CreateFarmLandholdingRequest = {
   cultivableAreaAcres?: number;
-  irrigationSource?: string;
-  ownershipType?: string;
+  irrigationSource: string;
+  ownershipType: string;
   status?: FarmRecordStatus;
-  surveyNumber?: string;
+  surveyNumber: string;
   totalAreaAcres: number;
 };
 
@@ -89,8 +93,8 @@ export type FarmPlotResponse = {
   createdAt: string;
   id: Id;
   landholdingId: Id | null;
-  latitude: number | null;
-  longitude: number | null;
+  latitude: number;
+  longitude: number;
   memberId: Id;
   memberNumber: string;
   plotName: string;
@@ -103,8 +107,8 @@ export type FarmPlotResponse = {
 export type CreateFarmPlotRequest = {
   areaAcres: number;
   landholdingId?: Id;
-  latitude?: number;
-  longitude?: number;
+  latitude: number;
+  longitude: number;
   plotName: string;
   soilType?: string;
   status?: FarmRecordStatus;
@@ -117,6 +121,36 @@ export type UpdateFarmPlotRequest = Required<
 
 export type UpdateFarmRecordStatusRequest = {
   status: FarmRecordStatus;
+};
+
+export type FpoSoilProfileResponse = {
+  createdAt: string;
+  id: Id;
+  memberId: Id;
+  memberNumber: string;
+  nitrogen: number | null;
+  notes: string | null;
+  ph: number | null;
+  phosphorus: number | null;
+  potassium: number | null;
+  reportContentType: string | null;
+  reportFileName: string | null;
+  reportUrl: string | null;
+  soilOrganicCarbon: number | null;
+  tenantId: Id;
+  updatedAt: string;
+};
+
+export type FpoSoilProfileRequest = {
+  nitrogen?: number;
+  notes?: string;
+  ph?: number;
+  phosphorus?: number;
+  potassium?: number;
+  reportContentType?: string;
+  reportFileName?: string;
+  reportUrl?: string;
+  soilOrganicCarbon?: number;
 };
 
 export type CropPlanStatus = "CANCELLED" | "COMPLETED" | "CONFIRMED" | "DRAFT";

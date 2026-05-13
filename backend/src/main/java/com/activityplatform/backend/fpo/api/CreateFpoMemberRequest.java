@@ -42,19 +42,32 @@ public record CreateFpoMemberRequest(
         message = "Alternate mobile number format is invalid."
     )
     String alternateMobileNumber,
+    @Size(max = 12)
+    @Pattern(
+        regexp = "^\\s*$|^[0-9]{12}$",
+        message = "Aadhaar number must be 12 digits when provided."
+    )
+    String aadhaarNumber,
     @NotBlank
     @Size(max = 160)
     String village,
+    @NotBlank
     @Size(max = 160)
-    String blockName,
+    String taluka,
+    @NotBlank
     @Size(max = 160)
     String districtName,
+    @NotBlank
+    @Size(max = 160)
+    String stateName,
+    @NotBlank
     @Size(max = 32)
     String gender,
     LocalDate dateOfBirth,
     @Min(0)
     @Max(120)
     Integer age,
+    @NotBlank
     @Size(max = 80)
     String farmerCategory,
     UUID coordinatorUserId,

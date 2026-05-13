@@ -41,15 +41,22 @@ public class FpoMemberProfileEntity {
   @Column(name = "alternate_mobile_number")
   private String alternateMobileNumber;
 
+  @Column(name = "aadhaar_number")
+  private String aadhaarNumber;
+
   @Column(nullable = false)
   private String village;
 
-  @Column(name = "block_name")
-  private String blockName;
+  @Column(nullable = false)
+  private String taluka;
 
-  @Column(name = "district_name")
+  @Column(name = "district_name", nullable = false)
   private String districtName;
 
+  @Column(name = "state_name", nullable = false)
+  private String stateName;
+
+  @Column(nullable = false)
   private String gender;
 
   @Column(name = "date_of_birth")
@@ -57,7 +64,7 @@ public class FpoMemberProfileEntity {
 
   private Integer age;
 
-  @Column(name = "farmer_category")
+  @Column(name = "farmer_category", nullable = false)
   private String farmerCategory;
 
   @ManyToOne(fetch = FetchType.LAZY)
@@ -85,9 +92,11 @@ public class FpoMemberProfileEntity {
       String displayName,
       String mobileNumber,
       String alternateMobileNumber,
+      String aadhaarNumber,
       String village,
-      String blockName,
+      String taluka,
       String districtName,
+      String stateName,
       String gender,
       LocalDate dateOfBirth,
       Integer age,
@@ -103,9 +112,11 @@ public class FpoMemberProfileEntity {
     this.displayName = displayName;
     this.mobileNumber = mobileNumber;
     this.alternateMobileNumber = alternateMobileNumber;
+    this.aadhaarNumber = aadhaarNumber;
     this.village = village;
-    this.blockName = blockName;
+    this.taluka = taluka;
     this.districtName = districtName;
+    this.stateName = stateName;
     this.gender = gender;
     this.dateOfBirth = dateOfBirth;
     this.age = age;
@@ -144,16 +155,24 @@ public class FpoMemberProfileEntity {
     return alternateMobileNumber;
   }
 
+  public String getAadhaarNumber() {
+    return aadhaarNumber;
+  }
+
   public String getVillage() {
     return village;
   }
 
-  public String getBlockName() {
-    return blockName;
+  public String getTaluka() {
+    return taluka;
   }
 
   public String getDistrictName() {
     return districtName;
+  }
+
+  public String getStateName() {
+    return stateName;
   }
 
   public String getGender() {
@@ -193,9 +212,11 @@ public class FpoMemberProfileEntity {
       String displayName,
       String mobileNumber,
       String alternateMobileNumber,
+      String aadhaarNumber,
       String village,
-      String blockName,
+      String taluka,
       String districtName,
+      String stateName,
       String gender,
       LocalDate dateOfBirth,
       Integer age,
@@ -208,9 +229,11 @@ public class FpoMemberProfileEntity {
     this.displayName = displayName;
     this.mobileNumber = mobileNumber;
     this.alternateMobileNumber = alternateMobileNumber;
+    this.aadhaarNumber = aadhaarNumber;
     this.village = village;
-    this.blockName = blockName;
+    this.taluka = taluka;
     this.districtName = districtName;
+    this.stateName = stateName;
     this.gender = gender;
     this.dateOfBirth = dateOfBirth;
     this.age = age;

@@ -60,16 +60,16 @@ class UserControllerIT {
   private JwtService jwtService;
 
   private String adminToken;
-  private String participantToken;
+  private String FIELD_COORDINATORToken;
   private TenantEntity tenant;
-  private UserEntity participantUser;
+  private UserEntity FIELD_COORDINATORUser;
   private UserEntity otherTenantUser;
 
   @BeforeEach
   void setup() {
     tenant = tenantRepository.save(TestDataFactory.tenant("tenant-" + UUID.randomUUID()));
     RoleEntity adminRole = roleRepository.save(TestDataFactory.role(tenant, Role.ADMIN));
-    RoleEntity participantRole = roleRepository.save(TestDataFactory.role(tenant, Role.PARTICIPANT));
+    RoleEntity FIELD_COORDINATORRole = roleRepository.save(TestDataFactory.role(tenant, Role.FIELD_COORDINATOR));
 
     UserEntity adminUser = userRepository.save(TestDataFactory.user(
         tenant,
@@ -78,34 +78,34 @@ class UserControllerIT {
         "Admin User",
         adminRole
     ));
-    participantUser = userRepository.save(TestDataFactory.user(
+    FIELD_COORDINATORUser = userRepository.save(TestDataFactory.user(
         tenant,
-        "participant-" + UUID.randomUUID(),
-        passwordEncoder.encode("participant123"),
-        "Participant User",
-        participantRole
+        "FIELD_COORDINATOR-" + UUID.randomUUID(),
+        passwordEncoder.encode("FIELD_COORDINATOR123"),
+        "FIELD_COORDINATOR User",
+        FIELD_COORDINATORRole
     ));
 
     TenantEntity otherTenant = tenantRepository.save(
         TestDataFactory.tenant("tenant-" + UUID.randomUUID())
     );
-    RoleEntity otherParticipantRole = roleRepository.save(
-        TestDataFactory.role(otherTenant, Role.PARTICIPANT)
+    RoleEntity otherFIELD_COORDINATORRole = roleRepository.save(
+        TestDataFactory.role(otherTenant, Role.FIELD_COORDINATOR)
     );
     otherTenantUser = userRepository.save(TestDataFactory.user(
         otherTenant,
         "other-" + UUID.randomUUID(),
-        passwordEncoder.encode("participant123"),
+        passwordEncoder.encode("FIELD_COORDINATOR123"),
         "Other Tenant User",
-        otherParticipantRole
+        otherFIELD_COORDINATORRole
     ));
 
     adminToken = jwtService.issueTokens(adminUser).accessToken();
-    participantToken = jwtService.issueTokens(participantUser).accessToken();
+    FIELD_COORDINATORToken = jwtService.issueTokens(FIELD_COORDINATORUser).accessToken();
   }
 
   @Test
-  void testCreateParticipantAsAdmin() throws Exception {
+  void testCreateFIELD_COORDINATORAsAdmin() throws Exception {
     long auditCount = auditEventRepository.count();
     String username = "Farmer.Profile-" + UUID.randomUUID();
     CreateUserRequest request = new CreateUserRequest(
@@ -128,7 +128,7 @@ class UserControllerIT {
         .andExpect(jsonPath("$.data.phone").value("+91 99999 00000"))
         .andExpect(jsonPath("$.data.locationName").value("Nashik"))
         .andExpect(jsonPath("$.data.siteName").value("Plot 14"))
-        .andExpect(jsonPath("$.data.roles[0]").value("PARTICIPANT"))
+        .andExpect(jsonPath("$.data.roles[0]").value("FIELD_COORDINATOR"))
         .andExpect(jsonPath("$.data.password").doesNotExist())
         .andExpect(jsonPath("$.data.passwordHash").doesNotExist());
 
@@ -137,12 +137,12 @@ class UserControllerIT {
         .orElseThrow();
     assertThat(passwordEncoder.matches("password123", savedUser.getPasswordHash())).isTrue();
     assertThat(savedUser.getRoles()).extracting(RoleEntity::getCode)
-        .containsExactly(Role.PARTICIPANT.name());
+        .containsExactly(Role.FIELD_COORDINATOR.name());
     assertThat(auditEventRepository.count()).isEqualTo(auditCount + 1);
   }
 
   @Test
-  void testCreateParticipantRejectsDuplicateUsername() throws Exception {
+  void testCreateFIELD_COORDINATORRejectsDuplicateUsername() throws Exception {
     String username = "duplicate-" + UUID.randomUUID();
     CreateUserRequest firstRequest = new CreateUserRequest(
         username,
@@ -176,7 +176,7 @@ class UserControllerIT {
   }
 
   @Test
-  void testCreateParticipantForbiddenForParticipant() throws Exception {
+  void testCreateFIELD_COORDINATORForbiddenForFIELD_COORDINATOR() throws Exception {
     CreateUserRequest request = new CreateUserRequest(
         "blocked-" + UUID.randomUUID(),
         "password123",
@@ -187,7 +187,7 @@ class UserControllerIT {
     );
 
     mockMvc.perform(post("/api/v1/users")
-            .header("Authorization", "Bearer " + participantToken)
+            .header("Authorization", "Bearer " + FIELD_COORDINATORToken)
             .contentType("application/json")
             .content(jsonMapper.writeValueAsString(request)))
         .andExpect(status().isForbidden())
@@ -195,7 +195,7 @@ class UserControllerIT {
   }
 
   @Test
-  void testCreateParticipantValidatesRequest() throws Exception {
+  void testCreateFIELD_COORDINATORValidatesRequest() throws Exception {
     CreateUserRequest request = new CreateUserRequest(
         "-invalid",
         "short",
@@ -228,12 +228,12 @@ class UserControllerIT {
 
   @Test
   void testGetUser() throws Exception {
-    mockMvc.perform(get("/api/v1/users/" + participantUser.getId())
+    mockMvc.perform(get("/api/v1/users/" + FIELD_COORDINATORUser.getId())
             .header("Authorization", "Bearer " + adminToken))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.success").value(true))
-        .andExpect(jsonPath("$.data.id").value(participantUser.getId().toString()))
-        .andExpect(jsonPath("$.data.displayName").value("Participant User"));
+        .andExpect(jsonPath("$.data.id").value(FIELD_COORDINATORUser.getId().toString()))
+        .andExpect(jsonPath("$.data.displayName").value("FIELD_COORDINATOR User"));
   }
 
   @Test
@@ -244,22 +244,22 @@ class UserControllerIT {
   }
 
   @Test
-  void testGetCurrentUserProfileAsParticipant() throws Exception {
+  void testGetCurrentUserProfileAsFIELD_COORDINATOR() throws Exception {
     mockMvc.perform(get("/api/v1/users/me")
-            .header("Authorization", "Bearer " + participantToken))
+            .header("Authorization", "Bearer " + FIELD_COORDINATORToken))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.success").value(true))
-        .andExpect(jsonPath("$.data.id").value(participantUser.getId().toString()))
-        .andExpect(jsonPath("$.data.username").value(participantUser.getUsername()))
-        .andExpect(jsonPath("$.data.displayName").value("Participant User"))
+        .andExpect(jsonPath("$.data.id").value(FIELD_COORDINATORUser.getId().toString()))
+        .andExpect(jsonPath("$.data.username").value(FIELD_COORDINATORUser.getUsername()))
+        .andExpect(jsonPath("$.data.displayName").value("FIELD_COORDINATOR User"))
         .andExpect(jsonPath("$.data.phone").value("+91 00000 00000"))
         .andExpect(jsonPath("$.data.locationName").value("Test Location"))
         .andExpect(jsonPath("$.data.siteName").value("Test Site"))
-        .andExpect(jsonPath("$.data.roles[0]").value("PARTICIPANT"));
+        .andExpect(jsonPath("$.data.roles[0]").value("FIELD_COORDINATOR"));
   }
 
   @Test
-  void testUpdateParticipantAsAdmin() throws Exception {
+  void testUpdateFIELD_COORDINATORAsAdmin() throws Exception {
     long auditCount = auditEventRepository.count();
     UpdateUserRequest request = new UpdateUserRequest(
         "Updated Farmer",
@@ -268,7 +268,7 @@ class UserControllerIT {
         "Updated Plot"
     );
 
-    mockMvc.perform(put("/api/v1/users/" + participantUser.getId())
+    mockMvc.perform(put("/api/v1/users/" + FIELD_COORDINATORUser.getId())
             .header("Authorization", "Bearer " + adminToken)
             .contentType("application/json")
             .content(jsonMapper.writeValueAsString(request)))
@@ -283,11 +283,11 @@ class UserControllerIT {
   }
 
   @Test
-  void testUpdateParticipantStatusAsAdmin() throws Exception {
+  void testUpdateFIELD_COORDINATORStatusAsAdmin() throws Exception {
     long auditCount = auditEventRepository.count();
     UpdateUserStatusRequest request = new UpdateUserStatusRequest(UserStatus.INACTIVE);
 
-    mockMvc.perform(patch("/api/v1/users/" + participantUser.getId() + "/status")
+    mockMvc.perform(patch("/api/v1/users/" + FIELD_COORDINATORUser.getId() + "/status")
             .header("Authorization", "Bearer " + adminToken)
             .contentType("application/json")
             .content(jsonMapper.writeValueAsString(request)))
@@ -295,7 +295,7 @@ class UserControllerIT {
         .andExpect(jsonPath("$.success").value(true))
         .andExpect(jsonPath("$.data.status").value("INACTIVE"));
 
-    UserEntity savedUser = userRepository.findById(participantUser.getId()).orElseThrow();
+    UserEntity savedUser = userRepository.findById(FIELD_COORDINATORUser.getId()).orElseThrow();
     assertThat(savedUser.getStatus()).isEqualTo("INACTIVE");
     assertThat(auditEventRepository.count()).isEqualTo(auditCount + 1);
   }

@@ -11,10 +11,10 @@ checks.
 
 | Area | Phase 1 Decision | Current Implementation Status |
 | ---- | ---------------- | ----------------------------- |
-| Roles | `ADMIN`, `FPO_MANAGER`, `FIELD_COORDINATOR`; no farmer login | Needs code alignment from `SUPERVISOR`/`PARTICIPANT`. |
-| Farmer profile | Final mandatory fields approved | Needs schema/API/UI alignment for taluka, state, Aadhaar, suspended, FPO ownership. |
-| Soil profile | Required for existing lab reports; blank allowed | New Phase 1 implementation work. |
-| Land/GPS | GPS point only, acres, approved ownership/irrigation values | Foundation exists; labels/options need alignment. |
+| Roles | `ADMIN`, `FPO_MANAGER`, `FIELD_COORDINATOR`; no farmer login | Role foundation is aligned in app code; scoped FPO ownership tests remain separate. |
+| Farmer profile | Final mandatory fields implemented | Taluka, state, optional Aadhaar, approved gender/category values, Indian mobile normalization, and suspended status are aligned; FPO ownership/scoping remains separate. |
+| Soil profile | Required for existing lab reports; blank allowed | Phase 1 backend API, schema, admin entry UI, optional report link/metadata, and tests are implemented without carbon calculation. |
+| Land/GPS | GPS point only, acres, approved ownership/irrigation values | Phase 1 schema, API validation, admin UI controls, and tests are aligned. |
 | Crop planning | Crop list, seasons, crop year, and statuses approved | Foundation exists; crop year/date/status details need alignment. |
 | Input demand | Confirmed plans only, fixed per-acre defaults, 5% buffer | Foundation exists; buffer/rounding/report output need alignment. |
 | Advisory | Text plus multiple images; all members or crop target | Foundation exists; image attachments and crop targeting need alignment. |
@@ -63,12 +63,14 @@ stored for future use and must not drive carbon calculations in Phase 1.
 
 | Field | Required | Validation / Values | Notes |
 | ----- | -------- | ------------------- | ----- |
-| SOC | No | Decimal | Soil organic carbon from lab report. |
-| pH | No | Decimal | Lab report value. |
-| Nitrogen (N) | No | Decimal/text unit support | Lab report value. |
-| Phosphorus (P) | No | Decimal/text unit support | Lab report value. |
-| Potassium (K) | No | Decimal/text unit support | Lab report value. |
-| Report attachment | No | PDF/image | Store link in cloud storage when uploaded. |
+| SOC | No | Non-negative decimal | Soil organic carbon from lab report. |
+| pH | No | Decimal from 0 to 14 | Lab report value. |
+| Nitrogen (N) | No | Non-negative decimal | Lab report value. |
+| Phosphorus (P) | No | Non-negative decimal | Lab report value. |
+| Potassium (K) | No | Non-negative decimal | Lab report value. |
+| Report file name | No | Text | Optional attachment metadata. |
+| Report URL | No | HTTP/HTTPS URL | Stores a cloud link when a report is uploaded or available. |
+| Notes | No | Text | Internal context for existing lab reports. |
 
 ## Landholding And GPS
 

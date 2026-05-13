@@ -52,9 +52,9 @@ Backend foundation:
 - PostgreSQL persistence and Flyway base schema.
 - JWT login, refresh, current-user endpoint, and role-based access.
 - Tenant-aware users and roles.
-- Legacy roles currently in code: `ADMIN`, `SUPERVISOR`, `PARTICIPANT`.
+- Legacy roles currently in code: `ADMIN`, `FPO_MANAGER`, `FIELD_COORDINATOR`.
   Phase 1 target roles are `ADMIN`, `FPO_MANAGER`, and `FIELD_COORDINATOR`.
-- Admin/supervisor participant profile management.
+- Admin/FPO_MANAGER FIELD_COORDINATOR profile management.
 - Role management APIs.
 - Configurable workflow definitions.
 - Activity creation and task timeline APIs.
@@ -76,10 +76,10 @@ Frontend foundation:
 - Expo React Native + TypeScript app.
 - Backend-first login.
 - Admin dashboard foundation.
-- Participant dashboard foundation.
+- FIELD_COORDINATOR dashboard foundation.
 - Admin FPO member management connected to backend.
 - Admin workflow list/create/assign flows connected to backend.
-- Participant activity timeline connected to backend.
+- FIELD_COORDINATOR activity timeline connected to backend.
 - Proof photo upload connected to backend evidence API.
 - Admin evidence review screen.
 - Admin roles tab.
@@ -111,7 +111,7 @@ Infrastructure and documentation:
 - GitHub CI workflow for frontend and backend checks.
 - Security/dependency scan workflow.
 - Deployment guide and production checklist.
-- Architecture, database, QA, supervisor, and component diagram docs.
+- Architecture, database, QA, FPO_MANAGER, and component diagram docs.
 
 ### Remaining FPO MVP Boundaries
 
@@ -153,18 +153,18 @@ decision register:
 | Mobile app for farmers/coordinators | Future for farmers, partial for coordinators | Farmer mobile app is excluded from Phase 1; coordinators use the admin web dashboard on laptop/tablet.                          |
 | Web/admin dashboard                 | Partial                        | Admin foundation and FPO dashboard summary API exist; align dashboard to locked Phase 1 fields and role scopes.                 |
 | Backend APIs and database           | Strong foundation              | FPO schema, member, land/plot, crop, season, history, crop plan, input catalog, input rule, and demand estimate APIs now exist. |
-| Farmer registration                 | Done for admin-created members | Participant creation plus FPO member profile API exists and admin UI is connected.                                              |
+| Farmer registration                 | Done for admin-created members | FIELD_COORDINATOR creation plus FPO member profile API exists and admin UI is connected.                                              |
 | Mobile number authentication        | Future                         | OTP/SMS is explicitly excluded from Phase 1.                                                                                     |
 | Farmer profile management           | Functional foundation done     | Align to full name, mobile, Aadhaar optional, village/taluka/district/state, gender, category, status, FPO, coordinator.        |
-| Landholding capture                 | Functional foundation done     | Align labels/options to survey/khasra, acres, ownership, irrigation, GPS latitude/longitude.                                    |
-| GPS farm geo-tagging                | Functional foundation done     | Plot coordinate fields, APIs, manual coordinate entry, and browser/device GPS capture exist.                                    |
+| Landholding capture                 | Done                           | Survey/khasra, acres, approved ownership, approved irrigation, schema checks, API validation, and admin UI controls are aligned. |
+| GPS farm geo-tagging                | Done                           | GPS latitude/longitude are required for Phase 1 plot records; manual entry and browser/device GPS capture exist.                |
 | Crop history                        | Done                           | Backend APIs and admin UI exist.                                                                                                |
 | Current crop capture                | Partial                        | Seasonal crop plans now capture current plans; mobile farmer-side view and workflow linkage remain.                             |
 | Seasonal crop planning              | Done                           | Crop, season, crop history, and crop plan APIs/UI exist.                                                                        |
 | Acreage/input demand engine         | Functional foundation done     | Input catalog, crop input rules, calculation service, summary APIs, and admin UI exist.                                         |
 | Basic notifications/advisory        | Backend ready                  | Advisory records and targeted read APIs exist; frontend UI remains.                                                             |
 | Reports and Excel export            | FPO backend export foundation  | Refactor to approved `Farmer Register`, `Crop Plan Summary`, and `Input Demand` sheets.                                         |
-| Role-based access control           | Partial                        | Replace legacy supervisor assumptions with `FPO_MANAGER` and `FIELD_COORDINATOR` plus FPO scoping.                              |
+| Role-based access control           | Partial                        | Replace legacy FPO_MANAGER assumptions with `FPO_MANAGER` and `FIELD_COORDINATOR` plus FPO scoping.                              |
 | Testing and deployment support      | Strong foundation              | Add tests for new FPO modules.                                                                                                  |
 
 Live coverage percentages are tracked only in
@@ -292,7 +292,7 @@ Acceptance criteria:
 
 Goal:
 
-- Replace generic participant profile UI with real farmer/member profile
+- Replace generic FIELD_COORDINATOR profile UI with real farmer/member profile
   management.
 
 Backend tasks:
@@ -303,7 +303,7 @@ Backend tasks:
 - Done: Add `GET /api/v1/fpo/members/{memberId}`.
 - Done: Add `PUT /api/v1/fpo/members/{memberId}`.
 - Done: Add `PATCH /api/v1/fpo/members/{memberId}/status`.
-- Done: Allow admin/supervisor to create platform user + FPO member profile together.
+- Done: Allow admin/FPO_MANAGER to create platform user + FPO member profile together.
 - Done: Validate member number and mobile number uniqueness per tenant.
 - Done: Record audit events: `FPO_MEMBER_CREATED`, `FPO_MEMBER_UPDATED`,
   `FPO_MEMBER_STATUS_CHANGED`.
@@ -311,7 +311,7 @@ Backend tasks:
 
 Frontend tasks:
 
-- Done: Rename participant UI labels to farmer/member where appropriate.
+- Done: Rename FIELD_COORDINATOR UI labels to farmer/member where appropriate.
 - Done: Add admin member list screen with search.
 - Done: Add member create/edit form.
 - Done: Show linked login username and status.
@@ -333,14 +333,14 @@ Suggested fields:
 - Gender.
 - Age or date of birth.
 - Farmer category.
-- Coordinator/supervisor assignment.
+- Coordinator/FPO_MANAGER assignment.
 - Status.
 
 Tests:
 
 - Admin can create member.
-- Supervisor can create member if allowed by business rule.
-- Participant cannot create member.
+- FPO_MANAGER can create member if allowed by business rule.
+- FIELD_COORDINATOR cannot create member.
 - Duplicate mobile/member number returns validation error.
 - Member list is tenant-scoped.
 
@@ -450,7 +450,7 @@ Frontend tasks:
 - Done: Add member crop history section.
 - Done: Add current season crop planning screen.
 - Done: Show planned acreage, farmer count, village count, and plan count.
-- Pending: Allow admin/supervisor to start workflow/activity from a crop plan.
+- Pending: Allow admin/FPO_MANAGER to start workflow/activity from a crop plan.
 
 Suggested crop plan fields:
 
@@ -569,14 +569,14 @@ Frontend tasks:
 
 - Done: Add admin advisory list.
 - Done: Add advisory create form.
-- Done: Add farmer/participant advisory list inside the carbon tab.
+- Done: Add farmer/FIELD_COORDINATOR advisory list inside the carbon tab.
 - Done: Add status filters and crop/season/member/village targeting controls.
 
 Tests:
 
 - Pending: Automated test coverage is skipped for now per current development direction.
-- Done: Admin/supervisor can create advisory.
-- Done: Participant can view targeted published advisories only.
+- Done: Admin/FPO_MANAGER can create advisory.
+- Done: FIELD_COORDINATOR can view targeted published advisories only.
 - Done: Advisory status changes are audited.
 
 Acceptance criteria:
@@ -835,7 +835,7 @@ MVP.
 1. Done: Add `fpo` backend package and Flyway migration for
    member/land/plot/crop/input foundation.
 2. Done: Add member profile APIs and integration tests.
-3. Done: Convert admin participant UI into farmer/member management UI.
+3. Done: Convert admin FIELD_COORDINATOR UI into farmer/member management UI.
 4. Done: Add landholding and plot APIs.
 5. Done: Add landholding and plot UI with GPS coordinate capture.
 6. Done: Add crop catalog and season setup APIs.

@@ -64,8 +64,8 @@ For local development, run with the `local` profile or set environment variables
 $env:SPRING_PROFILES_ACTIVE="local"
 $env:APP_SEED_ADMIN_USERNAME="<admin-username>"
 $env:APP_SEED_ADMIN_PASSWORD="<admin-password>"
-$env:APP_SEED_PARTICIPANT_USERNAME="<participant-username>"
-$env:APP_SEED_PARTICIPANT_PASSWORD="<participant-password>"
+$env:APP_SEED_FIELD_COORDINATOR_USERNAME="<FIELD_COORDINATOR-username>"
+$env:APP_SEED_FIELD_COORDINATOR_PASSWORD="<FIELD_COORDINATOR-password>"
 ```
 
 Do not display default credentials in frontend screens.

@@ -89,12 +89,8 @@ async function getLocalAccounts(): Promise<Account[]> {
 }
 
 function normalizeRole(role: string | null): Role | null {
-  if (role === "admin" || role === "supervisor" || role === "participant") {
+  if (role === "admin" || role === "fpoManager" || role === "fieldCoordinator") {
     return role;
-  }
-
-  if (role === "user") {
-    return "participant";
   }
 
   return null;

@@ -56,7 +56,7 @@ public class FpoAdvisoryController {
   }
 
   @PostMapping
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER')")
   ApiResponse<FpoAdvisoryResponse> create(
       Authentication authentication,
       @Valid @RequestBody FpoAdvisoryRequest request
@@ -68,7 +68,7 @@ public class FpoAdvisoryController {
   }
 
   @PatchMapping("/{advisoryId}/status")
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER')")
   ApiResponse<FpoAdvisoryResponse> updateStatus(
       Authentication authentication,
       @PathVariable UUID advisoryId,

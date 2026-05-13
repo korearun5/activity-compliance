@@ -76,7 +76,11 @@ public class FpoAdvisoryService {
       String targetVillage
   ) {
     requireAdvisoryModule(currentUser);
-    FpoMemberProfileEntity ownMember = currentUser.hasAnyRole(Role.ADMIN, Role.SUPERVISOR)
+    FpoMemberProfileEntity ownMember = currentUser.hasAnyRole(
+        Role.ADMIN,
+        Role.FPO_MANAGER,
+        Role.FIELD_COORDINATOR
+    )
         ? null
         : ownMember(currentUser);
 
@@ -97,7 +101,7 @@ public class FpoAdvisoryService {
   public FpoAdvisoryResponse get(CurrentUser currentUser, UUID advisoryId) {
     requireAdvisoryModule(currentUser);
     FpoAdvisoryEntity advisory = requireAdvisory(currentUser, advisoryId);
-    if (!currentUser.hasAnyRole(Role.ADMIN, Role.SUPERVISOR)
+    if (!currentUser.hasAnyRole(Role.ADMIN, Role.FPO_MANAGER, Role.FIELD_COORDINATOR)
         && !isVisibleToMember(advisory, ownMember(currentUser))) {
       throw accessDenied("You do not have permission to view this advisory.");
     }
@@ -258,8 +262,8 @@ public class FpoAdvisoryService {
   }
 
   private void requireManager(CurrentUser currentUser) {
-    if (!currentUser.hasAnyRole(Role.ADMIN, Role.SUPERVISOR)) {
-      throw accessDenied("Only admins and supervisors can manage advisories.");
+    if (!currentUser.hasAnyRole(Role.ADMIN, Role.FPO_MANAGER)) {
+      throw accessDenied("Only admins and FPO managers can manage advisories.");
     }
   }
 

@@ -80,19 +80,19 @@ class FarmAssetControllerIT {
   private JwtService jwtService;
 
   private String adminToken;
-  private String participantToken;
+  private String FIELD_COORDINATORToken;
   private String disabledTenantAdminToken;
   private TenantEntity tenant;
   private UserEntity adminUser;
-  private UserEntity participantUser;
+  private UserEntity FIELD_COORDINATORUser;
   private FpoMemberProfileEntity member;
 
   @BeforeEach
   void setup() {
     tenant = tenantRepository.save(TestDataFactory.tenant("tenant-" + UUID.randomUUID()));
     RoleEntity adminRole = roleRepository.save(TestDataFactory.role(tenant, Role.ADMIN));
-    RoleEntity participantRole = roleRepository.save(
-        TestDataFactory.role(tenant, Role.PARTICIPANT)
+    RoleEntity FIELD_COORDINATORRole = roleRepository.save(
+        TestDataFactory.role(tenant, Role.FIELD_COORDINATOR)
     );
 
     adminUser = userRepository.save(TestDataFactory.user(
@@ -102,14 +102,14 @@ class FarmAssetControllerIT {
         "Admin User",
         adminRole
     ));
-    participantUser = userRepository.save(TestDataFactory.user(
+    FIELD_COORDINATORUser = userRepository.save(TestDataFactory.user(
         tenant,
-        "participant-" + UUID.randomUUID(),
-        passwordEncoder.encode("participant123"),
-        "Participant User",
-        participantRole
+        "FIELD_COORDINATOR-" + UUID.randomUUID(),
+        passwordEncoder.encode("FIELD_COORDINATOR123"),
+        "FIELD_COORDINATOR User",
+        FIELD_COORDINATORRole
     ));
-    member = memberRepository.save(member(tenant, participantUser, adminUser, "MEM-1"));
+    member = memberRepository.save(member(tenant, FIELD_COORDINATORUser, adminUser, "MEM-1"));
     enableModule(tenant, ModuleCode.LAND_RECORDS);
 
     TenantEntity disabledTenant = tenantRepository.save(
@@ -127,7 +127,7 @@ class FarmAssetControllerIT {
     ));
 
     adminToken = jwtService.issueTokens(adminUser).accessToken();
-    participantToken = jwtService.issueTokens(participantUser).accessToken();
+    FIELD_COORDINATORToken = jwtService.issueTokens(FIELD_COORDINATORUser).accessToken();
     disabledTenantAdminToken = jwtService.issueTokens(disabledTenantAdmin).accessToken();
   }
 
@@ -137,8 +137,8 @@ class FarmAssetControllerIT {
         "S-100",
         new BigDecimal("5.5000"),
         new BigDecimal("4.5000"),
-        "OWNED",
-        "CANAL",
+        "Self-owned",
+        "Canal",
         FarmRecordStatus.ACTIVE
     );
 
@@ -164,8 +164,8 @@ class FarmAssetControllerIT {
         "S-101",
         new BigDecimal("6.0000"),
         new BigDecimal("5.2500"),
-        "LEASED",
-        "BOREWELL",
+        "Leased-in",
+        "Borewell",
         FarmRecordStatus.ACTIVE
     );
 
@@ -175,7 +175,7 @@ class FarmAssetControllerIT {
             .content(jsonMapper.writeValueAsString(updateRequest)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.data.surveyNumber").value("S-101"))
-        .andExpect(jsonPath("$.data.ownershipType").value("LEASED"));
+        .andExpect(jsonPath("$.data.ownershipType").value("Leased-in"));
 
     mockMvc.perform(patch("/api/v1/fpo/landholdings/" + created.id() + "/status")
             .header("Authorization", "Bearer " + adminToken)
@@ -188,7 +188,7 @@ class FarmAssetControllerIT {
   }
 
   @Test
-  void testAdminCanCreatePlotAndParticipantCanReadOwnPlots() throws Exception {
+  void testAdminCanCreatePlotAndFIELD_COORDINATORCanReadOwnPlots() throws Exception {
     FarmLandholdingEntity landholding = landholdingRepository.save(new FarmLandholdingEntity(
         UUID.randomUUID(),
         tenant,
@@ -196,8 +196,8 @@ class FarmAssetControllerIT {
         "P-12",
         new BigDecimal("3.0000"),
         new BigDecimal("2.5000"),
-        "OWNED",
-        "RAIN",
+        "Self-owned",
+        "Rainfed",
         FarmRecordStatus.ACTIVE,
         Instant.now()
     ));
@@ -225,7 +225,7 @@ class FarmAssetControllerIT {
     FarmPlotResponse created = readData(response, FarmPlotResponse.class);
 
     mockMvc.perform(get("/api/v1/fpo/members/" + member.getId() + "/plots")
-            .header("Authorization", "Bearer " + participantToken))
+            .header("Authorization", "Bearer " + FIELD_COORDINATORToken))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.data[0].id").value(created.id().toString()));
 
@@ -263,8 +263,8 @@ class FarmAssetControllerIT {
         "S-200",
         new BigDecimal("2.0000"),
         new BigDecimal("3.0000"),
-        "OWNED",
-        "CANAL",
+        "Self-owned",
+        "Canal",
         FarmRecordStatus.ACTIVE
     );
 
@@ -278,16 +278,16 @@ class FarmAssetControllerIT {
 
   @Test
   void testPlotCannotUseAnotherMembersLandholding() throws Exception {
-    UserEntity otherParticipant = userRepository.save(TestDataFactory.user(
+    UserEntity otherFIELD_COORDINATOR = userRepository.save(TestDataFactory.user(
         tenant,
         "other-" + UUID.randomUUID(),
-        passwordEncoder.encode("participant123"),
-        "Other Participant",
-        roleRepository.findByTenantIdAndCodeIgnoreCase(tenant.getId(), Role.PARTICIPANT.name())
+        passwordEncoder.encode("FIELD_COORDINATOR123"),
+        "Other FIELD_COORDINATOR",
+        roleRepository.findByTenantIdAndCodeIgnoreCase(tenant.getId(), Role.FIELD_COORDINATOR.name())
             .orElseThrow()
     ));
     FpoMemberProfileEntity otherMember = memberRepository.save(
-        member(tenant, otherParticipant, adminUser, "MEM-2")
+        member(tenant, otherFIELD_COORDINATOR, adminUser, "MEM-2")
     );
     FarmLandholdingEntity otherLandholding = landholdingRepository.save(new FarmLandholdingEntity(
         UUID.randomUUID(),
@@ -296,8 +296,8 @@ class FarmAssetControllerIT {
         "OTHER",
         new BigDecimal("2.0000"),
         new BigDecimal("2.0000"),
-        "OWNED",
-        "RAIN",
+        "Self-owned",
+        "Rainfed",
         FarmRecordStatus.ACTIVE,
         Instant.now()
     ));
@@ -305,8 +305,8 @@ class FarmAssetControllerIT {
         otherLandholding.getId(),
         "Wrong Plot",
         new BigDecimal("1.0000"),
-        null,
-        null,
+        new BigDecimal("19.8765432"),
+        new BigDecimal("73.1234567"),
         null,
         FarmRecordStatus.ACTIVE
     );
@@ -342,9 +342,11 @@ class FarmAssetControllerIT {
         user.getDisplayName(),
         phoneFor(memberNumber),
         null,
+        null,
         "Village",
         "Block",
         "District",
+        "Maharashtra",
         "MALE",
         null,
         42,

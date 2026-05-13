@@ -17,9 +17,9 @@ import { storageKeys } from "../core/storage/storageKeys";
 import { CropCycle, ProofSubmission } from "./agricultureConfig";
 
 export type FpoMember = ManagedUser & {
+  aadhaarNumber?: string;
   age?: number;
   alternateMobileNumber?: string;
-  blockName?: string;
   districtName?: string;
   farmerCategory?: string;
   gender?: string;
@@ -28,14 +28,16 @@ export type FpoMember = ManagedUser & {
   mobileNumber: string;
   name: string;
   region: string;
+  stateName: string;
+  taluka: string;
   userId: string;
   village: string;
 };
 
 export type CreateFpoMemberInput = {
+  aadhaarNumber?: string;
   age?: string;
   alternateMobileNumber?: string;
-  blockName?: string;
   districtName?: string;
   displayName: string;
   farmerCategory?: string;
@@ -43,6 +45,8 @@ export type CreateFpoMemberInput = {
   memberNumber: string;
   mobileNumber: string;
   password: string;
+  stateName: string;
+  taluka: string;
   username: string;
   village: string;
 };
@@ -109,9 +113,9 @@ export async function createFpoMember(input: CreateFpoMemberInput): Promise<FpoM
 
   await ensureLocalMemberAvailable(normalizedInput);
   return upsertLocalFpoMember({
+    aadhaarNumber: normalizedInput.aadhaarNumber,
     age: normalizedInput.age ? Number(normalizedInput.age) : undefined,
     alternateMobileNumber: normalizedInput.alternateMobileNumber,
-    blockName: normalizedInput.blockName,
     displayName: normalizedInput.displayName,
     districtName: normalizedInput.districtName,
     farmerCategory: normalizedInput.farmerCategory,
@@ -124,8 +128,10 @@ export async function createFpoMember(input: CreateFpoMemberInput): Promise<FpoM
     name: normalizedInput.displayName,
     phone: normalizedInput.mobileNumber,
     region: normalizedInput.village,
-    siteName: normalizedInput.blockName || normalizedInput.districtName || "Not set",
+    siteName: normalizedInput.taluka,
     status: "Active",
+    stateName: normalizedInput.stateName,
+    taluka: normalizedInput.taluka,
     userId: normalizedInput.username,
     username: normalizedInput.username,
     village: normalizedInput.village
@@ -134,7 +140,7 @@ export async function createFpoMember(input: CreateFpoMemberInput): Promise<FpoM
 
 export async function updateFpoMemberStatus(
   member: FpoMember,
-  status: Extract<UserStatus, "Active" | "Inactive">
+  status: Extract<UserStatus, "Active" | "Inactive" | "Suspended">
 ): Promise<FpoMember> {
   const accessToken = await getAccessToken();
 
@@ -198,9 +204,9 @@ export async function updateFpoMember(
 
   return upsertLocalFpoMember({
     ...member,
+    aadhaarNumber: normalizedInput.aadhaarNumber,
     age: normalizedInput.age ? Number(normalizedInput.age) : undefined,
     alternateMobileNumber: normalizedInput.alternateMobileNumber,
-    blockName: normalizedInput.blockName,
     displayName: normalizedInput.displayName,
     districtName: normalizedInput.districtName,
     farmerCategory: normalizedInput.farmerCategory,
@@ -211,10 +217,9 @@ export async function updateFpoMember(
     name: normalizedInput.displayName,
     phone: normalizedInput.mobileNumber,
     region: normalizedInput.village,
-    siteName:
-      [normalizedInput.blockName, normalizedInput.districtName]
-        .filter(Boolean)
-        .join(" / ") || "Not set",
+    siteName: normalizedInput.taluka,
+    stateName: normalizedInput.stateName,
+    taluka: normalizedInput.taluka,
     village: normalizedInput.village
   });
 }
@@ -284,14 +289,14 @@ async function ensureLocalMemberAvailable(input: CreateFpoMemberInput) {
 }
 
 function toFpoMember(response: FpoMemberResponse): FpoMember {
-  const siteName = [response.blockName, response.districtName]
+  const siteName = [response.taluka, response.districtName]
     .filter(Boolean)
     .join(" / ");
 
   return {
+    aadhaarNumber: response.aadhaarNumber ?? undefined,
     age: response.age ?? undefined,
     alternateMobileNumber: response.alternateMobileNumber ?? undefined,
-    blockName: response.blockName ?? undefined,
     displayName: response.displayName,
     districtName: response.districtName ?? undefined,
     farmerCategory: response.farmerCategory ?? undefined,
@@ -306,6 +311,8 @@ function toFpoMember(response: FpoMemberResponse): FpoMember {
     region: response.village,
     siteName: siteName || "Not set",
     status: toFrontendStatus(response.status),
+    stateName: response.stateName,
+    taluka: response.taluka,
     tenantId: response.tenantId,
     userId: response.userId,
     username: response.username,
@@ -319,6 +326,8 @@ function toStoredFpoMember(member: Partial<FpoMember>): FpoMember | null {
     typeof member.memberNumber !== "string" ||
     typeof member.displayName !== "string" ||
     typeof member.mobileNumber !== "string" ||
+    typeof member.stateName !== "string" ||
+    typeof member.taluka !== "string" ||
     typeof member.username !== "string" ||
     typeof member.userId !== "string" ||
     typeof member.village !== "string"
@@ -327,9 +336,9 @@ function toStoredFpoMember(member: Partial<FpoMember>): FpoMember | null {
   }
 
   return {
+    aadhaarNumber: member.aadhaarNumber,
     alternateMobileNumber: member.alternateMobileNumber,
     age: member.age,
-    blockName: member.blockName,
     displayName: member.displayName,
     districtName: member.districtName,
     farmerCategory: member.farmerCategory,
@@ -342,8 +351,10 @@ function toStoredFpoMember(member: Partial<FpoMember>): FpoMember | null {
     name: member.name ?? member.displayName,
     phone: member.phone ?? member.mobileNumber,
     region: member.region ?? member.village,
-    siteName: member.siteName ?? member.blockName ?? "Not set",
-    status: member.status ?? "Profile pending",
+    siteName: member.siteName ?? member.taluka,
+    status: member.status ?? "Inactive",
+    stateName: member.stateName,
+    taluka: member.taluka,
     tenantId: member.tenantId,
     userId: member.userId,
     username: member.username,
@@ -354,9 +365,9 @@ function toStoredFpoMember(member: Partial<FpoMember>): FpoMember | null {
 function normalizeCreateInput(input: CreateFpoMemberInput): CreateFpoMemberInput {
   return {
     ...input,
+    aadhaarNumber: input.aadhaarNumber?.trim(),
     age: input.age?.trim(),
     alternateMobileNumber: input.alternateMobileNumber?.trim(),
-    blockName: input.blockName?.trim(),
     displayName: input.displayName.trim(),
     districtName: input.districtName?.trim(),
     farmerCategory: input.farmerCategory?.trim(),
@@ -364,6 +375,8 @@ function normalizeCreateInput(input: CreateFpoMemberInput): CreateFpoMemberInput
     memberNumber: input.memberNumber.trim(),
     mobileNumber: input.mobileNumber.trim(),
     password: input.password,
+    stateName: input.stateName.trim(),
+    taluka: input.taluka.trim(),
     username: input.username.trim(),
     village: input.village.trim()
   };
@@ -371,24 +384,26 @@ function normalizeCreateInput(input: CreateFpoMemberInput): CreateFpoMemberInput
 
 function normalizeUpdateInput(input: UpdateFpoMemberInput): UpdateFpoMemberInput {
   return {
+    aadhaarNumber: input.aadhaarNumber?.trim(),
     age: input.age?.trim(),
     alternateMobileNumber: input.alternateMobileNumber?.trim(),
-    blockName: input.blockName?.trim(),
     displayName: input.displayName.trim(),
     districtName: input.districtName?.trim(),
     farmerCategory: input.farmerCategory?.trim(),
     gender: input.gender?.trim(),
     memberNumber: input.memberNumber.trim(),
     mobileNumber: input.mobileNumber.trim(),
+    stateName: input.stateName.trim(),
+    taluka: input.taluka.trim(),
     village: input.village.trim()
   };
 }
 
 function toCreateRequest(input: CreateFpoMemberInput): CreateFpoMemberRequest {
   return {
+    aadhaarNumber: input.aadhaarNumber || undefined,
     age: input.age ? Number(input.age) : undefined,
     alternateMobileNumber: input.alternateMobileNumber || undefined,
-    blockName: input.blockName || undefined,
     displayName: input.displayName,
     districtName: input.districtName || undefined,
     farmerCategory: input.farmerCategory || undefined,
@@ -397,6 +412,8 @@ function toCreateRequest(input: CreateFpoMemberInput): CreateFpoMemberRequest {
     mobileNumber: input.mobileNumber,
     password: input.password,
     status: "ACTIVE",
+    stateName: input.stateName,
+    taluka: input.taluka,
     username: input.username,
     village: input.village
   };
@@ -407,9 +424,9 @@ function toUpdateRequest(
   input: UpdateFpoMemberInput
 ): UpdateFpoMemberRequest {
   return {
+    aadhaarNumber: input.aadhaarNumber || undefined,
     age: input.age ? Number(input.age) : undefined,
     alternateMobileNumber: input.alternateMobileNumber || undefined,
-    blockName: input.blockName || undefined,
     displayName: input.displayName,
     districtName: input.districtName || undefined,
     farmerCategory: input.farmerCategory || undefined,
@@ -417,6 +434,8 @@ function toUpdateRequest(
     memberNumber: input.memberNumber,
     mobileNumber: input.mobileNumber,
     status: toBackendMemberStatus(member.status),
+    stateName: input.stateName,
+    taluka: input.taluka,
     village: input.village
   };
 }
@@ -426,11 +445,15 @@ function toFrontendStatus(status: FpoMemberStatus): UserStatus {
     return "Active";
   }
 
-  return status === "PENDING" ? "Profile pending" : "Inactive";
+  return status === "SUSPENDED" ? "Suspended" : "Inactive";
 }
 
-function toBackendStatus(status: Extract<UserStatus, "Active" | "Inactive">) {
-  return status === "Active" ? "ACTIVE" : "INACTIVE";
+function toBackendStatus(status: Extract<UserStatus, "Active" | "Inactive" | "Suspended">) {
+  if (status === "Active") {
+    return "ACTIVE";
+  }
+
+  return status === "Suspended" ? "SUSPENDED" : "INACTIVE";
 }
 
 function toBackendMemberStatus(status: UserStatus): FpoMemberStatus {
@@ -438,7 +461,7 @@ function toBackendMemberStatus(status: UserStatus): FpoMemberStatus {
     return "ACTIVE";
   }
 
-  return status === "Profile pending" ? "PENDING" : "INACTIVE";
+  return status === "Suspended" ? "SUSPENDED" : "INACTIVE";
 }
 
 async function getAccessToken() {

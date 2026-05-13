@@ -101,7 +101,7 @@ public class FpoMemberService {
     validateCreateUserChoice(request);
 
     String memberNumber = normalizeRequired(request.memberNumber());
-    String mobileNumber = normalizePhone(request.mobileNumber());
+    String mobileNumber = FpoMemberProfileRules.normalizeIndianMobile(request.mobileNumber());
     ensureMemberNumberAvailable(currentUser.tenantId(), memberNumber, null);
     ensureMobileAvailable(currentUser.tenantId(), mobileNumber, null);
 
@@ -120,14 +120,16 @@ public class FpoMemberService {
         memberNumber,
         request.displayName().trim(),
         mobileNumber,
-        normalizeOptionalPhone(request.alternateMobileNumber()),
+        FpoMemberProfileRules.normalizeOptionalIndianMobile(request.alternateMobileNumber()),
+        FpoMemberProfileRules.normalizeOptionalAadhaar(request.aadhaarNumber()),
         request.village().trim(),
-        normalizeOptional(request.blockName()),
-        normalizeOptional(request.districtName()),
-        normalizeOptional(request.gender()),
+        request.taluka().trim(),
+        request.districtName().trim(),
+        request.stateName().trim(),
+        FpoMemberProfileRules.normalizeGender(request.gender()),
         request.dateOfBirth(),
         request.age(),
-        normalizeOptional(request.farmerCategory()),
+        FpoMemberProfileRules.normalizeFarmerCategory(request.farmerCategory()),
         coordinator,
         request.status() == null ? FpoMemberStatus.ACTIVE : request.status(),
         now
@@ -148,7 +150,7 @@ public class FpoMemberService {
     requireManager(currentUser);
     FpoMemberProfileEntity member = requireMember(currentUser, memberId);
     String memberNumber = normalizeRequired(request.memberNumber());
-    String mobileNumber = normalizePhone(request.mobileNumber());
+    String mobileNumber = FpoMemberProfileRules.normalizeIndianMobile(request.mobileNumber());
     ensureMemberNumberAvailable(currentUser.tenantId(), memberNumber, member.getId());
     ensureMobileAvailable(currentUser.tenantId(), mobileNumber, member.getId());
 
@@ -156,14 +158,16 @@ public class FpoMemberService {
         memberNumber,
         request.displayName().trim(),
         mobileNumber,
-        normalizeOptionalPhone(request.alternateMobileNumber()),
+        FpoMemberProfileRules.normalizeOptionalIndianMobile(request.alternateMobileNumber()),
+        FpoMemberProfileRules.normalizeOptionalAadhaar(request.aadhaarNumber()),
         request.village().trim(),
-        normalizeOptional(request.blockName()),
-        normalizeOptional(request.districtName()),
-        normalizeOptional(request.gender()),
+        request.taluka().trim(),
+        request.districtName().trim(),
+        request.stateName().trim(),
+        FpoMemberProfileRules.normalizeGender(request.gender()),
         request.dateOfBirth(),
         request.age(),
-        normalizeOptional(request.farmerCategory()),
+        FpoMemberProfileRules.normalizeFarmerCategory(request.farmerCategory()),
         resolveCoordinator(currentUser, request.coordinatorUserId()),
         request.status(),
         Instant.now()
@@ -205,19 +209,19 @@ public class FpoMemberService {
   ) {
     if (request.userId() != null) {
       UserEntity user = requireUser(currentUser, request.userId());
-      requireParticipantOnly(user);
+      requireFieldCoordinatorOnly(user);
       return user;
     }
 
-    UserResponse user = userService.createParticipant(
+    UserResponse user = userService.createFieldCoordinator(
         currentUser,
         new CreateUserRequest(
             request.username(),
             request.password(),
             request.displayName(),
-            normalizePhone(request.mobileNumber()),
+            FpoMemberProfileRules.normalizeIndianMobile(request.mobileNumber()),
             request.village(),
-            request.blockName()
+            request.taluka()
         )
     );
 
@@ -246,20 +250,20 @@ public class FpoMemberService {
     }
 
     UserEntity coordinator = requireUser(currentUser, coordinatorUserId);
-    if (!hasAnyRole(coordinator, Role.ADMIN, Role.SUPERVISOR)) {
-      throw validation("Coordinator must be an admin or supervisor user.");
+    if (!hasAnyRole(coordinator, Role.ADMIN, Role.FPO_MANAGER, Role.FIELD_COORDINATOR)) {
+      throw validation("Coordinator must be an admin, FPO manager, or field coordinator user.");
     }
     return coordinator;
   }
 
-  private void requireParticipantOnly(UserEntity user) {
+  private void requireFieldCoordinatorOnly(UserEntity user) {
     Set<Role> roles = user.getRoles().stream()
         .map(RoleEntity::getCode)
         .map(Role::valueOf)
         .collect(Collectors.toUnmodifiableSet());
 
-    if (!roles.equals(Set.of(Role.PARTICIPANT))) {
-      throw validation("FPO members must be linked to participant users.");
+    if (!roles.equals(Set.of(Role.FIELD_COORDINATOR))) {
+      throw validation("FPO members must be linked to field coordinator users until farmer login is added.");
     }
   }
 
@@ -318,17 +322,17 @@ public class FpoMemberService {
   }
 
   private void requireManager(CurrentUser currentUser) {
-    if (!currentUser.hasAnyRole(Role.ADMIN, Role.SUPERVISOR)) {
+    if (!currentUser.hasAnyRole(Role.ADMIN, Role.FPO_MANAGER, Role.FIELD_COORDINATOR)) {
       throw new ApplicationException(
           ErrorCode.ACCESS_DENIED,
-          "Only admins and supervisors can manage FPO members.",
+          "Only Phase 1 staff can manage FPO members.",
           HttpStatus.FORBIDDEN
       );
     }
   }
 
   private void requireManagerOrOwner(CurrentUser currentUser, FpoMemberProfileEntity member) {
-    if (currentUser.hasAnyRole(Role.ADMIN, Role.SUPERVISOR)) {
+    if (currentUser.hasAnyRole(Role.ADMIN, Role.FPO_MANAGER, Role.FIELD_COORDINATOR)) {
       return;
     }
 
@@ -349,14 +353,6 @@ public class FpoMemberService {
 
   private String normalizeRequired(String value) {
     return value.trim();
-  }
-
-  private String normalizePhone(String value) {
-    return value.trim().replaceAll("[\\s-]", "");
-  }
-
-  private String normalizeOptionalPhone(String value) {
-    return hasText(value) ? normalizePhone(value) : null;
   }
 
   private String normalizeOptional(String value) {

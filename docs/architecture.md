@@ -16,7 +16,7 @@ Generic core + client-specific configuration
 Shared backend and frontend code should use platform language:
 
 - `Tenant`: one client organization.
-- `User`: admin, supervisor, participant, farmer, field worker, or inspector.
+- `User`: admin, FPO_MANAGER, FIELD_COORDINATOR, farmer, field worker, or inspector.
 - `Module`: sellable product capability enabled per tenant.
 - `Workflow`: configurable process definition.
 - `Task`: one ordered workflow step.
@@ -39,8 +39,8 @@ microservices until operationally necessary, see
 
 ```mermaid
 flowchart LR
-    Admin["Admin / Supervisor"] --> App["Expo React Native App"]
-    Participant["Participant / Farmer"] --> App
+    Admin["Admin / FPO_MANAGER"] --> App["Expo React Native App"]
+    FIELD_COORDINATOR["FIELD_COORDINATOR / Farmer"] --> App
     App --> Api["Spring Boot REST API"]
     Api --> Db["PostgreSQL"]
     Api --> Storage["File Storage Adapter"]
@@ -154,12 +154,12 @@ Module responsibilities:
 - `security`: Spring Security, JWT resource server, role conversion.
 - `auth`: login, refresh, current user, seed users, tenant/user/role entities.
 - `platform`: module catalog, tenant subscriptions, and module guards.
-- `user`: admin profile management for participant/farmer users.
+- `user`: admin profile management for FIELD_COORDINATOR/farmer users.
 - `role`: tenant role catalog and admin-controlled user role assignment.
 - `fpo`: FPO member profiles, landholdings, plots, and Phase 1
   farmer/land/crop/input data model.
 - `workflow`: reusable workflow definitions and task templates.
-- `activity`: workflow execution, participant timeline, task status.
+- `activity`: workflow execution, FIELD_COORDINATOR timeline, task status.
 - `evidence`: proof upload metadata and evidence review status.
 - `storage`: shared file validation/key planning with local disk for dev/test and MinIO/S3-compatible storage for production.
 - `audit`: append-only compliance trail.
@@ -170,12 +170,12 @@ Module responsibilities:
 
 ```mermaid
 sequenceDiagram
-    participant UI as Expo App
-    participant API as Spring Boot API
-    participant SEC as Spring Security
-    participant SVC as Service Layer
-    participant DB as PostgreSQL
-    participant AUD as Audit Event
+    FIELD_COORDINATOR UI as Expo App
+    FIELD_COORDINATOR API as Spring Boot API
+    FIELD_COORDINATOR SEC as Spring Security
+    FIELD_COORDINATOR SVC as Service Layer
+    FIELD_COORDINATOR DB as PostgreSQL
+    FIELD_COORDINATOR AUD as Audit Event
 
     UI->>API: REST request with Bearer token
     API->>SEC: Validate JWT and roles
@@ -205,7 +205,7 @@ erDiagram
     WORKFLOW_DEFINITIONS ||--o{ WORKFLOW_TASKS : contains
     TENANTS ||--o{ ACTIVITIES : owns
     WORKFLOW_DEFINITIONS ||--o{ ACTIVITIES : instantiates
-    USERS ||--o{ ACTIVITIES : participant
+    USERS ||--o{ ACTIVITIES : FIELD_COORDINATOR
     ACTIVITIES ||--o{ ACTIVITY_TASKS : contains
     WORKFLOW_TASKS ||--o{ ACTIVITY_TASKS : template
     ACTIVITY_TASKS ||--o{ EVIDENCE : has
@@ -220,29 +220,29 @@ erDiagram
 Current platform roles:
 
 - `ADMIN`: full tenant administration, user/profile creation, workflow setup.
-- `SUPERVISOR`: operational management and review.
-- `PARTICIPANT`: field/farmer user who executes activities and uploads proof.
+- `FPO_MANAGER`: operational management and review.
+- `FIELD_COORDINATOR`: field/farmer user who executes activities and uploads proof.
 
 Role checks are enforced at controller and service boundaries. JWT roles are
-mapped to Spring authorities as `ROLE_ADMIN`, `ROLE_SUPERVISOR`, and
-`ROLE_PARTICIPANT`.
+mapped to Spring authorities as `ROLE_ADMIN`, `ROLE_FPO_MANAGER`, and
+`ROLE_FIELD_COORDINATOR`.
 
 ## Key Workflows
 
-### Admin Creates Participant
+### Admin Creates FIELD_COORDINATOR
 
 ```mermaid
 sequenceDiagram
-    participant Admin
-    participant UI as Admin Dashboard
-    participant API as User API
-    participant DB as PostgreSQL
-    participant AUD as Audit
+    FIELD_COORDINATOR Admin
+    FIELD_COORDINATOR UI as Admin Dashboard
+    FIELD_COORDINATOR API as User API
+    FIELD_COORDINATOR DB as PostgreSQL
+    FIELD_COORDINATOR AUD as Audit
 
-    Admin->>UI: Enter participant profile
+    Admin->>UI: Enter FIELD_COORDINATOR profile
     UI->>API: POST /api/v1/users
     API->>DB: Create tenant-scoped user
-    API->>DB: Assign PARTICIPANT role
+    API->>DB: Assign FIELD_COORDINATOR role
     API->>AUD: USER_CREATED
     API-->>UI: UserResponse
 ```
@@ -251,17 +251,17 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    participant Admin
-    participant UI as Admin Dashboard
-    participant API as FPO Member API
-    participant MOD as Module Guard
-    participant DB as PostgreSQL
-    participant AUD as Audit
+    FIELD_COORDINATOR Admin
+    FIELD_COORDINATOR UI as Admin Dashboard
+    FIELD_COORDINATOR API as FPO Member API
+    FIELD_COORDINATOR MOD as Module Guard
+    FIELD_COORDINATOR DB as PostgreSQL
+    FIELD_COORDINATOR AUD as Audit
 
     Admin->>UI: Enter farmer/member profile
     UI->>API: POST /api/v1/fpo/members
     API->>MOD: Require MEMBER_DATA
-    API->>DB: Link participant user and member profile
+    API->>DB: Link FIELD_COORDINATOR user and member profile
     API->>AUD: FPO_MEMBER_CREATED
     API-->>UI: FpoMemberResponse
 ```
@@ -270,12 +270,12 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    participant Admin
-    participant UI as Admin Dashboard
-    participant API as Farm Asset API
-    participant MOD as Module Guard
-    participant DB as PostgreSQL
-    participant AUD as Audit
+    FIELD_COORDINATOR Admin
+    FIELD_COORDINATOR UI as Admin Dashboard
+    FIELD_COORDINATOR API as Farm Asset API
+    FIELD_COORDINATOR MOD as Module Guard
+    FIELD_COORDINATOR DB as PostgreSQL
+    FIELD_COORDINATOR AUD as Audit
 
     Admin->>UI: Enter landholding or plot details
     UI->>API: POST /api/v1/fpo/members/{memberId}/landholdings or /plots
@@ -286,36 +286,36 @@ sequenceDiagram
     API-->>UI: Farm asset response
 ```
 
-### Participant Loads Own Profile
+### FIELD_COORDINATOR Loads Own Profile
 
 ```mermaid
 sequenceDiagram
-    participant Participant
-    participant UI as Participant App
-    participant API as User API
-    participant DB as PostgreSQL
+    FIELD_COORDINATOR FIELD_COORDINATOR
+    FIELD_COORDINATOR UI as FIELD_COORDINATOR App
+    FIELD_COORDINATOR API as User API
+    FIELD_COORDINATOR DB as PostgreSQL
 
-    Participant->>UI: Open profile tab
+    FIELD_COORDINATOR->>UI: Open profile tab
     UI->>API: GET /api/v1/users/me
     API->>DB: Load current tenant-scoped user
     API-->>UI: UserResponse with profile fields
 ```
 
-### Participant Tracks Activity
+### FIELD_COORDINATOR Tracks Activity
 
 ```mermaid
 sequenceDiagram
-    participant Participant
-    participant UI as Participant App
-    participant API as Activity API
-    participant DB as PostgreSQL
-    participant AUD as Audit
+    FIELD_COORDINATOR FIELD_COORDINATOR
+    FIELD_COORDINATOR UI as FIELD_COORDINATOR App
+    FIELD_COORDINATOR API as Activity API
+    FIELD_COORDINATOR DB as PostgreSQL
+    FIELD_COORDINATOR AUD as Audit
 
-    Participant->>UI: Start workflow activity
+    FIELD_COORDINATOR->>UI: Start workflow activity
     UI->>API: POST /api/v1/activities
     API->>DB: Create activity and task timeline
     API->>AUD: ACTIVITY_CREATED
-    Participant->>UI: Mark task / submit proof
+    FIELD_COORDINATOR->>UI: Mark task / submit proof
     UI->>API: POST /api/v1/evidence
     API->>DB: Store evidence metadata
     API->>AUD: EVIDENCE_SUBMITTED
@@ -337,9 +337,9 @@ Frontend folders:
 - `src/screens`: app screens.
 - `src/ui`: shared UI components.
 
-The frontend is backend-first for login, admin participant management,
+The frontend is backend-first for login, admin FIELD_COORDINATOR management,
 workflow/activity timelines, proof upload, evidence review, reports, role
-management, notifications, and participant profile display. Local storage
+management, notifications, and FIELD_COORDINATOR profile display. Local storage
 fallback remains only for development/offline prototype use.
 
 After backend login, the frontend loads `/api/v1/platform/modules/enabled` and
@@ -452,7 +452,7 @@ settings are updated together.
 
 - Keep workflows data-driven in database tables.
 - Do not hardcode crop lifecycle stages in Java or TypeScript.
-- Keep participant/farmer as a role/use case, not as the core user model.
+- Keep FIELD_COORDINATOR/farmer as a role/use case, not as the core user model.
 - Keep storage behind an interface.
 - Keep reports generated from reusable activity/evidence data.
 - Add tenant ids to durable business tables.

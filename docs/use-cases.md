@@ -5,19 +5,19 @@
 ```mermaid
 flowchart LR
     Admin["Admin"]
-    Supervisor["Supervisor"]
-    Participant["Participant / Farmer"]
+    FPO_MANAGER["FPO_MANAGER"]
+    FIELD_COORDINATOR["FIELD_COORDINATOR / Farmer"]
     Government["Government / Client Reviewer"]
     System["System"]
 
-    Admin --> UserMgmt["Manage participant profiles"]
+    Admin --> UserMgmt["Manage FIELD_COORDINATOR profiles"]
     Admin --> WorkflowMgmt["Configure workflows"]
     Admin --> ReportMgmt["Generate compliance reports"]
-    Supervisor --> UserMgmt
-    Supervisor --> WorkflowMgmt
-    Supervisor --> EvidenceReview["Review evidence"]
-    Participant --> ActivityTracking["Track assigned farming/process activity"]
-    Participant --> EvidenceSubmit["Submit photo proof"]
+    FPO_MANAGER --> UserMgmt
+    FPO_MANAGER --> WorkflowMgmt
+    FPO_MANAGER --> EvidenceReview["Review evidence"]
+    FIELD_COORDINATOR --> ActivityTracking["Track assigned farming/process activity"]
+    FIELD_COORDINATOR --> EvidenceSubmit["Submit photo proof"]
     Government --> ReportView["Review exported reports"]
     System --> AuditTrail["Record audit trail"]
     System --> Notifications["Send notifications (future)"]
@@ -28,13 +28,13 @@ flowchart LR
 ```mermaid
 flowchart TB
     Admin["Admin"]
-    Supervisor["Supervisor"]
-    Participant["Participant / Farmer"]
+    FPO_MANAGER["FPO_MANAGER"]
+    FIELD_COORDINATOR["FIELD_COORDINATOR / Farmer"]
     Reviewer["Government / Client Reviewer"]
 
     UC1["Login"]
-    UC2["Create participant profile"]
-    UC3["Activate / deactivate participant"]
+    UC2["Create FIELD_COORDINATOR profile"]
+    UC3["Activate / deactivate FIELD_COORDINATOR"]
     UC4["View own profile"]
     UC5["Create workflow definition"]
     UC6["Update workflow status"]
@@ -48,34 +48,34 @@ flowchart TB
     UC14["View analytics summary"]
 
     Admin --> UC1
-    Supervisor --> UC1
-    Participant --> UC1
+    FPO_MANAGER --> UC1
+    FIELD_COORDINATOR --> UC1
     Admin --> UC2
-    Supervisor --> UC2
+    FPO_MANAGER --> UC2
     Admin --> UC3
-    Supervisor --> UC3
-    Participant --> UC4
+    FPO_MANAGER --> UC3
+    FIELD_COORDINATOR --> UC4
     Admin --> UC5
-    Supervisor --> UC5
+    FPO_MANAGER --> UC5
     Admin --> UC6
-    Supervisor --> UC6
+    FPO_MANAGER --> UC6
     Admin --> UC7
-    Supervisor --> UC7
-    Participant --> UC7
+    FPO_MANAGER --> UC7
+    FIELD_COORDINATOR --> UC7
     Admin --> UC8
-    Supervisor --> UC8
-    Participant --> UC8
-    Participant --> UC9
-    Participant --> UC10
-    Supervisor --> UC11
+    FPO_MANAGER --> UC8
+    FIELD_COORDINATOR --> UC8
+    FIELD_COORDINATOR --> UC9
+    FIELD_COORDINATOR --> UC10
+    FPO_MANAGER --> UC11
     Admin --> UC11
     Admin --> UC12
-    Supervisor --> UC12
+    FPO_MANAGER --> UC12
     Admin --> UC13
-    Supervisor --> UC13
+    FPO_MANAGER --> UC13
     Reviewer --> UC13
     Admin --> UC14
-    Supervisor --> UC14
+    FPO_MANAGER --> UC14
 ```
 
 ## Primary Use Cases
@@ -85,8 +85,8 @@ flowchart TB
 Actors:
 
 - Admin
-- Supervisor
-- Participant
+- FPO_MANAGER
+- FIELD_COORDINATOR
 
 Goal:
 
@@ -111,72 +111,72 @@ Failure cases:
 - Invalid request body returns `400`.
 - Inactive user cannot log in.
 
-### UC-02 Create Participant Profile
+### UC-02 Create FIELD_COORDINATOR Profile
 
 Actors:
 
 - Admin
-- Supervisor
+- FPO_MANAGER
 
 Goal:
 
-- Create a tenant-scoped participant/farmer profile with login credentials.
+- Create a tenant-scoped FIELD_COORDINATOR/farmer profile with login credentials.
 
 Preconditions:
 
-- Actor has `ADMIN` or `SUPERVISOR` role.
+- Actor has `ADMIN` or `FPO_MANAGER` role.
 
 Main flow:
 
-1. Admin opens participant management.
+1. Admin opens FIELD_COORDINATOR management.
 2. Admin enters full name, phone, region, village/site, username, and password.
 3. Frontend calls `POST /api/v1/users`.
 4. Backend validates request.
-5. Backend creates user with `PARTICIPANT` role.
+5. Backend creates user with `FIELD_COORDINATOR` role.
 6. Backend records `USER_CREATED` audit event.
-7. Frontend refreshes participant list.
+7. Frontend refreshes FIELD_COORDINATOR list.
 
 Failure cases:
 
 - Duplicate username returns `409`.
 - Missing/invalid fields return `400`.
-- Participant user attempting this action returns `403`.
+- FIELD_COORDINATOR user attempting this action returns `403`.
 
-### UC-03 Activate Or Deactivate Participant
+### UC-03 Activate Or Deactivate FIELD_COORDINATOR
 
 Actors:
 
 - Admin
-- Supervisor
+- FPO_MANAGER
 
 Goal:
 
-- Control whether a participant can continue using the platform without deleting
+- Control whether a FIELD_COORDINATOR can continue using the platform without deleting
   history.
 
 Main flow:
 
-1. Admin selects active/inactive action for a participant.
+1. Admin selects active/inactive action for a FIELD_COORDINATOR.
 2. Frontend calls `PATCH /api/v1/users/{userId}/status`.
 3. Backend updates status.
 4. Backend records `USER_STATUS_CHANGED`.
-5. Frontend updates the participant card.
+5. Frontend updates the FIELD_COORDINATOR card.
 
 ### UC-04 View Own Profile
 
 Actors:
 
-- Participant
+- FIELD_COORDINATOR
 
 Goal:
 
-- View backend-owned participant profile fields assigned by an admin or
-  supervisor.
+- View backend-owned FIELD_COORDINATOR profile fields assigned by an admin or
+  FPO_MANAGER.
 
 Main flow:
 
-1. Participant logs in.
-2. Participant opens profile tab.
+1. FIELD_COORDINATOR logs in.
+2. FIELD_COORDINATOR opens profile tab.
 3. Frontend calls `GET /api/v1/users/me`.
 4. Backend returns display name, phone, region/location, site/village, status,
    roles, tenant id, and user id.
@@ -185,14 +185,14 @@ Main flow:
 Business rules:
 
 - Public/self-service signup is disabled.
-- Participant profile changes are handled by admin/supervisor management APIs.
+- FIELD_COORDINATOR profile changes are handled by admin/FPO_MANAGER management APIs.
 
 ### UC-05 Configure Workflow
 
 Actors:
 
 - Admin
-- Supervisor
+- FPO_MANAGER
 
 Goal:
 
@@ -217,13 +217,13 @@ Business rules:
 
 Actors:
 
-- Participant
+- FIELD_COORDINATOR
 - Admin
-- Supervisor
+- FPO_MANAGER
 
 Goal:
 
-- Start one execution of a workflow for a participant, farm, plot, inspection
+- Start one execution of a workflow for a FIELD_COORDINATOR, farm, plot, inspection
   site, or unit.
 
 Main flow:
@@ -238,7 +238,7 @@ Main flow:
 
 Actors:
 
-- Participant
+- FIELD_COORDINATOR
 
 Goal:
 
@@ -246,8 +246,8 @@ Goal:
 
 Main flow:
 
-1. Participant opens task.
-2. Participant selects/captures photo and optional note.
+1. FIELD_COORDINATOR opens task.
+2. FIELD_COORDINATOR selects/captures photo and optional note.
 3. Frontend calls `POST /api/v1/evidence` as multipart request.
 4. Backend stores file through storage adapter.
 5. Backend persists evidence metadata.
@@ -259,7 +259,7 @@ Main flow:
 Actors:
 
 - Admin
-- Supervisor
+- FPO_MANAGER
 
 Goal:
 
@@ -278,7 +278,7 @@ Main flow:
 Actors:
 
 - Admin
-- Supervisor
+- FPO_MANAGER
 - Government/client reviewer
 
 Goal:
@@ -287,7 +287,7 @@ Goal:
 
 Planned report contents:
 
-- Participant coverage.
+- FIELD_COORDINATOR coverage.
 - Workflow/activity status.
 - Ordered task completion.
 - Evidence photos/files and timestamps.
@@ -304,15 +304,15 @@ Current status:
 
 ## Role Permission Matrix
 
-| Use Case                               | Admin | Supervisor | Participant |
+| Use Case                               | Admin | FPO_MANAGER | FIELD_COORDINATOR |
 | -------------------------------------- | ----- | ---------- | ----------- |
 | Login                                  | Yes   | Yes        | Yes         |
-| Create participant                     | Yes   | Yes        | No          |
-| Activate/deactivate participant        | Yes   | Yes        | No          |
+| Create FIELD_COORDINATOR                     | Yes   | Yes        | No          |
+| Activate/deactivate FIELD_COORDINATOR        | Yes   | Yes        | No          |
 | View own profile                       | Yes   | Yes        | Yes         |
 | Create/update workflow                 | Yes   | Yes        | No          |
 | Start own activity                     | Yes   | Yes        | Yes         |
-| Start activity for another participant | Yes   | Yes        | No          |
+| Start activity for another FIELD_COORDINATOR | Yes   | Yes        | No          |
 | View own activities                    | Yes   | Yes        | Yes         |
 | View tenant activities                 | Yes   | Yes        | No          |
 | Upload evidence                        | Yes   | Yes        | Yes         |
@@ -323,13 +323,13 @@ Current status:
 
 ```mermaid
 flowchart TB
-    A["Admin logs in"] --> B["Admin creates participant/farmer profile"]
+    A["Admin logs in"] --> B["Admin creates FIELD_COORDINATOR/farmer profile"]
     B --> C["Admin configures crop lifecycle workflow"]
-    C --> D["Participant logs in"]
-    D --> E["Participant starts crop activity"]
-    E --> F["Participant completes task"]
-    F --> G["Participant uploads proof photo"]
-    G --> H["Supervisor reviews evidence"]
+    C --> D["FIELD_COORDINATOR logs in"]
+    D --> E["FIELD_COORDINATOR starts crop activity"]
+    E --> F["FIELD_COORDINATOR completes task"]
+    F --> G["FIELD_COORDINATOR uploads proof photo"]
+    G --> H["FPO_MANAGER reviews evidence"]
     H --> I["System updates timeline and audit trail"]
     I --> J["Admin generates government report"]
 ```

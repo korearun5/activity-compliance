@@ -68,9 +68,10 @@ The FPO member model is now explicit:
 
 1. `users` stores login identity, password hash, status, and roles.
 2. `fpo_member_profiles` stores farmer/member number, mobile number, village,
-   block, district, category, coordinator, and profile status.
-3. `farm_landholdings` stores member-level operated/owned area summaries.
-4. `farm_plots` stores individual plot area and optional GPS coordinates.
+   taluka, district, state, category, coordinator, and profile status.
+3. `farm_landholdings` stores member-level operated/owned area summaries with
+   required survey/khasra, ownership, and irrigation values.
+4. `farm_plots` stores individual plot area and required GPS coordinates.
 
 Landholding and plot records are protected by the `LAND_RECORDS` module. They
 are managed through `/api/v1/fpo/members/{memberId}/landholdings` and

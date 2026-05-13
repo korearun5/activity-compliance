@@ -6,13 +6,15 @@ CREATE TABLE fpo_member_profiles (
     display_name VARCHAR(180) NOT NULL,
     mobile_number VARCHAR(40) NOT NULL,
     alternate_mobile_number VARCHAR(40),
+    aadhaar_number VARCHAR(12),
     village VARCHAR(160) NOT NULL,
-    block_name VARCHAR(160),
-    district_name VARCHAR(160),
-    gender VARCHAR(32),
+    taluka VARCHAR(160) NOT NULL,
+    district_name VARCHAR(160) NOT NULL,
+    state_name VARCHAR(160) NOT NULL,
+    gender VARCHAR(32) NOT NULL,
     date_of_birth DATE,
     age INTEGER,
-    farmer_category VARCHAR(80),
+    farmer_category VARCHAR(80) NOT NULL,
     coordinator_user_id UUID REFERENCES users (id),
     status VARCHAR(32) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -27,14 +29,18 @@ CREATE TABLE farm_landholdings (
     id UUID PRIMARY KEY,
     tenant_id UUID NOT NULL REFERENCES tenants (id),
     member_profile_id UUID NOT NULL REFERENCES fpo_member_profiles (id),
-    survey_number VARCHAR(120),
+    survey_number VARCHAR(120) NOT NULL,
     total_area_acres NUMERIC(12,4) NOT NULL,
     cultivable_area_acres NUMERIC(12,4),
-    ownership_type VARCHAR(80),
-    irrigation_source VARCHAR(120),
+    ownership_type VARCHAR(80) NOT NULL,
+    irrigation_source VARCHAR(120) NOT NULL,
     status VARCHAR(32) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT chk_farm_landholdings_ownership_type
+        CHECK (ownership_type IN ('Self-owned', 'Leased-in', 'Sharecropper')),
+    CONSTRAINT chk_farm_landholdings_irrigation_source
+        CHECK (irrigation_source IN ('Canal', 'Borewell', 'Open well', 'Pond', 'Rainfed', 'Drip'))
 );
 
 CREATE TABLE farm_plots (
@@ -44,13 +50,44 @@ CREATE TABLE farm_plots (
     landholding_id UUID REFERENCES farm_landholdings (id),
     plot_name VARCHAR(160) NOT NULL,
     area_acres NUMERIC(12,4) NOT NULL,
-    latitude NUMERIC(10,7),
-    longitude NUMERIC(10,7),
+    latitude NUMERIC(10,7) NOT NULL,
+    longitude NUMERIC(10,7) NOT NULL,
     boundary_geojson JSONB,
     soil_type VARCHAR(120),
     status VARCHAR(32) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT chk_farm_plots_latitude
+        CHECK (latitude BETWEEN -90 AND 90),
+    CONSTRAINT chk_farm_plots_longitude
+        CHECK (longitude BETWEEN -180 AND 180)
+);
+
+CREATE TABLE fpo_soil_profiles (
+    id UUID PRIMARY KEY,
+    tenant_id UUID NOT NULL REFERENCES tenants (id),
+    member_profile_id UUID NOT NULL REFERENCES fpo_member_profiles (id),
+    soil_organic_carbon NUMERIC(10,4),
+    ph NUMERIC(4,2),
+    nitrogen NUMERIC(12,4),
+    phosphorus NUMERIC(12,4),
+    potassium NUMERIC(12,4),
+    report_file_name VARCHAR(240),
+    report_content_type VARCHAR(120),
+    report_url TEXT,
+    notes TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT chk_fpo_soil_profiles_soc
+        CHECK (soil_organic_carbon IS NULL OR soil_organic_carbon >= 0),
+    CONSTRAINT chk_fpo_soil_profiles_ph
+        CHECK (ph IS NULL OR (ph >= 0 AND ph <= 14)),
+    CONSTRAINT chk_fpo_soil_profiles_n
+        CHECK (nitrogen IS NULL OR nitrogen >= 0),
+    CONSTRAINT chk_fpo_soil_profiles_p
+        CHECK (phosphorus IS NULL OR phosphorus >= 0),
+    CONSTRAINT chk_fpo_soil_profiles_k
+        CHECK (potassium IS NULL OR potassium >= 0)
 );
 
 CREATE TABLE crop_catalog (
@@ -164,6 +201,8 @@ CREATE INDEX idx_farm_plots_member
     ON farm_plots (tenant_id, member_profile_id);
 CREATE INDEX idx_farm_plots_landholding
     ON farm_plots (landholding_id);
+CREATE INDEX idx_fpo_soil_profiles_member
+    ON fpo_soil_profiles (tenant_id, member_profile_id);
 CREATE INDEX idx_crop_catalog_tenant_status
     ON crop_catalog (tenant_id, status);
 CREATE INDEX idx_crop_seasons_tenant_status

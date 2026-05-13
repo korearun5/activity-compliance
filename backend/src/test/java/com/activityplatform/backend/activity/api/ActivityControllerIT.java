@@ -59,8 +59,8 @@ class ActivityControllerIT {
   private JwtService jwtService;
 
   private String adminToken;
-  private String participantToken;
-  private UUID otherParticipantId;
+  private String FIELD_COORDINATORToken;
+  private UUID otherFIELD_COORDINATORId;
   private UUID workflowId;
 
   @BeforeEach
@@ -69,8 +69,8 @@ class ActivityControllerIT {
         TestDataFactory.tenant("tenant-" + UUID.randomUUID())
     );
     RoleEntity adminRole = roleRepository.save(TestDataFactory.role(tenant, Role.ADMIN));
-    RoleEntity participantRole = roleRepository.save(
-        TestDataFactory.role(tenant, Role.PARTICIPANT)
+    RoleEntity FIELD_COORDINATORRole = roleRepository.save(
+        TestDataFactory.role(tenant, Role.FIELD_COORDINATOR)
     );
     UserEntity adminUser = userRepository.save(TestDataFactory.user(
         tenant,
@@ -79,19 +79,19 @@ class ActivityControllerIT {
         "Admin User",
         adminRole
     ));
-    UserEntity participantUser = userRepository.save(TestDataFactory.user(
+    UserEntity FIELD_COORDINATORUser = userRepository.save(TestDataFactory.user(
         tenant,
         "testuser-" + UUID.randomUUID(),
         passwordEncoder.encode("password123"),
         "Test User",
-        participantRole
+        FIELD_COORDINATORRole
     ));
-    UserEntity otherParticipant = userRepository.save(TestDataFactory.user(
+    UserEntity otherFIELD_COORDINATOR = userRepository.save(TestDataFactory.user(
         tenant,
         "otheruser-" + UUID.randomUUID(),
         passwordEncoder.encode("password123"),
         "Other User",
-        participantRole
+        FIELD_COORDINATORRole
     ));
     WorkflowDefinitionEntity workflow = workflowDefinitionRepository.save(
         TestDataFactory.workflow(
@@ -102,15 +102,15 @@ class ActivityControllerIT {
     );
 
     workflowId = workflow.getId();
-    otherParticipantId = otherParticipant.getId();
+    otherFIELD_COORDINATORId = otherFIELD_COORDINATOR.getId();
     adminToken = jwtService.issueTokens(adminUser).accessToken();
-    participantToken = jwtService.issueTokens(participantUser).accessToken();
+    FIELD_COORDINATORToken = jwtService.issueTokens(FIELD_COORDINATORUser).accessToken();
   }
 
   @Test
   void testListActivities() throws Exception {
     mockMvc.perform(get("/api/v1/activities")
-            .header("Authorization", "Bearer " + participantToken))
+            .header("Authorization", "Bearer " + FIELD_COORDINATORToken))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.success").value(true))
         .andExpect(jsonPath("$.data.content").isArray())
@@ -120,7 +120,7 @@ class ActivityControllerIT {
   @Test
   void testGetActivityNotFound() throws Exception {
     mockMvc.perform(get("/api/v1/activities/" + UUID.randomUUID())
-            .header("Authorization", "Bearer " + participantToken))
+            .header("Authorization", "Bearer " + FIELD_COORDINATORToken))
         .andExpect(status().isNotFound());
   }
 
@@ -135,7 +135,7 @@ class ActivityControllerIT {
     );
 
     mockMvc.perform(post("/api/v1/activities")
-            .header("Authorization", "Bearer " + participantToken)
+            .header("Authorization", "Bearer " + FIELD_COORDINATORToken)
             .contentType("application/json")
             .content(jsonMapper.writeValueAsString(request)))
         .andExpect(status().isOk())
@@ -145,10 +145,10 @@ class ActivityControllerIT {
   }
 
   @Test
-  void testAdminCanStartActivityForParticipant() throws Exception {
+  void testAdminCanStartActivityForFIELD_COORDINATOR() throws Exception {
     StartActivityRequest request = new StartActivityRequest(
         workflowId,
-        otherParticipantId,
+        otherFIELD_COORDINATORId,
         "Assigned Unit",
         "Assigned Location",
         LocalDate.now()
@@ -160,23 +160,23 @@ class ActivityControllerIT {
             .content(jsonMapper.writeValueAsString(request)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.success").value(true))
-        .andExpect(jsonPath("$.data.participantUserId").value(otherParticipantId.toString()))
+        .andExpect(jsonPath("$.data.participantUserId").value(otherFIELD_COORDINATORId.toString()))
         .andExpect(jsonPath("$.data.unitName").value("Assigned Unit"))
         .andExpect(jsonPath("$.data.tasks[0].status").value("NEXT"));
   }
 
   @Test
-  void testParticipantCannotStartActivityForAnotherParticipant() throws Exception {
+  void testFIELD_COORDINATORCannotStartActivityForAnotherFIELD_COORDINATOR() throws Exception {
     StartActivityRequest request = new StartActivityRequest(
         workflowId,
-        otherParticipantId,
+        otherFIELD_COORDINATORId,
         "Assigned Unit",
         "Assigned Location",
         LocalDate.now()
     );
 
     mockMvc.perform(post("/api/v1/activities")
-            .header("Authorization", "Bearer " + participantToken)
+            .header("Authorization", "Bearer " + FIELD_COORDINATORToken)
             .contentType("application/json")
             .content(jsonMapper.writeValueAsString(request)))
         .andExpect(status().isForbidden());

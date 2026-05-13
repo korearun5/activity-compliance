@@ -38,7 +38,7 @@ Bearer <accessToken>
 
 ## 2. Add A Crop Workflow
 
-In the app, admins and supervisors can use the Admin dashboard `Workflows` tab
+In the app, admins and FPO_MANAGERs can use the Admin dashboard `Workflows` tab
 to create workflow definitions and task timelines. The same action is available
 through the API:
 
@@ -81,17 +81,17 @@ Replace the names, task titles, duration, and offsets with the client's real pro
 
 ## 3. Update A Workflow Safely
 
-- If no participant has started activities from that workflow, use `PUT /api/v1/workflows/{workflowId}`.
-- If participants have already started activities, create a new workflow version instead of changing task order.
+- If no FIELD_COORDINATOR has started activities from that workflow, use `PUT /api/v1/workflows/{workflowId}`.
+- If FIELD_COORDINATORs have already started activities, create a new workflow version instead of changing task order.
 - Use `PATCH /api/v1/workflows/{workflowId}/status` to move old versions to `ARCHIVED`.
 
 ## 4. Start Work
 
-Admins and supervisors can assign an activity timeline to a participant from the
-Admin dashboard `Workflows` tab. Participants can also start their own activity
+Admins and FPO_MANAGERs can assign an activity timeline to a FIELD_COORDINATOR from the
+Admin dashboard `Workflows` tab. FIELD_COORDINATORs can also start their own activity
 from an active workflow.
 
-Participants can start an activity from an active workflow:
+FIELD_COORDINATORs can start an activity from an active workflow:
 
 ```http
 POST /api/v1/activities
@@ -110,7 +110,7 @@ Body:
 
 The backend creates the task timeline from the workflow definition.
 
-## 5. Participant Uploads Proof
+## 5. FIELD_COORDINATOR Uploads Proof
 
 Use:
 
@@ -147,13 +147,13 @@ Use `REJECTED` when proof is not acceptable.
 
 ## 7. Generate A Report
 
-Admins and supervisors can view report-ready metrics:
+Admins and FPO_MANAGERs can view report-ready metrics:
 
 ```http
 GET /api/v1/reports/summary
 ```
 
-The summary includes participant coverage, activity progress, proof review
+The summary includes FIELD_COORDINATOR coverage, activity progress, proof review
 counts, and workflow/location breakdowns.
 
 To create a PDF or Excel export:
@@ -180,11 +180,11 @@ and location reporting sheets for admin/government use.
 
 ## 8. Manage Staff Roles
 
-Admins use the Admin dashboard `Roles` tab to assign `ADMIN`, `SUPERVISOR`, and
-`PARTICIPANT` permissions. A supervisor is an operational manager: they can
+Admins use the Admin dashboard `Roles` tab to assign `ADMIN`, `FPO_MANAGER`, and
+`FIELD_COORDINATOR` permissions. A FPO_MANAGER is an operational manager: they can
 create workflows, assign activities, review evidence, export reports, and manage
 notification status, but they cannot change user roles. See
-[Roles And Supervisors](roles-and-supervisors.md) for the full explanation.
+[Roles And FPO_MANAGERs](roles-and-FPO_MANAGERs.md) for the full explanation.
 
 Admins can list roles and update a user's assigned role set:
 
@@ -197,16 +197,16 @@ Body:
 
 ```json
 {
-  "roles": ["SUPERVISOR"]
+  "roles": ["FPO_MANAGER"]
 }
 ```
 
-Supervisors can view role assignments, but only admins can change them. A user
+FPO_MANAGERs can view role assignments, but only admins can change them. A user
 must sign in again or refresh tokens after their roles change.
 
 ## 9. Track Notifications
 
-Admins and supervisors can queue notification status records:
+Admins and FPO_MANAGERs can queue notification status records:
 
 ```http
 POST /api/v1/notifications

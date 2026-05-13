@@ -29,14 +29,14 @@ public class InputDemandController {
   }
 
   @GetMapping("/inputs")
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER')")
   ApiResponse<List<InputCatalogResponse>> listInputs(Authentication authentication) {
     return ApiResponse.success(
         inputDemandService.listInputs(CurrentUser.from(authentication)));
   }
 
   @PostMapping("/inputs")
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER')")
   ApiResponse<InputCatalogResponse> createInput(
       Authentication authentication,
       @Valid @RequestBody InputCatalogRequest request
@@ -48,7 +48,7 @@ public class InputDemandController {
   }
 
   @PutMapping("/inputs/{inputId}")
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER')")
   ApiResponse<InputCatalogResponse> updateInput(
       Authentication authentication,
       @PathVariable UUID inputId,
@@ -62,7 +62,7 @@ public class InputDemandController {
   }
 
   @PatchMapping("/inputs/{inputId}/status")
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER')")
   ApiResponse<InputCatalogResponse> updateInputStatus(
       Authentication authentication,
       @PathVariable UUID inputId,
@@ -76,7 +76,7 @@ public class InputDemandController {
   }
 
   @GetMapping("/input-rules")
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER')")
   ApiResponse<List<CropInputRuleResponse>> listRules(
       Authentication authentication,
       @RequestParam(required = false) UUID cropId,
@@ -92,7 +92,7 @@ public class InputDemandController {
   }
 
   @PostMapping("/input-rules")
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER')")
   ApiResponse<CropInputRuleResponse> createRule(
       Authentication authentication,
       @Valid @RequestBody CropInputRuleRequest request
@@ -104,7 +104,7 @@ public class InputDemandController {
   }
 
   @PutMapping("/input-rules/{ruleId}")
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER')")
   ApiResponse<CropInputRuleResponse> updateRule(
       Authentication authentication,
       @PathVariable UUID ruleId,
@@ -118,7 +118,7 @@ public class InputDemandController {
   }
 
   @PatchMapping("/input-rules/{ruleId}/status")
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER')")
   ApiResponse<CropInputRuleResponse> updateRuleStatus(
       Authentication authentication,
       @PathVariable UUID ruleId,
@@ -132,7 +132,7 @@ public class InputDemandController {
   }
 
   @PostMapping("/demand-estimates/run")
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER')")
   ApiResponse<InputDemandRunResponse> runDemandEstimate(
       Authentication authentication,
       @Valid @RequestBody InputDemandRunRequest request
@@ -144,7 +144,7 @@ public class InputDemandController {
   }
 
   @GetMapping("/demand-estimates")
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER')")
   ApiResponse<List<InputDemandEstimateResponse>> listEstimates(
       Authentication authentication,
       @RequestParam(required = false) UUID seasonId,
@@ -160,7 +160,7 @@ public class InputDemandController {
   }
 
   @GetMapping("/demand-estimates/summary")
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER')")
   ApiResponse<InputDemandSummaryResponse> summarize(
       Authentication authentication,
       @RequestParam(required = false) UUID seasonId,

@@ -15,16 +15,31 @@ import { logger } from "../core/logging/logger";
 import { readJsonArray, writeJson } from "../core/storage/jsonStore";
 import { storageKeys } from "../core/storage/storageKeys";
 
+export const OWNERSHIP_TYPE_OPTIONS = [
+  "Self-owned",
+  "Leased-in",
+  "Sharecropper"
+] as const;
+
+export const IRRIGATION_SOURCE_OPTIONS = [
+  "Canal",
+  "Borewell",
+  "Open well",
+  "Pond",
+  "Rainfed",
+  "Drip"
+] as const;
+
 export type FarmLandholding = {
   createdAt: string;
   cultivableAreaAcres?: number;
   id: string;
-  irrigationSource?: string;
+  irrigationSource: string;
   memberId: string;
   memberNumber: string;
-  ownershipType?: string;
+  ownershipType: string;
   status: FarmRecordStatus;
-  surveyNumber?: string;
+  surveyNumber: string;
   tenantId?: string;
   totalAreaAcres: number;
   updatedAt: string;
@@ -35,8 +50,8 @@ export type FarmPlot = {
   createdAt: string;
   id: string;
   landholdingId?: string;
-  latitude?: number;
-  longitude?: number;
+  latitude: number;
+  longitude: number;
   memberId: string;
   memberNumber: string;
   plotName: string;
@@ -48,18 +63,18 @@ export type FarmPlot = {
 
 export type FarmLandholdingInput = {
   cultivableAreaAcres?: string;
-  irrigationSource?: string;
-  ownershipType?: string;
+  irrigationSource: string;
+  ownershipType: string;
   status?: FarmRecordStatus;
-  surveyNumber?: string;
+  surveyNumber: string;
   totalAreaAcres: string;
 };
 
 export type FarmPlotInput = {
   areaAcres: string;
   landholdingId?: string;
-  latitude?: string;
-  longitude?: string;
+  latitude: string;
+  longitude: string;
   plotName: string;
   soilType?: string;
   status?: FarmRecordStatus;
@@ -287,12 +302,12 @@ function toFarmLandholding(response: FarmLandholdingResponse): FarmLandholding {
     createdAt: response.createdAt,
     cultivableAreaAcres: response.cultivableAreaAcres ?? undefined,
     id: response.id,
-    irrigationSource: response.irrigationSource ?? undefined,
+    irrigationSource: response.irrigationSource,
     memberId: response.memberId,
     memberNumber: response.memberNumber,
-    ownershipType: response.ownershipType ?? undefined,
+    ownershipType: response.ownershipType,
     status: response.status,
-    surveyNumber: response.surveyNumber ?? undefined,
+    surveyNumber: response.surveyNumber,
     tenantId: response.tenantId,
     totalAreaAcres: response.totalAreaAcres,
     updatedAt: response.updatedAt
@@ -305,8 +320,8 @@ function toFarmPlot(response: FarmPlotResponse): FarmPlot {
     createdAt: response.createdAt,
     id: response.id,
     landholdingId: response.landholdingId ?? undefined,
-    latitude: response.latitude ?? undefined,
-    longitude: response.longitude ?? undefined,
+    latitude: response.latitude,
+    longitude: response.longitude,
     memberId: response.memberId,
     memberNumber: response.memberNumber,
     plotName: response.plotName,
@@ -324,6 +339,9 @@ function toStoredFarmLandholding(
     typeof landholding.id !== "string" ||
     typeof landholding.memberId !== "string" ||
     typeof landholding.memberNumber !== "string" ||
+    typeof landholding.surveyNumber !== "string" ||
+    typeof landholding.ownershipType !== "string" ||
+    typeof landholding.irrigationSource !== "string" ||
     typeof landholding.totalAreaAcres !== "number" ||
     typeof landholding.createdAt !== "string" ||
     typeof landholding.updatedAt !== "string"
@@ -354,6 +372,8 @@ function toStoredFarmPlot(plot: Partial<FarmPlot>): FarmPlot | null {
     typeof plot.memberNumber !== "string" ||
     typeof plot.plotName !== "string" ||
     typeof plot.areaAcres !== "number" ||
+    typeof plot.latitude !== "number" ||
+    typeof plot.longitude !== "number" ||
     typeof plot.createdAt !== "string" ||
     typeof plot.updatedAt !== "string"
   ) {
@@ -398,17 +418,25 @@ function toLandholdingRequest(
 
   return {
     cultivableAreaAcres,
-    irrigationSource: cleanOptional(input.irrigationSource),
-    ownershipType: cleanOptional(input.ownershipType),
+    irrigationSource: normalizeApprovedValue(
+      input.irrigationSource,
+      "Irrigation source",
+      IRRIGATION_SOURCE_OPTIONS
+    ),
+    ownershipType: normalizeApprovedValue(
+      input.ownershipType,
+      "Ownership type",
+      OWNERSHIP_TYPE_OPTIONS
+    ),
     status: input.status ?? "ACTIVE",
-    surveyNumber: cleanOptional(input.surveyNumber),
+    surveyNumber: requiredText(input.surveyNumber, "Survey number / Khasra number"),
     totalAreaAcres
   };
 }
 
 function toPlotRequest(input: FarmPlotInput): CreateFarmPlotRequest {
-  const latitude = parseOptionalNumber(input.latitude, "Latitude");
-  const longitude = parseOptionalNumber(input.longitude, "Longitude");
+  const latitude = parseRequiredNumber(input.latitude, "Latitude");
+  const longitude = parseRequiredNumber(input.longitude, "Longitude");
 
   if (latitude !== undefined && (latitude < -90 || latitude > 90)) {
     throw new AppError("VALIDATION_FAILED", "Latitude must be between -90 and 90.");
@@ -518,6 +546,16 @@ function parsePositiveNumber(value: string, label: string) {
   return parsed;
 }
 
+function parseRequiredNumber(value: string, label: string) {
+  const parsed = parseOptionalNumber(value, label);
+
+  if (parsed === undefined) {
+    throw new AppError("VALIDATION_FAILED", `${label} is required.`);
+  }
+
+  return parsed;
+}
+
 function parseOptionalNonNegativeNumber(value: string | undefined, label: string) {
   const parsed = parseOptionalNumber(value, label);
 
@@ -546,6 +584,36 @@ function parseOptionalNumber(value: string | undefined, label: string) {
 function cleanOptional(value: string | undefined) {
   const trimmed = value?.trim();
   return trimmed || undefined;
+}
+
+function requiredText(value: string | undefined, label: string) {
+  const trimmed = value?.trim();
+
+  if (!trimmed) {
+    throw new AppError("VALIDATION_FAILED", `${label} is required.`);
+  }
+
+  return trimmed;
+}
+
+function normalizeApprovedValue<T extends string>(
+  value: string | undefined,
+  label: string,
+  approvedValues: readonly T[]
+): T {
+  const trimmed = requiredText(value, label);
+  const approved = approvedValues.find(
+    (option) => option.toLowerCase() === trimmed.toLowerCase()
+  );
+
+  if (!approved) {
+    throw new AppError(
+      "VALIDATION_FAILED",
+      `${label} must be one of: ${approvedValues.join(", ")}.`
+    );
+  }
+
+  return approved;
 }
 
 async function getAccessToken() {

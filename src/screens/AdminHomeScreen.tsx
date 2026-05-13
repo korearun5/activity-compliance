@@ -226,8 +226,10 @@ export function AdminHomeScreen({ onLogout }: AdminHomeScreenProps) {
     }
   }
 
-  async function handleToggleMemberStatus(member: FpoMember) {
-    const nextStatus = member.status === "Active" ? "Inactive" : "Active";
+  async function handleUpdateMemberStatus(
+    member: FpoMember,
+    nextStatus: "Active" | "Inactive" | "Suspended"
+  ) {
     setUpdatingParticipantUsername(member.username);
     setParticipantFormError("");
 
@@ -480,7 +482,7 @@ export function AdminHomeScreen({ onLogout }: AdminHomeScreenProps) {
               isCreatingParticipant={isCreatingParticipant}
               onCreateMember={handleCreateMember}
               onEditMemberIdChange={setEditingMemberId}
-              onToggleMemberStatus={handleToggleMemberStatus}
+              onUpdateMemberStatus={handleUpdateMemberStatus}
               onUpdateMember={handleUpdateMember}
               participants={participants}
               proofRecords={proofRecords}
@@ -700,7 +702,7 @@ function MembersTab({
   isCreatingParticipant,
   onCreateMember,
   onEditMemberIdChange,
-  onToggleMemberStatus,
+  onUpdateMemberStatus,
   onUpdateMember,
   participants,
   proofRecords,
@@ -714,7 +716,10 @@ function MembersTab({
   isCreatingParticipant: boolean;
   onCreateMember: (data: CreateFpoMemberInput) => Promise<boolean>;
   onEditMemberIdChange: (memberId: string | null) => void;
-  onToggleMemberStatus: (member: FpoMember) => Promise<void>;
+  onUpdateMemberStatus: (
+    member: FpoMember,
+    status: "Active" | "Inactive" | "Suspended"
+  ) => Promise<void>;
   onUpdateMember: (member: FpoMember, data: UpdateFpoMemberInput) => Promise<boolean>;
   participants: FpoMember[];
   proofRecords: ProofSubmission[];
@@ -731,8 +736,9 @@ function MembersTab({
           member.memberNumber,
           member.mobileNumber,
           member.village,
-          member.blockName,
+          member.taluka,
           member.districtName,
+          member.stateName,
           member.username
         ]
           .filter((value): value is string => Boolean(value))
@@ -829,7 +835,7 @@ function MembersTab({
                       : "Land records"}
                   </Text>
                 </Pressable>
-                {participant.status !== "Profile pending" ? (
+                {participant.status !== "Active" ? (
                   <Pressable
                     accessibilityRole="button"
                     disabled={updatingParticipantUsername === participant.username}
@@ -839,15 +845,47 @@ function MembersTab({
                         updatingParticipantUsername === participant.username) &&
                         styles.actionButtonPressed
                     ]}
-                    onPress={() => onToggleMemberStatus(participant)}
+                    onPress={() => onUpdateMemberStatus(participant, "Active")}
                   >
                     <Text style={styles.actionButtonText}>
                       {updatingParticipantUsername === participant.username
                         ? "Saving..."
-                        : participant.status === "Active"
-                          ? "Deactivate"
-                          : "Activate"}
+                        : "Activate"}
                     </Text>
+                  </Pressable>
+                ) : null}
+                {participant.status === "Active" ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    disabled={updatingParticipantUsername === participant.username}
+                    style={({ pressed }) => [
+                      styles.actionButton,
+                      (pressed ||
+                        updatingParticipantUsername === participant.username) &&
+                        styles.actionButtonPressed
+                    ]}
+                    onPress={() => onUpdateMemberStatus(participant, "Inactive")}
+                  >
+                    <Text style={styles.actionButtonText}>
+                      {updatingParticipantUsername === participant.username
+                        ? "Saving..."
+                        : "Deactivate"}
+                    </Text>
+                  </Pressable>
+                ) : null}
+                {participant.status !== "Suspended" ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    disabled={updatingParticipantUsername === participant.username}
+                    style={({ pressed }) => [
+                      styles.secondaryActionButton,
+                      (pressed ||
+                        updatingParticipantUsername === participant.username) &&
+                        styles.actionButtonPressed
+                    ]}
+                    onPress={() => onUpdateMemberStatus(participant, "Suspended")}
+                  >
+                    <Text style={styles.secondaryActionButtonText}>Suspend</Text>
                   </Pressable>
                 ) : null}
               </View>
@@ -888,9 +926,9 @@ function CreateMemberForm({
   isSubmitting: boolean;
   onSubmit: (data: CreateFpoMemberInput) => Promise<boolean>;
 }) {
+  const [aadhaarNumber, setAadhaarNumber] = useState("");
   const [age, setAge] = useState("");
   const [alternateMobileNumber, setAlternateMobileNumber] = useState("");
-  const [blockName, setBlockName] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [districtName, setDistrictName] = useState("");
   const [farmerCategory, setFarmerCategory] = useState("");
@@ -898,15 +936,17 @@ function CreateMemberForm({
   const [memberNumber, setMemberNumber] = useState("");
   const [mobileNumber, setMobileNumber] = useState("");
   const [password, setPassword] = useState("");
+  const [stateName, setStateName] = useState("");
+  const [taluka, setTaluka] = useState("");
   const [username, setUsername] = useState("");
   const [village, setVillage] = useState("");
   const [localError, setLocalError] = useState("");
 
   async function handleSubmit() {
     const input: CreateFpoMemberInput = {
+      aadhaarNumber: aadhaarNumber.trim(),
       age: age.trim(),
       alternateMobileNumber: alternateMobileNumber.trim(),
-      blockName: blockName.trim(),
       displayName: displayName.trim(),
       districtName: districtName.trim(),
       farmerCategory: farmerCategory.trim(),
@@ -914,6 +954,8 @@ function CreateMemberForm({
       memberNumber: memberNumber.trim(),
       mobileNumber: mobileNumber.trim(),
       password,
+      stateName: stateName.trim(),
+      taluka: taluka.trim(),
       username: username.trim(),
       village: village.trim()
     };
@@ -923,12 +965,27 @@ function CreateMemberForm({
       !input.displayName ||
       !input.mobileNumber ||
       !input.village ||
+      !input.taluka ||
+      !input.districtName ||
+      !input.stateName ||
+      !input.gender ||
+      !input.farmerCategory ||
       !input.username ||
       !input.password
     ) {
       setLocalError(
-        "Enter member number, name, mobile number, village, username, and password."
+        "Enter member number, name, mobile, village, taluka, district, state, gender, category, username, and password."
       );
+      return;
+    }
+
+    if (!isValidIndianMobile(input.mobileNumber)) {
+      setLocalError("Mobile number must be a 10 digit Indian mobile number.");
+      return;
+    }
+
+    if (!isValidOptionalAadhaar(input.aadhaarNumber)) {
+      setLocalError("Aadhaar number must be 12 digits when provided.");
       return;
     }
 
@@ -946,9 +1003,9 @@ function CreateMemberForm({
     const created = await onSubmit(input);
 
     if (created) {
+      setAadhaarNumber("");
       setAge("");
       setAlternateMobileNumber("");
-      setBlockName("");
       setDisplayName("");
       setDistrictName("");
       setFarmerCategory("");
@@ -956,6 +1013,8 @@ function CreateMemberForm({
       setMemberNumber("");
       setMobileNumber("");
       setPassword("");
+      setStateName("");
+      setTaluka("");
       setUsername("");
       setVillage("");
     }
@@ -983,9 +1042,16 @@ function CreateMemberForm({
           onChange={setAlternateMobileNumber}
           keyboardType="phone-pad"
         />
+        <AdminField
+          label="Aadhaar number"
+          value={aadhaarNumber}
+          onChange={setAadhaarNumber}
+          keyboardType="numeric"
+        />
         <AdminField label="Village" value={village} onChange={setVillage} />
-        <AdminField label="Block" value={blockName} onChange={setBlockName} />
+        <AdminField label="Taluka" value={taluka} onChange={setTaluka} />
         <AdminField label="District" value={districtName} onChange={setDistrictName} />
+        <AdminField label="State" value={stateName} onChange={setStateName} />
         <AdminField label="Gender" value={gender} onChange={setGender} />
         <AdminField label="Age" value={age} onChange={setAge} keyboardType="numeric" />
         <AdminField
@@ -1038,31 +1104,35 @@ function EditMemberForm({
   onCancel: () => void;
   onSubmit: (data: UpdateFpoMemberInput) => Promise<boolean>;
 }) {
+  const [aadhaarNumber, setAadhaarNumber] = useState(member.aadhaarNumber ?? "");
   const [age, setAge] = useState(member.age?.toString() ?? "");
   const [alternateMobileNumber, setAlternateMobileNumber] = useState(
     member.alternateMobileNumber ?? ""
   );
-  const [blockName, setBlockName] = useState(member.blockName ?? "");
   const [displayName, setDisplayName] = useState(member.displayName);
   const [districtName, setDistrictName] = useState(member.districtName ?? "");
   const [farmerCategory, setFarmerCategory] = useState(member.farmerCategory ?? "");
   const [gender, setGender] = useState(member.gender ?? "");
   const [memberNumber, setMemberNumber] = useState(member.memberNumber);
   const [mobileNumber, setMobileNumber] = useState(member.mobileNumber);
+  const [stateName, setStateName] = useState(member.stateName);
+  const [taluka, setTaluka] = useState(member.taluka);
   const [village, setVillage] = useState(member.village);
   const [localError, setLocalError] = useState("");
 
   async function handleSubmit() {
     const input: UpdateFpoMemberInput = {
+      aadhaarNumber: aadhaarNumber.trim(),
       age: age.trim(),
       alternateMobileNumber: alternateMobileNumber.trim(),
-      blockName: blockName.trim(),
       displayName: displayName.trim(),
       districtName: districtName.trim(),
       farmerCategory: farmerCategory.trim(),
       gender: gender.trim(),
       memberNumber: memberNumber.trim(),
       mobileNumber: mobileNumber.trim(),
+      stateName: stateName.trim(),
+      taluka: taluka.trim(),
       village: village.trim()
     };
 
@@ -1070,9 +1140,26 @@ function EditMemberForm({
       !input.memberNumber ||
       !input.displayName ||
       !input.mobileNumber ||
-      !input.village
+      !input.village ||
+      !input.taluka ||
+      !input.districtName ||
+      !input.stateName ||
+      !input.gender ||
+      !input.farmerCategory
     ) {
-      setLocalError("Enter member number, name, mobile number, and village.");
+      setLocalError(
+        "Enter member number, name, mobile, village, taluka, district, state, gender, and category."
+      );
+      return;
+    }
+
+    if (!isValidIndianMobile(input.mobileNumber)) {
+      setLocalError("Mobile number must be a 10 digit Indian mobile number.");
+      return;
+    }
+
+    if (!isValidOptionalAadhaar(input.aadhaarNumber)) {
+      setLocalError("Aadhaar number must be 12 digits when provided.");
       return;
     }
 
@@ -1107,9 +1194,16 @@ function EditMemberForm({
           onChange={setAlternateMobileNumber}
           keyboardType="phone-pad"
         />
+        <AdminField
+          label="Aadhaar number"
+          value={aadhaarNumber}
+          onChange={setAadhaarNumber}
+          keyboardType="numeric"
+        />
         <AdminField label="Village" value={village} onChange={setVillage} />
-        <AdminField label="Block" value={blockName} onChange={setBlockName} />
+        <AdminField label="Taluka" value={taluka} onChange={setTaluka} />
         <AdminField label="District" value={districtName} onChange={setDistrictName} />
+        <AdminField label="State" value={stateName} onChange={setStateName} />
         <AdminField label="Gender" value={gender} onChange={setGender} />
         <AdminField label="Age" value={age} onChange={setAge} keyboardType="numeric" />
         <AdminField
@@ -1346,6 +1440,18 @@ function isValidOptionalAge(age: string | undefined) {
 
   const parsedAge = Number(age);
   return Number.isInteger(parsedAge) && parsedAge >= 0 && parsedAge <= 120;
+}
+
+function isValidIndianMobile(mobileNumber: string | undefined) {
+  return Boolean(mobileNumber?.replace(/\D/g, "").match(/^[6-9][0-9]{9}$/));
+}
+
+function isValidOptionalAadhaar(aadhaarNumber: string | undefined) {
+  if (!aadhaarNumber) {
+    return true;
+  }
+
+  return /^[0-9]{12}$/.test(aadhaarNumber.replace(/\D/g, ""));
 }
 
 function evidenceStatusLabel(status: EvidenceStatus) {

@@ -126,8 +126,8 @@ class FpoReportControllerIT {
   void setup() {
     tenant = tenantRepository.save(TestDataFactory.tenant("tenant-" + UUID.randomUUID()));
     RoleEntity adminRole = roleRepository.save(TestDataFactory.role(tenant, Role.ADMIN));
-    RoleEntity participantRole = roleRepository.save(
-        TestDataFactory.role(tenant, Role.PARTICIPANT)
+    RoleEntity FIELD_COORDINATORRole = roleRepository.save(
+        TestDataFactory.role(tenant, Role.FIELD_COORDINATOR)
     );
     adminUser = userRepository.save(TestDataFactory.user(
         tenant,
@@ -136,14 +136,14 @@ class FpoReportControllerIT {
         "Admin User",
         adminRole
     ));
-    UserEntity participantUser = userRepository.save(TestDataFactory.user(
+    UserEntity FIELD_COORDINATORUser = userRepository.save(TestDataFactory.user(
         tenant,
-        "participant-" + UUID.randomUUID(),
-        passwordEncoder.encode("participant123"),
-        "Participant User",
-        participantRole
+        "FIELD_COORDINATOR-" + UUID.randomUUID(),
+        passwordEncoder.encode("FIELD_COORDINATOR123"),
+        "FIELD_COORDINATOR User",
+        FIELD_COORDINATORRole
     ));
-    member = memberRepository.save(member(tenant, participantUser, adminUser, "MEM-1"));
+    member = memberRepository.save(member(tenant, FIELD_COORDINATORUser, adminUser, "MEM-1"));
     enableModule(tenant, ModuleCode.REPORT_EXPORT);
 
     TenantEntity disabledTenant = tenantRepository.save(
@@ -289,9 +289,11 @@ class FpoReportControllerIT {
         user.getDisplayName(),
         phoneFor(memberNumber),
         null,
+        null,
         "Village",
         "Block",
         "District",
+        "Maharashtra",
         "MALE",
         null,
         42,
@@ -310,8 +312,8 @@ class FpoReportControllerIT {
         "SUR-1",
         area,
         area,
-        "OWNED",
-        "CANAL",
+        "Self-owned",
+        "Canal",
         status,
         Instant.now()
     );

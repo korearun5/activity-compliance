@@ -319,7 +319,7 @@ public class CropPlanningService {
       CropPlanStatus status
   ) {
     requireCropPlanningModule(currentUser);
-    List<SeasonalCropPlanEntity> plans = currentUser.hasAnyRole(Role.ADMIN, Role.SUPERVISOR)
+    List<SeasonalCropPlanEntity> plans = currentUser.hasAnyRole(Role.ADMIN, Role.FPO_MANAGER, Role.FIELD_COORDINATOR)
         ? cropPlanRepository.findByTenantIdOrderByCreatedAtDesc(currentUser.tenantId())
         : cropPlanRepository.findByTenantIdAndMemberProfileIdOrderByCreatedAtDesc(
             currentUser.tenantId(),
@@ -549,17 +549,17 @@ public class CropPlanningService {
   }
 
   private void requireManager(CurrentUser currentUser) {
-    if (!currentUser.hasAnyRole(Role.ADMIN, Role.SUPERVISOR)) {
+    if (!currentUser.hasAnyRole(Role.ADMIN, Role.FPO_MANAGER, Role.FIELD_COORDINATOR)) {
       throw new ApplicationException(
           ErrorCode.ACCESS_DENIED,
-          "Only admins and supervisors can manage crop planning records.",
+          "Only Phase 1 staff can manage crop planning records.",
           HttpStatus.FORBIDDEN
       );
     }
   }
 
   private void requireManagerOrOwner(CurrentUser currentUser, FpoMemberProfileEntity member) {
-    if (currentUser.hasAnyRole(Role.ADMIN, Role.SUPERVISOR)) {
+    if (currentUser.hasAnyRole(Role.ADMIN, Role.FPO_MANAGER, Role.FIELD_COORDINATOR)) {
       return;
     }
 

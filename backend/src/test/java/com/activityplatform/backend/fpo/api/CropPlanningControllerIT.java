@@ -92,19 +92,19 @@ class CropPlanningControllerIT {
   private JwtService jwtService;
 
   private String adminToken;
-  private String participantToken;
+  private String FIELD_COORDINATORToken;
   private String disabledTenantAdminToken;
   private TenantEntity tenant;
   private UserEntity adminUser;
-  private UserEntity participantUser;
+  private UserEntity FIELD_COORDINATORUser;
   private FpoMemberProfileEntity member;
 
   @BeforeEach
   void setup() {
     tenant = tenantRepository.save(TestDataFactory.tenant("tenant-" + UUID.randomUUID()));
     RoleEntity adminRole = roleRepository.save(TestDataFactory.role(tenant, Role.ADMIN));
-    RoleEntity participantRole = roleRepository.save(
-        TestDataFactory.role(tenant, Role.PARTICIPANT)
+    RoleEntity FIELD_COORDINATORRole = roleRepository.save(
+        TestDataFactory.role(tenant, Role.FIELD_COORDINATOR)
     );
 
     adminUser = userRepository.save(TestDataFactory.user(
@@ -114,14 +114,14 @@ class CropPlanningControllerIT {
         "Admin User",
         adminRole
     ));
-    participantUser = userRepository.save(TestDataFactory.user(
+    FIELD_COORDINATORUser = userRepository.save(TestDataFactory.user(
         tenant,
-        "participant-" + UUID.randomUUID(),
-        passwordEncoder.encode("participant123"),
-        "Participant User",
-        participantRole
+        "FIELD_COORDINATOR-" + UUID.randomUUID(),
+        passwordEncoder.encode("FIELD_COORDINATOR123"),
+        "FIELD_COORDINATOR User",
+        FIELD_COORDINATORRole
     ));
-    member = memberRepository.save(member(tenant, participantUser, adminUser, "MEM-1"));
+    member = memberRepository.save(member(tenant, FIELD_COORDINATORUser, adminUser, "MEM-1"));
     enableModule(tenant, ModuleCode.CROP_PLANNING);
 
     TenantEntity disabledTenant = tenantRepository.save(
@@ -139,7 +139,7 @@ class CropPlanningControllerIT {
     ));
 
     adminToken = jwtService.issueTokens(adminUser).accessToken();
-    participantToken = jwtService.issueTokens(participantUser).accessToken();
+    FIELD_COORDINATORToken = jwtService.issueTokens(FIELD_COORDINATORUser).accessToken();
     disabledTenantAdminToken = jwtService.issueTokens(disabledTenantAdmin).accessToken();
   }
 
@@ -242,7 +242,7 @@ class CropPlanningControllerIT {
   }
 
   @Test
-  void testAdminCanCreateCropHistoryAndParticipantCanReadOwnHistory()
+  void testAdminCanCreateCropHistoryAndFIELD_COORDINATORCanReadOwnHistory()
       throws Exception {
     CropCatalogEntity crop = cropRepository.save(crop("TOM", "Tomato"));
     CropSeasonEntity season = seasonRepository.save(season("RAB", "Rabi", 2025));
@@ -269,7 +269,7 @@ class CropPlanningControllerIT {
     CropHistoryResponse created = readData(response, CropHistoryResponse.class);
 
     mockMvc.perform(get("/api/v1/fpo/members/" + member.getId() + "/crop-history")
-            .header("Authorization", "Bearer " + participantToken))
+            .header("Authorization", "Bearer " + FIELD_COORDINATORToken))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.data[0].id").value(created.id().toString()));
   }
@@ -309,7 +309,7 @@ class CropPlanningControllerIT {
         .andExpect(jsonPath("$.data[0].id").value(created.id().toString()));
 
     mockMvc.perform(get("/api/v1/fpo/crop-plans/" + created.id())
-            .header("Authorization", "Bearer " + participantToken))
+            .header("Authorization", "Bearer " + FIELD_COORDINATORToken))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.data.id").value(created.id().toString()));
 
@@ -369,9 +369,11 @@ class CropPlanningControllerIT {
         user.getDisplayName(),
         phoneFor(memberNumber),
         null,
+        null,
         "Village",
         "Block",
         "District",
+        "Maharashtra",
         "MALE",
         null,
         42,

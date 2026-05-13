@@ -9,14 +9,14 @@ handoff, onboarding, debugging, and deciding where a future feature belongs.
 flowchart TB
     subgraph Clients["Client Layer"]
         AdminUser["Admin"]
-        SupervisorUser["Supervisor"]
-        ParticipantUser["Participant / Farmer"]
+        FPO_MANAGERUser["FPO_MANAGER"]
+        FIELD_COORDINATORUser["FIELD_COORDINATOR / Farmer"]
     end
 
     subgraph ExpoApp["Expo React Native App"]
         Login["Login Screen"]
         AdminScreens["Admin Screens"]
-        ParticipantScreens["Participant Screens"]
+        FIELD_COORDINATORScreens["FIELD_COORDINATOR Screens"]
         AuthFacade["Auth Facade"]
         ApiClient["API Client"]
         Stores["Frontend Data Stores"]
@@ -70,11 +70,11 @@ flowchart TB
     end
 
     AdminUser --> AdminScreens
-    SupervisorUser --> AdminScreens
-    ParticipantUser --> ParticipantScreens
+    FPO_MANAGERUser --> AdminScreens
+    FIELD_COORDINATORUser --> FIELD_COORDINATORScreens
     Login --> AuthFacade
     AdminScreens --> Stores
-    ParticipantScreens --> Stores
+    FIELD_COORDINATORScreens --> Stores
     Stores --> ApiClient
     Stores -. development fallback .-> LocalCache
     AuthFacade --> ApiClient
@@ -157,7 +157,7 @@ flowchart LR
     Auth["auth\nlogin, refresh, tenant, base user/role entities"]
     Platform["platform\nmodule catalog and tenant subscriptions"]
     FPO["fpo\nmember profiles and Phase 1 FPO domain model"]
-    User["user\nadmin participant profile management"]
+    User["user\nadmin FIELD_COORDINATOR profile management"]
     Role["role\nrole catalog and role assignment"]
     Workflow["workflow\nworkflow definitions and task templates"]
     Activity["activity\nworkflow execution and task status"]
@@ -350,7 +350,7 @@ classDiagram
         UUID id PK
         UUID tenantId FK
         UUID workflowDefinitionId FK
-        UUID participantUserId FK
+        UUID FIELD_COORDINATORUserId FK
         String unitName
         String locationName
         ActivityStatus status
@@ -379,7 +379,7 @@ classDiagram
         UUID id PK
         UUID tenantId FK
         UUID activityTaskId FK
-        UUID participantUserId FK
+        UUID FIELD_COORDINATORUserId FK
         String storageKey
         String originalFilename
         String contentType
@@ -444,11 +444,11 @@ classDiagram
     WorkflowDefinitionEntity "1" --> "1..*" WorkflowTaskEntity : contains
     TenantEntity "1" --> "0..*" ActivityEntity : owns
     WorkflowDefinitionEntity "1" --> "0..*" ActivityEntity : instantiates
-    UserEntity "0..1" --> "0..*" ActivityEntity : participant
+    UserEntity "0..1" --> "0..*" ActivityEntity : FIELD_COORDINATOR
     ActivityEntity "1" --> "1..*" ActivityTaskEntity : contains
     WorkflowTaskEntity "1" --> "0..*" ActivityTaskEntity : template
     ActivityTaskEntity "1" --> "0..*" EvidenceEntity : proof
-    UserEntity "0..1" --> "0..*" EvidenceEntity : participant
+    UserEntity "0..1" --> "0..*" EvidenceEntity : FIELD_COORDINATOR
     UserEntity "0..1" --> "0..*" EvidenceEntity : reviewer
     TenantEntity "1" --> "0..*" AuditEventEntity : owns
     UserEntity "0..1" --> "0..*" AuditEventEntity : actor
@@ -510,7 +510,7 @@ Important constraints:
 - `users`: unique `(tenant_id, username)`.
 - `roles`: unique `(tenant_id, code)`.
 - `user_roles`: composite primary key `(user_id, role_id)`.
-- Current role codes: `ADMIN`, `SUPERVISOR`, `PARTICIPANT`.
+- Current role codes: `ADMIN`, `FPO_MANAGER`, `FIELD_COORDINATOR`.
 
 ## Module Subscription Tables
 
@@ -846,7 +846,7 @@ classDiagram
         UUID id PK
         UUID tenant_id FK
         UUID workflow_definition_id FK
-        UUID participant_user_id FK
+        UUID FIELD_COORDINATOR_user_id FK
         varchar unit_name
         varchar location_name
         varchar status
@@ -882,7 +882,7 @@ classDiagram
     }
 
     workflow_definitions "1" --> "0..*" activities : workflow_definition_id
-    users "0..1" --> "0..*" activities : participant_user_id
+    users "0..1" --> "0..*" activities : FIELD_COORDINATOR_user_id
     activities "1" --> "1..*" activity_tasks : activity_id
     workflow_tasks "1" --> "0..*" activity_tasks : workflow_task_id
 ```
@@ -902,7 +902,7 @@ classDiagram
         UUID id PK
         UUID tenant_id FK
         UUID activity_task_id FK
-        UUID participant_user_id FK
+        UUID FIELD_COORDINATOR_user_id FK
         text storage_key
         varchar original_filename
         varchar content_type
@@ -928,7 +928,7 @@ classDiagram
 
     tenants "1" --> "0..*" evidence : tenant_id
     activity_tasks "1" --> "0..*" evidence : activity_task_id
-    users "0..1" --> "0..*" evidence : participant_user_id
+    users "0..1" --> "0..*" evidence : FIELD_COORDINATOR_user_id
     users "0..1" --> "0..*" evidence : reviewed_by_user_id
 ```
 
@@ -938,7 +938,7 @@ Important rules:
   and the stable storage key.
 - Evidence status values: `SUBMITTED`, `PENDING_REVIEW`, `APPROVED`,
   `REJECTED`.
-- Reviewer fields are nullable until an admin/supervisor reviews the proof.
+- Reviewer fields are nullable until an admin/FPO_MANAGER reviews the proof.
 
 ## Audit, Report, And Notification Tables
 

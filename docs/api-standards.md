@@ -146,12 +146,12 @@ Failure:
 
 ## User Profile Creation
 
-Admins and supervisors create field/farmer profiles through the generic user API.
-Created users are tenant-scoped and receive the `PARTICIPANT` role.
+Admins and FPO_MANAGERs create field/farmer profiles through the generic user API.
+Created users are tenant-scoped and receive the `FIELD_COORDINATOR` role.
 
 ```http
 POST /api/v1/users
-Authorization: Bearer <admin-or-supervisor-token>
+Authorization: Bearer <admin-FPO_MANAGER-or-FIELD_COORDINATOR-token>
 Content-Type: application/json
 ```
 
@@ -168,8 +168,8 @@ Content-Type: application/json
 
 The response never includes `password` or `passwordHash`.
 
-Admins and supervisors can update participant profile basics and activate or
-deactivate a participant without changing workflow/activity history:
+Admins and FPO_MANAGERs can update FIELD_COORDINATOR profile basics and activate or
+deactivate a FIELD_COORDINATOR without changing workflow/activity history:
 
 ```http
 GET /api/v1/users/me
@@ -177,7 +177,7 @@ PUT /api/v1/users/{userId}
 PATCH /api/v1/users/{userId}/status
 ```
 
-Participants use `GET /api/v1/users/me` to load their own profile. Frontend
+FIELD_COORDINATORs use `GET /api/v1/users/me` to load their own profile. Frontend
 self-signup is disabled. For FPO Phase 1, farmer profiles are created as FPO
 member records and do not require login users.
 
@@ -215,7 +215,7 @@ Content-Type: application/json
 Role updates are tenant-scoped and record a `USER_ROLES_UPDATED` audit event.
 The API blocks admins from changing their own roles through this endpoint to
 avoid accidental lockout. For FPO Phase 1, use `ADMIN`, `FPO_MANAGER`, and
-`FIELD_COORDINATOR`; do not use the legacy `SUPERVISOR` label for new FPO work.
+`FIELD_COORDINATOR`; do not use the legacy `FPO_MANAGER` label for new FPO work.
 JWT role claims change only after the affected user receives new tokens.
 
 ## Module Subscriptions
@@ -276,20 +276,20 @@ return:
 FPO member profiles extend platform users with farmer/member-specific fields.
 They are guarded by the `MEMBER_DATA` module.
 
-Admins and supervisors can list and create members:
+Admins and FPO_MANAGERs can list and create members:
 
 ```http
 GET /api/v1/fpo/members
 POST /api/v1/fpo/members
-Authorization: Bearer <admin-or-supervisor-token>
+Authorization: Bearer <admin-FPO_MANAGER-or-FIELD_COORDINATOR-token>
 Content-Type: application/json
 ```
 
-Create with an existing participant user:
+Create with an existing FIELD_COORDINATOR user:
 
 ```json
 {
-  "userId": "<participant-user-id>",
+  "userId": "<FIELD_COORDINATOR-user-id>",
   "memberNumber": "MEM-001",
   "displayName": "Farmer Name",
   "mobileNumber": "+91 99999 00000",
@@ -300,12 +300,12 @@ Create with an existing participant user:
   "gender": "FEMALE",
   "age": 34,
   "farmerCategory": "SMALL",
-  "coordinatorUserId": "<admin-or-supervisor-user-id>",
+  "coordinatorUserId": "<admin-or-FPO_MANAGER-user-id>",
   "status": "ACTIVE"
 }
 ```
 
-Create and link a new participant login in one request by sending `username` and
+Create and link a new FIELD_COORDINATOR login in one request by sending `username` and
 `password` instead of `userId`.
 
 ```json
@@ -332,16 +332,16 @@ Rules:
 
 - Member numbers are unique per tenant.
 - Mobile numbers are unique per tenant.
-- A member links to one participant user.
-- Admins and supervisors can manage members.
-- Participants can read only their own member profile.
+- A member links to one FIELD_COORDINATOR user.
+- Admins and FPO_MANAGERs can manage members.
+- FIELD_COORDINATORs can read only their own member profile.
 - Changes emit `FPO_MEMBER_CREATED`, `FPO_MEMBER_UPDATED`, or
   `FPO_MEMBER_STATUS_CHANGED` audit events.
 
 ## FPO Landholding And Plot APIs
 
 FPO farm asset APIs are guarded by the `LAND_RECORDS` module. Admins and
-supervisors can manage records. Participants can read only their own member
+FPO_MANAGERs can manage records. FIELD_COORDINATORs can read only their own member
 records.
 
 Landholdings:
@@ -351,7 +351,7 @@ GET /api/v1/fpo/members/{memberId}/landholdings
 POST /api/v1/fpo/members/{memberId}/landholdings
 PUT /api/v1/fpo/landholdings/{landholdingId}
 PATCH /api/v1/fpo/landholdings/{landholdingId}/status
-Authorization: Bearer <admin-or-supervisor-token>
+Authorization: Bearer <admin-or-FPO_MANAGER-token>
 Content-Type: application/json
 ```
 
@@ -360,8 +360,8 @@ Content-Type: application/json
   "surveyNumber": "SUR-101",
   "totalAreaAcres": 3.5,
   "cultivableAreaAcres": 2.75,
-  "ownershipType": "OWNED",
-  "irrigationSource": "CANAL",
+  "ownershipType": "Self-owned",
+  "irrigationSource": "Canal",
   "status": "ACTIVE"
 }
 ```
@@ -373,7 +373,7 @@ GET /api/v1/fpo/members/{memberId}/plots
 POST /api/v1/fpo/members/{memberId}/plots
 PUT /api/v1/fpo/plots/{plotId}
 PATCH /api/v1/fpo/plots/{plotId}/status
-Authorization: Bearer <admin-or-supervisor-token>
+Authorization: Bearer <admin-or-FPO_MANAGER-token>
 Content-Type: application/json
 ```
 
@@ -393,8 +393,11 @@ Rules:
 
 - `totalAreaAcres` and `areaAcres` must be greater than zero.
 - `cultivableAreaAcres` cannot exceed `totalAreaAcres`.
-- Latitude must be between `-90` and `90`.
-- Longitude must be between `-180` and `180`.
+- `surveyNumber`, `ownershipType`, and `irrigationSource` are required.
+- Approved ownership values are `Self-owned`, `Leased-in`, and `Sharecropper`.
+- Approved irrigation values are `Canal`, `Borewell`, `Open well`, `Pond`, `Rainfed`, and `Drip`.
+- Latitude is required and must be between `-90` and `90`.
+- Longitude is required and must be between `-180` and `180`.
 - A plot can reference only a landholding owned by the same FPO member.
 - Lifecycle status values are `ACTIVE`, `INACTIVE`, and `ARCHIVED`.
 - Changes emit `FPO_LANDHOLDING_*` and `FPO_PLOT_*` audit events.
@@ -402,7 +405,7 @@ Rules:
 ## FPO Crop Planning APIs
 
 Crop planning APIs are guarded by the `CROP_PLANNING` module. Admins and
-supervisors can manage records. Participants can read their own crop history
+FPO_MANAGERs can manage records. FIELD_COORDINATORs can read their own crop history
 and crop plans.
 
 Crop catalog:
@@ -412,7 +415,7 @@ GET /api/v1/fpo/crops
 POST /api/v1/fpo/crops
 PUT /api/v1/fpo/crops/{cropId}
 PATCH /api/v1/fpo/crops/{cropId}/status
-Authorization: Bearer <admin-or-supervisor-token>
+Authorization: Bearer <admin-or-FPO_MANAGER-token>
 Content-Type: application/json
 ```
 
@@ -432,7 +435,7 @@ GET /api/v1/fpo/seasons
 POST /api/v1/fpo/seasons
 PUT /api/v1/fpo/seasons/{seasonId}
 PATCH /api/v1/fpo/seasons/{seasonId}/status
-Authorization: Bearer <admin-or-supervisor-token>
+Authorization: Bearer <admin-or-FPO_MANAGER-token>
 Content-Type: application/json
 ```
 
@@ -453,7 +456,7 @@ Crop history:
 GET /api/v1/fpo/members/{memberId}/crop-history
 POST /api/v1/fpo/members/{memberId}/crop-history
 PUT /api/v1/fpo/crop-history/{historyId}
-Authorization: Bearer <admin-or-supervisor-token>
+Authorization: Bearer <admin-or-FPO_MANAGER-token>
 Content-Type: application/json
 ```
 
@@ -477,7 +480,7 @@ POST /api/v1/fpo/crop-plans
 GET /api/v1/fpo/crop-plans/{planId}
 PUT /api/v1/fpo/crop-plans/{planId}
 PATCH /api/v1/fpo/crop-plans/{planId}/status
-Authorization: Bearer <admin-or-supervisor-token>
+Authorization: Bearer <admin-or-FPO_MANAGER-token>
 Content-Type: application/json
 ```
 
@@ -511,7 +514,7 @@ Rules:
 ## FPO Input Demand APIs
 
 Input demand APIs are guarded by the `INPUT_DEMAND` module. Admins and
-supervisors can manage input records, crop input rules, and demand calculations.
+FPO_MANAGERs can manage input records, crop input rules, and demand calculations.
 
 Input catalog:
 
@@ -520,7 +523,7 @@ GET /api/v1/fpo/inputs
 POST /api/v1/fpo/inputs
 PUT /api/v1/fpo/inputs/{inputId}
 PATCH /api/v1/fpo/inputs/{inputId}/status
-Authorization: Bearer <admin-or-supervisor-token>
+Authorization: Bearer <admin-or-FPO_MANAGER-token>
 Content-Type: application/json
 ```
 
@@ -541,7 +544,7 @@ GET /api/v1/fpo/input-rules?cropId=<crop-id>&inputId=<input-id>&status=ACTIVE
 POST /api/v1/fpo/input-rules
 PUT /api/v1/fpo/input-rules/{ruleId}
 PATCH /api/v1/fpo/input-rules/{ruleId}/status
-Authorization: Bearer <admin-or-supervisor-token>
+Authorization: Bearer <admin-or-FPO_MANAGER-token>
 Content-Type: application/json
 ```
 
@@ -562,7 +565,7 @@ Demand calculation and reads:
 POST /api/v1/fpo/demand-estimates/run
 GET /api/v1/fpo/demand-estimates?seasonId=<season-id>&cropId=<crop-id>&village=Village
 GET /api/v1/fpo/demand-estimates/summary?seasonId=<season-id>&cropId=<crop-id>&village=Village
-Authorization: Bearer <admin-or-supervisor-token>
+Authorization: Bearer <admin-or-FPO_MANAGER-token>
 Content-Type: application/json
 ```
 
@@ -591,8 +594,8 @@ Rules:
 
 ## FPO Advisory APIs
 
-Advisory APIs are guarded by the `ADVISORY` module. Admins and supervisors can
-create and publish advisory records. Participants can read only published
+Advisory APIs are guarded by the `ADVISORY` module. Admins and FPO_MANAGERs can
+create and publish advisory records. FIELD_COORDINATORs can read only published
 advisories targeted to all members, their village, or their own member profile.
 
 ```http
@@ -632,11 +635,11 @@ Rules:
 ## FPO Report Summary API
 
 The FPO dashboard summary API is guarded by the `REPORT_EXPORT` module. Admins
-and supervisors can read consolidated FPO planning metrics:
+and FPO_MANAGERs can read consolidated FPO planning metrics:
 
 ```http
 GET /api/v1/fpo/reports/summary
-Authorization: Bearer <admin-or-supervisor-token>
+Authorization: Bearer <admin-or-FPO_MANAGER-token>
 ```
 
 The response includes:
@@ -662,13 +665,13 @@ Rules:
 
 ## Notification Status Tracking
 
-Admins and supervisors can queue notification records and track their delivery
+Admins and FPO_MANAGERs can queue notification records and track their delivery
 state. This is a storage/status foundation; actual email, SMS, push, or in-app
 delivery adapters can be added behind the same records later.
 
 ```http
 POST /api/v1/notifications
-Authorization: Bearer <admin-or-supervisor-token>
+Authorization: Bearer <admin-or-FPO_MANAGER-token>
 Content-Type: application/json
 ```
 
@@ -757,21 +760,21 @@ rejects unsafe defaults before the API starts serving requests.
 
 ## Report Summary And Export
 
-Admins and supervisors can view reusable reporting metrics:
+Admins and FPO_MANAGERs can view reusable reporting metrics:
 
 ```http
 GET /api/v1/reports/summary
-Authorization: Bearer <admin-or-supervisor-token>
+Authorization: Bearer <admin-or-FPO_MANAGER-token>
 ```
 
-The summary includes tenant-scoped participant counts, activity status counts,
+The summary includes tenant-scoped FIELD_COORDINATOR counts, activity status counts,
 task completion, evidence review counts, and workflow/location breakdowns.
 
-Admins and supervisors can request a report export:
+Admins and FPO_MANAGERs can request a report export:
 
 ```http
 POST /api/v1/reports/export
-Authorization: Bearer <admin-or-supervisor-token>
+Authorization: Bearer <admin-or-FPO_MANAGER-token>
 Content-Type: application/json
 ```
 
@@ -785,7 +788,7 @@ Content-Type: application/json
 Use `format: "XLSX"` for the government/admin spreadsheet export. Export
 generation currently completes synchronously and returns a
 `ReportExportResponse` with `status`, `storageKey`, `requestedAt`, and
-`completedAt`. The PDF is ordered by workflow, participant, activity, and task
+`completedAt`. The PDF is ordered by workflow, FIELD_COORDINATOR, activity, and task
 sequence, and includes evidence status, submitted date, reviewer state, and
 stored proof file references. The XLSX workbook uses the same proof sequence and
 adds separate sheets for summary metrics, activities, task evidence, workflow

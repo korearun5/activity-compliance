@@ -22,7 +22,7 @@ Use this table to avoid reconnecting with the client for the same questions.
 | Topic | Decision Status | Development Instruction |
 | ----- | --------------- | ----------------------- |
 | Phase 1 scope | Answered | Build only the included Phase 1 items and keep Phase 2 items out. |
-| Role model | Answered | Use `ADMIN`, `FPO_MANAGER`, and `FIELD_COORDINATOR`; do not use `SUPERVISOR` for FPO Phase 1. |
+| Role model | Answered | Use `ADMIN`, `FPO_MANAGER`, and `FIELD_COORDINATOR`; do not use `FPO_MANAGER` for FPO Phase 1. |
 | Farmer login | Answered | Do not build farmer login/mobile screens in Phase 1. Staff enter data. |
 | OTP login | Answered | Do not build OTP in Phase 1. Use username and password. |
 | Farmer fields | Answered | Use the approved farmer profile fields in this file. |
@@ -85,7 +85,7 @@ Use this table to avoid reconnecting with the client for the same questions.
 
 Notes:
 
-- `SUPERVISOR` is not used for Phase 1 FPO scope.
+- `FPO_MANAGER` is not used for Phase 1 FPO scope.
 - A person may hold both `ADMIN` and `FPO_MANAGER`, but the roles remain
   logically separate.
 - Phase 1 uses username and password login for staff roles.

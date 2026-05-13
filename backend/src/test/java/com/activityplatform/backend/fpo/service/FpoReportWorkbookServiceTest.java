@@ -138,9 +138,11 @@ class FpoReportWorkbookServiceTest {
         user.getDisplayName(),
         user.getPhone(),
         "+919111111111",
+        null,
         "Rampur",
         "North Block",
         "District",
+        "Maharashtra",
         "MALE",
         null,
         42,
@@ -159,8 +161,8 @@ class FpoReportWorkbookServiceTest {
         "SUR-1",
         new BigDecimal("3.0000"),
         new BigDecimal("2.5000"),
-        "OWNED",
-        "CANAL",
+        "Self-owned",
+        "Canal",
         FarmRecordStatus.ACTIVE,
         Instant.now()
     );

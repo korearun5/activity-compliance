@@ -174,7 +174,7 @@ public class ReportExportService {
     for (ActivityEntity activity : dataset.activities()) {
       lines.add("Workflow: " + activity.getWorkflowDefinition().getName());
       lines.add("Activity: " + activity.getId());
-      lines.add("Participant: " + label(activity.getParticipant() == null
+      lines.add("Field Coordinator: " + label(activity.getParticipant() == null
           ? null
           : activity.getParticipant().getDisplayName()));
       lines.add("Location / unit: " + label(activity.getLocationName()) + " / " + activity.getUnitName());
@@ -241,7 +241,7 @@ public class ReportExportService {
     rows.add(row("Export id", export.getId()));
     rows.add(List.of());
     rows.add(row("Metric", "Value"));
-    rows.add(row("Participants", summary.participantCount()));
+    rows.add(row("Field Coordinators", summary.fieldCoordinatorCount()));
     rows.add(row("Total activities", summary.totalActivities()));
     rows.add(row("Running activities", summary.runningActivities()));
     rows.add(row("Completed activities", summary.completedActivities()));
@@ -263,7 +263,7 @@ public class ReportExportService {
     rows.add(row(
         "Workflow",
         "Activity ID",
-        "Participant",
+        "Field Coordinator",
         "Location",
         "Unit",
         "Started on",
@@ -277,7 +277,7 @@ public class ReportExportService {
       rows.add(row(
           activity.getWorkflowDefinition().getName(),
           activity.getId(),
-          participantName(activity),
+          fieldCoordinatorName(activity),
           activity.getLocationName(),
           activity.getUnitName(),
           activity.getStartedOn(),
@@ -296,7 +296,7 @@ public class ReportExportService {
     rows.add(row(
         "Workflow",
         "Activity ID",
-        "Participant",
+        "Field Coordinator",
         "Location",
         "Unit",
         "Task sequence",
@@ -337,7 +337,7 @@ public class ReportExportService {
     return row(
         activity.getWorkflowDefinition().getName(),
         activity.getId(),
-        participantName(activity),
+        fieldCoordinatorName(activity),
         activity.getLocationName(),
         activity.getUnitName(),
         task.getWorkflowTask().getSequenceNumber(),
@@ -411,7 +411,7 @@ public class ReportExportService {
     return "Reviewed by " + evidence.getReviewedBy().getDisplayName();
   }
 
-  private String participantName(ActivityEntity activity) {
+  private String fieldCoordinatorName(ActivityEntity activity) {
     return activity.getParticipant() == null ? null : activity.getParticipant().getDisplayName();
   }
 
@@ -468,10 +468,10 @@ public class ReportExportService {
   }
 
   private void requireManager(CurrentUser currentUser) {
-    if (!currentUser.hasAnyRole(Role.ADMIN, Role.SUPERVISOR)) {
+    if (!currentUser.hasAnyRole(Role.ADMIN, Role.FPO_MANAGER)) {
       throw new ApplicationException(
           ErrorCode.ACCESS_DENIED,
-          "Only admins and supervisors can export reports.",
+          "Only admins and FPO managers can export reports.",
           HttpStatus.FORBIDDEN
       );
     }

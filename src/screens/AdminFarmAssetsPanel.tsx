@@ -12,10 +12,18 @@ import {
   FarmPlotInput,
   getFarmLandholdings,
   getFarmPlots,
+  IRRIGATION_SOURCE_OPTIONS,
+  OWNERSHIP_TYPE_OPTIONS,
   updateFarmLandholdingStatus,
   updateFarmPlotStatus
 } from "../data/farmAssetStore";
 import { FpoMember } from "../data/fpoMemberStore";
+import {
+  createSoilProfile,
+  getSoilProfiles,
+  SoilProfile,
+  SoilProfileInput
+} from "../data/soilProfileStore";
 import { StatusBadge } from "../ui/StatusBadge";
 
 type AdminFarmAssetsPanelProps = {
@@ -33,6 +41,7 @@ export function AdminFarmAssetsPanel({ member }: AdminFarmAssetsPanelProps) {
   const [landholdings, setLandholdings] = useState<FarmLandholding[]>([]);
   const [plots, setPlots] = useState<FarmPlot[]>([]);
   const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [soilProfiles, setSoilProfiles] = useState<SoilProfile[]>([]);
 
   const activePlotArea = useMemo(
     () =>
@@ -51,12 +60,14 @@ export function AdminFarmAssetsPanel({ member }: AdminFarmAssetsPanelProps) {
     setError("");
 
     try {
-      const [nextLandholdings, nextPlots] = await Promise.all([
+      const [nextLandholdings, nextPlots, nextSoilProfiles] = await Promise.all([
         getFarmLandholdings(member.memberId),
-        getFarmPlots(member.memberId)
+        getFarmPlots(member.memberId),
+        getSoilProfiles(member.memberId)
       ]);
       setLandholdings(nextLandholdings);
       setPlots(nextPlots);
+      setSoilProfiles(nextSoilProfiles);
     } catch (loadError) {
       setError(getErrorMessage(loadError, "Unable to load farm records."));
     } finally {
@@ -106,6 +117,29 @@ export function AdminFarmAssetsPanel({ member }: AdminFarmAssetsPanelProps) {
     }
   }
 
+  async function handleCreateSoilProfile(input: SoilProfileInput) {
+    setSavingKey("soil-profile:create");
+    setError("");
+
+    try {
+      const profile = await createSoilProfile(
+        member.memberId,
+        member.memberNumber,
+        input
+      );
+      setSoilProfiles((current) => [
+        profile,
+        ...current.filter((item) => item.id !== profile.id)
+      ]);
+      return true;
+    } catch (createError) {
+      setError(getErrorMessage(createError, "Unable to save soil profile."));
+      return false;
+    } finally {
+      setSavingKey(null);
+    }
+  }
+
   async function handleLandholdingStatus(
     landholding: FarmLandholding,
     status: FarmRecordStatus
@@ -145,7 +179,7 @@ export function AdminFarmAssetsPanel({ member }: AdminFarmAssetsPanelProps) {
     <View style={styles.panel}>
       <View style={styles.panelHeader}>
         <View style={styles.panelTitleGroup}>
-          <Text style={styles.panelTitle}>Landholdings and plots</Text>
+          <Text style={styles.panelTitle}>Landholdings, plots and soil</Text>
           <Text style={styles.panelMeta}>
             Active plot area: {formatArea(activePlotArea)}
           </Text>
@@ -187,6 +221,13 @@ export function AdminFarmAssetsPanel({ member }: AdminFarmAssetsPanelProps) {
         plots={plots}
         savingKey={savingKey}
       />
+
+      <SoilProfileForm
+        isSubmitting={savingKey === "soil-profile:create"}
+        onSubmit={handleCreateSoilProfile}
+      />
+
+      <SoilProfileList soilProfiles={soilProfiles} />
     </View>
   );
 }
@@ -199,9 +240,11 @@ function LandholdingForm({
   onSubmit: (input: FarmLandholdingInput) => Promise<boolean>;
 }) {
   const [cultivableAreaAcres, setCultivableAreaAcres] = useState("");
-  const [irrigationSource, setIrrigationSource] = useState("");
+  const [irrigationSource, setIrrigationSource] = useState<string>(
+    IRRIGATION_SOURCE_OPTIONS[0]
+  );
   const [localError, setLocalError] = useState("");
-  const [ownershipType, setOwnershipType] = useState("");
+  const [ownershipType, setOwnershipType] = useState<string>(OWNERSHIP_TYPE_OPTIONS[0]);
   const [surveyNumber, setSurveyNumber] = useState("");
   const [totalAreaAcres, setTotalAreaAcres] = useState("");
 
@@ -225,8 +268,8 @@ function LandholdingForm({
 
     if (created) {
       setCultivableAreaAcres("");
-      setIrrigationSource("");
-      setOwnershipType("");
+      setIrrigationSource(IRRIGATION_SOURCE_OPTIONS[0]);
+      setOwnershipType(OWNERSHIP_TYPE_OPTIONS[0]);
       setSurveyNumber("");
       setTotalAreaAcres("");
     }
@@ -237,7 +280,7 @@ function LandholdingForm({
       <Text style={styles.sectionLabel}>Add landholding</Text>
       <View style={styles.formGrid}>
         <AssetField
-          label="Survey number"
+          label="Survey / Khasra number"
           value={surveyNumber}
           onChange={setSurveyNumber}
         />
@@ -253,17 +296,21 @@ function LandholdingForm({
           value={cultivableAreaAcres}
           onChange={setCultivableAreaAcres}
         />
-        <AssetField
-          label="Ownership type"
-          value={ownershipType}
-          onChange={setOwnershipType}
-        />
-        <AssetField
-          label="Irrigation source"
-          value={irrigationSource}
-          onChange={setIrrigationSource}
-        />
       </View>
+
+      <Text style={styles.fieldLabel}>Ownership type</Text>
+      <OptionRow
+        options={OWNERSHIP_TYPE_OPTIONS}
+        value={ownershipType}
+        onChange={setOwnershipType}
+      />
+
+      <Text style={styles.fieldLabel}>Irrigation source</Text>
+      <OptionRow
+        options={IRRIGATION_SOURCE_OPTIONS}
+        value={irrigationSource}
+        onChange={setIrrigationSource}
+      />
 
       {localError ? <Text style={styles.formError}>{localError}</Text> : null}
 
@@ -315,9 +362,7 @@ function FarmLandholdingList({
                     : ""}
                 </Text>
                 <Text style={styles.assetMeta}>
-                  {[landholding.ownershipType, landholding.irrigationSource]
-                    .filter(Boolean)
-                    .join(" - ") || "Ownership and irrigation not set"}
+                  {[landholding.ownershipType, landholding.irrigationSource].join(" - ")}
                 </Text>
               </View>
               <View style={styles.rowActions}>
@@ -579,6 +624,173 @@ function FarmPlotList({
   );
 }
 
+function SoilProfileForm({
+  isSubmitting,
+  onSubmit
+}: {
+  isSubmitting: boolean;
+  onSubmit: (input: SoilProfileInput) => Promise<boolean>;
+}) {
+  const [nitrogen, setNitrogen] = useState("");
+  const [notes, setNotes] = useState("");
+  const [ph, setPh] = useState("");
+  const [phosphorus, setPhosphorus] = useState("");
+  const [potassium, setPotassium] = useState("");
+  const [reportFileName, setReportFileName] = useState("");
+  const [reportUrl, setReportUrl] = useState("");
+  const [soilOrganicCarbon, setSoilOrganicCarbon] = useState("");
+  const [localError, setLocalError] = useState("");
+
+  async function handleSubmit() {
+    const input: SoilProfileInput = {
+      nitrogen: nitrogen.trim(),
+      notes: notes.trim(),
+      ph: ph.trim(),
+      phosphorus: phosphorus.trim(),
+      potassium: potassium.trim(),
+      reportContentType: reportFileName.trim() ? guessContentType(reportFileName) : "",
+      reportFileName: reportFileName.trim(),
+      reportUrl: reportUrl.trim(),
+      soilOrganicCarbon: soilOrganicCarbon.trim()
+    };
+    const validationError = validateSoilProfileInput(input);
+
+    if (validationError) {
+      setLocalError(validationError);
+      return;
+    }
+
+    setLocalError("");
+    const created = await onSubmit(input);
+
+    if (created) {
+      setNitrogen("");
+      setNotes("");
+      setPh("");
+      setPhosphorus("");
+      setPotassium("");
+      setReportFileName("");
+      setReportUrl("");
+      setSoilOrganicCarbon("");
+    }
+  }
+
+  return (
+    <View style={styles.formSection}>
+      <Text style={styles.sectionLabel}>Add soil profile</Text>
+      <View style={styles.formGrid}>
+        <AssetField
+          keyboardType="decimal-pad"
+          label="SOC"
+          value={soilOrganicCarbon}
+          onChange={setSoilOrganicCarbon}
+        />
+        <AssetField keyboardType="decimal-pad" label="pH" value={ph} onChange={setPh} />
+        <AssetField
+          keyboardType="decimal-pad"
+          label="Nitrogen"
+          value={nitrogen}
+          onChange={setNitrogen}
+        />
+        <AssetField
+          keyboardType="decimal-pad"
+          label="Phosphorus"
+          value={phosphorus}
+          onChange={setPhosphorus}
+        />
+        <AssetField
+          keyboardType="decimal-pad"
+          label="Potassium"
+          value={potassium}
+          onChange={setPotassium}
+        />
+        <AssetField
+          label="Report file name"
+          value={reportFileName}
+          onChange={setReportFileName}
+        />
+        <AssetField label="Report URL" value={reportUrl} onChange={setReportUrl} />
+        <AssetField label="Notes" value={notes} onChange={setNotes} />
+      </View>
+
+      {localError ? <Text style={styles.formError}>{localError}</Text> : null}
+
+      <Pressable
+        accessibilityRole="button"
+        disabled={isSubmitting}
+        style={[styles.primaryButton, isSubmitting && styles.disabledButton]}
+        onPress={handleSubmit}
+      >
+        <Text style={styles.primaryButtonText}>
+          {isSubmitting ? "Saving..." : "Add soil profile"}
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
+function SoilProfileList({ soilProfiles }: { soilProfiles: SoilProfile[] }) {
+  return (
+    <View style={styles.listSection}>
+      <Text style={styles.sectionLabel}>Saved soil profiles</Text>
+      {soilProfiles.length ? (
+        soilProfiles.map((profile) => (
+          <View key={profile.id} style={styles.assetRow}>
+            <View style={styles.assetText}>
+              <Text style={styles.assetTitle}>
+                {profile.reportFileName || "Soil profile"}
+              </Text>
+              <Text style={styles.assetMeta}>
+                {formatSoilValues(profile) || "Lab values not entered"}
+              </Text>
+              {profile.reportUrl ? (
+                <Text style={styles.assetMeta}>{profile.reportUrl}</Text>
+              ) : null}
+              {profile.notes ? (
+                <Text style={styles.assetMeta}>{profile.notes}</Text>
+              ) : null}
+            </View>
+          </View>
+        ))
+      ) : (
+        <Text style={styles.emptyText}>No soil profile saved for this member.</Text>
+      )}
+    </View>
+  );
+}
+
+function OptionRow<T extends string>({
+  onChange,
+  options,
+  value
+}: {
+  onChange: (value: T) => void;
+  options: readonly T[];
+  value: string;
+}) {
+  return (
+    <View style={styles.choiceRow}>
+      {options.map((option) => (
+        <Pressable
+          accessibilityRole="button"
+          key={option}
+          style={[styles.choiceButton, value === option && styles.choiceButtonActive]}
+          onPress={() => onChange(option)}
+        >
+          <Text
+            style={[
+              styles.choiceButtonText,
+              value === option && styles.choiceButtonTextActive
+            ]}
+          >
+            {option}
+          </Text>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
 function AssetField({
   keyboardType,
   label,
@@ -611,6 +823,18 @@ function validateLandholdingInput(input: FarmLandholdingInput) {
     ? Number(input.cultivableAreaAcres)
     : undefined;
 
+  if (!input.surveyNumber) {
+    return "Survey number / Khasra number is required.";
+  }
+
+  if (!OWNERSHIP_TYPE_OPTIONS.some((option) => option === input.ownershipType)) {
+    return "Select an approved ownership type.";
+  }
+
+  if (!IRRIGATION_SOURCE_OPTIONS.some((option) => option === input.irrigationSource)) {
+    return "Select an approved irrigation source.";
+  }
+
   if (!Number.isFinite(totalArea) || totalArea <= 0) {
     return "Total area must be greater than zero.";
   }
@@ -640,10 +864,6 @@ function validatePlotInput(input: FarmPlotInput) {
     return "Plot area must be greater than zero.";
   }
 
-  if (!input.latitude && !input.longitude) {
-    return "";
-  }
-
   const latitude = Number(input.latitude);
   const longitude = Number(input.longitude);
 
@@ -663,6 +883,39 @@ function validatePlotInput(input: FarmPlotInput) {
     longitude > 180
   ) {
     return "Longitude must be between -180 and 180.";
+  }
+
+  return "";
+}
+
+function validateSoilProfileInput(input: SoilProfileInput) {
+  const numericFields: Array<[string | undefined, string]> = [
+    [input.soilOrganicCarbon, "SOC"],
+    [input.nitrogen, "Nitrogen"],
+    [input.phosphorus, "Phosphorus"],
+    [input.potassium, "Potassium"]
+  ];
+
+  for (const [value, label] of numericFields) {
+    if (!value) {
+      continue;
+    }
+
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed < 0) {
+      return `${label} must be zero or greater.`;
+    }
+  }
+
+  if (input.ph) {
+    const parsedPh = Number(input.ph);
+    if (!Number.isFinite(parsedPh) || parsedPh < 0 || parsedPh > 14) {
+      return "pH must be between 0 and 14.";
+    }
+  }
+
+  if (input.reportUrl && !/^https?:\/\//i.test(input.reportUrl)) {
+    return "Soil report URL must start with http or https.";
   }
 
   return "";
@@ -730,6 +983,38 @@ function formatCoordinates(latitude: number | undefined, longitude: number | und
   }
 
   return `${latitude.toFixed(7)}, ${longitude.toFixed(7)}`;
+}
+
+function formatSoilValues(profile: SoilProfile) {
+  return [
+    profile.soilOrganicCarbon !== undefined
+      ? `SOC ${roundDecimal(profile.soilOrganicCarbon)}`
+      : "",
+    profile.ph !== undefined ? `pH ${roundDecimal(profile.ph)}` : "",
+    profile.nitrogen !== undefined ? `N ${roundDecimal(profile.nitrogen)}` : "",
+    profile.phosphorus !== undefined ? `P ${roundDecimal(profile.phosphorus)}` : "",
+    profile.potassium !== undefined ? `K ${roundDecimal(profile.potassium)}` : ""
+  ]
+    .filter(Boolean)
+    .join(" - ");
+}
+
+function guessContentType(fileName: string) {
+  const lowerName = fileName.toLowerCase();
+
+  if (lowerName.endsWith(".pdf")) {
+    return "application/pdf";
+  }
+
+  if (lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg")) {
+    return "image/jpeg";
+  }
+
+  if (lowerName.endsWith(".png")) {
+    return "image/png";
+  }
+
+  return "";
 }
 
 function roundDecimal(value: number) {

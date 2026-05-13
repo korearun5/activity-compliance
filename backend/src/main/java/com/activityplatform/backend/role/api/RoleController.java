@@ -25,13 +25,13 @@ public class RoleController {
   }
 
   @GetMapping("/roles")
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER')")
   ApiResponse<List<RoleResponse>> listRoles(Authentication authentication) {
     return ApiResponse.success(roleManagementService.listRoles(CurrentUser.from(authentication)));
   }
 
   @GetMapping("/users/{userId}/roles")
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER')")
   ApiResponse<UserRolesResponse> getUserRoles(
       Authentication authentication,
       @PathVariable UUID userId

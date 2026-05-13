@@ -47,7 +47,7 @@ public class WorkflowController {
   }
 
   @PostMapping
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER')")
   ApiResponse<WorkflowResponse> create(
       Authentication authentication,
       @Valid @RequestBody WorkflowRequest request) {
@@ -56,7 +56,7 @@ public class WorkflowController {
   }
 
   @PutMapping("/{workflowId}")
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER')")
   ApiResponse<WorkflowResponse> update(
       Authentication authentication,
       @PathVariable UUID workflowId,
@@ -66,7 +66,7 @@ public class WorkflowController {
   }
 
   @PatchMapping("/{workflowId}/status")
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER')")
   ApiResponse<WorkflowResponse> updateStatus(
       Authentication authentication,
       @PathVariable UUID workflowId,

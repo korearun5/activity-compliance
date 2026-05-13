@@ -63,7 +63,7 @@ public class EvidenceController {
   }
 
   @PatchMapping("/{evidenceId}/review")
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER')")
   ApiResponse<EvidenceResponse> review(
       Authentication authentication,
       @PathVariable UUID evidenceId,

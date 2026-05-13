@@ -15,7 +15,7 @@ Covered now:
 - Frontend linting.
 - Backend unit tests.
 - Backend integration tests with PostgreSQL/Testcontainers.
-- Local smoke testing for login and admin participant creation.
+- Local smoke testing for login and admin FIELD_COORDINATOR creation.
 - Basic API smoke testing.
 
 Not final yet:
@@ -151,72 +151,72 @@ Steps:
 Expected:
 
 - Admin dashboard opens.
-- User is not sent to participant screen.
+- User is not sent to FIELD_COORDINATOR screen.
 - Browser console has no API login failure.
 
-### Smoke-03 Create Participant
+### Smoke-03 Create FIELD_COORDINATOR
 
 Steps:
 
 1. Login as admin.
-2. Open `Participants` tab.
-3. Enter participant details.
+2. Open `FIELD_COORDINATORs` tab.
+3. Enter FIELD_COORDINATOR details.
 4. Click `Create profile`.
 
 Expected:
 
 - Form clears after successful creation.
-- New participant appears in the list.
-- Backend returns a user with `PARTICIPANT` role.
+- New FIELD_COORDINATOR appears in the list.
+- Backend returns a user with `FIELD_COORDINATOR` role.
 - Response does not include `password` or `passwordHash`.
 
-### Smoke-04 Duplicate Participant Username
+### Smoke-04 Duplicate FIELD_COORDINATOR Username
 
 Steps:
 
-1. Create participant with username `qa-user`.
-2. Try to create another participant with username `QA-USER`.
+1. Create FIELD_COORDINATOR with username `qa-user`.
+2. Try to create another FIELD_COORDINATOR with username `QA-USER`.
 
 Expected:
 
 - Backend returns `409`.
 - UI shows a user-friendly duplicate username message.
-- Only one participant exists for that username.
+- Only one FIELD_COORDINATOR exists for that username.
 
-### Smoke-05 Activate / Deactivate Participant
+### Smoke-05 Activate / Deactivate FIELD_COORDINATOR
 
 Steps:
 
 1. Login as admin.
-2. Open participant list.
-3. Click `Deactivate` on an active participant.
+2. Open FIELD_COORDINATOR list.
+3. Click `Deactivate` on an active FIELD_COORDINATOR.
 4. Click `Activate`.
 
 Expected:
 
 - Status changes to `Inactive`, then back to `Active`.
 - Backend writes audit events.
-- Participant record remains visible.
+- FIELD_COORDINATOR record remains visible.
 
-### Smoke-06 Participant Login
+### Smoke-06 FIELD_COORDINATOR Login
 
 Steps:
 
-1. Create a participant with known password.
+1. Create a FIELD_COORDINATOR with known password.
 2. Logout admin.
-3. Login as the participant.
+3. Login as the FIELD_COORDINATOR.
 
 Expected:
 
-- Participant dashboard opens.
-- Admin-only participant management is not available.
+- FIELD_COORDINATOR dashboard opens.
+- Admin-only FIELD_COORDINATOR management is not available.
 
-### Smoke-07 Participant Profile Loads From Backend
+### Smoke-07 FIELD_COORDINATOR Profile Loads From Backend
 
 Steps:
 
-1. Create or use a backend participant.
-2. Login as that participant.
+1. Create or use a backend FIELD_COORDINATOR.
+2. Login as that FIELD_COORDINATOR.
 3. Open the `Profile` tab.
 
 Expected:
@@ -230,12 +230,12 @@ Expected:
 Steps:
 
 1. Call an authenticated API without token.
-2. Call admin user creation as participant.
+2. Call admin user creation as FIELD_COORDINATOR.
 
 Expected:
 
 - Missing token returns `401`.
-- Participant role returns `403`.
+- FIELD_COORDINATOR role returns `403`.
 
 ## API Smoke Testing With PowerShell
 
@@ -275,13 +275,13 @@ Invoke-RestMethod `
   -Headers @{ Authorization = "Bearer $token" }
 ```
 
-Create participant:
+Create FIELD_COORDINATOR:
 
 ```powershell
-$participantBody = @{
-  username = "qa-participant"
+$FIELD_COORDINATORBody = @{
+  username = "qa-FIELD_COORDINATOR"
   password = "password123"
-  displayName = "QA Participant"
+  displayName = "QA FIELD_COORDINATOR"
   phone = "+91 90000 00000"
   locationName = "QA Region"
   siteName = "QA Village"
@@ -292,10 +292,10 @@ Invoke-RestMethod `
   -Uri "http://localhost:8080/api/v1/users" `
   -Headers @{ Authorization = "Bearer $token" } `
   -ContentType "application/json" `
-  -Body $participantBody
+  -Body $FIELD_COORDINATORBody
 ```
 
-Deactivate participant:
+Deactivate FIELD_COORDINATOR:
 
 ```powershell
 $statusBody = @{ status = "INACTIVE" } | ConvertTo-Json
@@ -323,11 +323,11 @@ cd backend
 Manual smoke:
 
 - Admin login.
-- Participant creation.
+- FIELD_COORDINATOR creation.
 - Duplicate username handling.
-- Participant activation/deactivation.
-- Participant login.
-- Participant profile tab reads backend profile.
+- FIELD_COORDINATOR activation/deactivation.
+- FIELD_COORDINATOR login.
+- FIELD_COORDINATOR profile tab reads backend profile.
 - Backend health.
 
 ## Defect Reporting Format
@@ -359,7 +359,7 @@ Severity guidance:
 Use predictable prefixes:
 
 - `qa-admin-*`
-- `qa-participant-*`
+- `qa-FIELD_COORDINATOR-*`
 - `qa-workflow-*`
 - `qa-activity-*`
 

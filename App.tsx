@@ -13,13 +13,12 @@ import {
 } from "./src/auth/authService";
 import { LoginScreen } from "./src/screens/LoginScreen";
 import { RootStackParamList } from "./src/navigation/types";
-import { UserHomeScreen } from "./src/screens/UserHomeScreen";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
   const [role, setRole] = useState<Role | null>(null);
-  const [username, setUsername] = useState<string | null>(null);
+  const [, setUsername] = useState<string | null>(null);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
 
   useEffect(() => {
@@ -55,13 +54,9 @@ export default function App() {
       <StatusBar barStyle="dark-content" />
       <NavigationContainer>
         <Stack.Navigator screenOptions={{ headerShown: false }}>
-          {role === "admin" || role === "supervisor" ? (
+          {role === "admin" || role === "fpoManager" || role === "fieldCoordinator" ? (
             <Stack.Screen name="AdminHome">
               {() => <AdminHomeScreen onLogout={handleLogout} />}
-            </Stack.Screen>
-          ) : role === "participant" ? (
-            <Stack.Screen name="UserHome">
-              {() => <UserHomeScreen username={username} onLogout={handleLogout} />}
             </Stack.Screen>
           ) : (
             <Stack.Screen name="Login">

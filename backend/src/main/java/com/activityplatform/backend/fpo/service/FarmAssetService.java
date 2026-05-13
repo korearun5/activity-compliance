@@ -88,11 +88,11 @@ public class FarmAssetService {
         UUID.randomUUID(),
         member.getTenant(),
         member,
-        normalizeOptional(request.surveyNumber()),
+        FarmAssetRules.normalizeRequiredText(request.surveyNumber(), "Survey number / Khasra number"),
         request.totalAreaAcres(),
         request.cultivableAreaAcres(),
-        normalizeOptional(request.ownershipType()),
-        normalizeOptional(request.irrigationSource()),
+        FarmAssetRules.normalizeOwnershipType(request.ownershipType()),
+        FarmAssetRules.normalizeIrrigationSource(request.irrigationSource()),
         request.status() == null ? FarmRecordStatus.ACTIVE : request.status(),
         now
     );
@@ -112,11 +112,11 @@ public class FarmAssetService {
     FarmLandholdingEntity landholding = requireLandholding(currentUser, landholdingId);
     validateArea(request.totalAreaAcres(), request.cultivableAreaAcres());
     landholding.updateDetails(
-        normalizeOptional(request.surveyNumber()),
+        FarmAssetRules.normalizeRequiredText(request.surveyNumber(), "Survey number / Khasra number"),
         request.totalAreaAcres(),
         request.cultivableAreaAcres(),
-        normalizeOptional(request.ownershipType()),
-        normalizeOptional(request.irrigationSource()),
+        FarmAssetRules.normalizeOwnershipType(request.ownershipType()),
+        FarmAssetRules.normalizeIrrigationSource(request.irrigationSource()),
         request.status(),
         Instant.now()
     );
@@ -166,6 +166,7 @@ public class FarmAssetService {
         member,
         request.landholdingId()
     );
+    FarmAssetRules.validateGpsPoint(request.latitude(), request.longitude());
     Instant now = Instant.now();
     FarmPlotEntity plot = new FarmPlotEntity(
         UUID.randomUUID(),
@@ -199,6 +200,7 @@ public class FarmAssetService {
         plot.getMemberProfile(),
         request.landholdingId()
     );
+    FarmAssetRules.validateGpsPoint(request.latitude(), request.longitude());
     plot.updateDetails(
         landholding,
         request.plotName().trim(),
@@ -275,17 +277,17 @@ public class FarmAssetService {
   }
 
   private void requireManager(CurrentUser currentUser) {
-    if (!currentUser.hasAnyRole(Role.ADMIN, Role.SUPERVISOR)) {
+    if (!currentUser.hasAnyRole(Role.ADMIN, Role.FPO_MANAGER, Role.FIELD_COORDINATOR)) {
       throw new ApplicationException(
           ErrorCode.ACCESS_DENIED,
-          "Only admins and supervisors can manage farm land records.",
+          "Only Phase 1 staff can manage farm land records.",
           HttpStatus.FORBIDDEN
       );
     }
   }
 
   private void requireManagerOrOwner(CurrentUser currentUser, FpoMemberProfileEntity member) {
-    if (currentUser.hasAnyRole(Role.ADMIN, Role.SUPERVISOR)) {
+    if (currentUser.hasAnyRole(Role.ADMIN, Role.FPO_MANAGER, Role.FIELD_COORDINATOR)) {
       return;
     }
 

@@ -79,7 +79,7 @@ public class UserService {
   }
 
   @Transactional
-  public UserResponse createParticipant(CurrentUser currentUser, CreateUserRequest request) {
+  public UserResponse createFieldCoordinator(CurrentUser currentUser, CreateUserRequest request) {
     requireManager(currentUser);
     String username = normalizeUsername(request.username());
 
@@ -93,7 +93,7 @@ public class UserService {
 
     TenantEntity tenant = tenantRepository.findById(currentUser.tenantId())
         .orElseThrow(() -> notFound("Tenant not found."));
-    RoleEntity participantRole = ensureRole(tenant, Role.PARTICIPANT);
+    RoleEntity fieldCoordinatorRole = ensureRole(tenant, Role.FIELD_COORDINATOR);
     Instant now = Instant.now();
     UserEntity user = new UserEntity(
         UUID.randomUUID(),
@@ -107,8 +107,8 @@ public class UserService {
         "ACTIVE",
         now
     );
-    user.addRole(participantRole);
-    UserEntity savedUser = saveParticipant(user);
+    user.addRole(fieldCoordinatorRole);
+    UserEntity savedUser = saveUser(user);
 
     auditEventService.record(
         tenant,
@@ -118,12 +118,12 @@ public class UserService {
         AuditAction.USER_CREATED,
         Map.of(
             "username", savedUser.getUsername(),
-            "role", Role.PARTICIPANT.name()
+            "role", Role.FIELD_COORDINATOR.name()
         )
     );
 
     log.info(
-        "Participant user created userId={} tenantId={} actorUserId={}",
+        "Field coordinator user created userId={} tenantId={} actorUserId={}",
         savedUser.getId(),
         tenant.getId(),
         currentUser.userId()
@@ -194,10 +194,10 @@ public class UserService {
   }
 
   private void requireManager(CurrentUser currentUser) {
-    if (!currentUser.hasAnyRole(Role.ADMIN, Role.SUPERVISOR)) {
+    if (!currentUser.hasAnyRole(Role.ADMIN, Role.FPO_MANAGER)) {
       throw new ApplicationException(
           ErrorCode.ACCESS_DENIED,
-          "Only admins and supervisors can manage users.",
+          "Only admins and FPO managers can manage users.",
           HttpStatus.FORBIDDEN
       );
     }
@@ -208,7 +208,7 @@ public class UserService {
         .orElseThrow(() -> notFound("User not found."));
   }
 
-  private UserEntity saveParticipant(UserEntity user) {
+  private UserEntity saveUser(UserEntity user) {
     try {
       return userRepository.saveAndFlush(user);
     } catch (DataIntegrityViolationException exception) {

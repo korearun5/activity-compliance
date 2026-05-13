@@ -28,13 +28,13 @@ public class ReportController {
   }
 
   @GetMapping("/summary")
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER')")
   ApiResponse<ReportSummaryResponse> summary(Authentication authentication) {
     return ApiResponse.success(reportSummaryService.summary(CurrentUser.from(authentication)));
   }
 
   @PostMapping("/export")
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER')")
   ApiResponse<ReportExportResponse> export(
       Authentication authentication,
       @Valid @RequestBody ReportExportRequest request

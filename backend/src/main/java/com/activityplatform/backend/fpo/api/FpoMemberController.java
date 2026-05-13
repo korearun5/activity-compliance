@@ -31,7 +31,7 @@ public class FpoMemberController {
   }
 
   @GetMapping
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER','FIELD_COORDINATOR')")
   ApiResponse<PageResponse<FpoMemberResponse>> list(
       Authentication authentication,
       @RequestParam(required = false) FpoMemberStatus status,
@@ -55,7 +55,7 @@ public class FpoMemberController {
   }
 
   @PostMapping
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER','FIELD_COORDINATOR')")
   ApiResponse<FpoMemberResponse> create(
       Authentication authentication,
       @Valid @RequestBody CreateFpoMemberRequest request
@@ -64,7 +64,7 @@ public class FpoMemberController {
   }
 
   @PutMapping("/{memberId}")
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER','FIELD_COORDINATOR')")
   ApiResponse<FpoMemberResponse> update(
       Authentication authentication,
       @PathVariable UUID memberId,
@@ -75,7 +75,7 @@ public class FpoMemberController {
   }
 
   @PatchMapping("/{memberId}/status")
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER','FIELD_COORDINATOR')")
   ApiResponse<FpoMemberResponse> updateStatus(
       Authentication authentication,
       @PathVariable UUID memberId,

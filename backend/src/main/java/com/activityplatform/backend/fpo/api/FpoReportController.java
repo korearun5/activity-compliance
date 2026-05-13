@@ -37,14 +37,14 @@ public class FpoReportController {
   }
 
   @GetMapping("/summary")
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER','FIELD_COORDINATOR')")
   ApiResponse<FpoDashboardSummaryResponse> summary(Authentication authentication) {
     return ApiResponse.success(
         dashboardSummaryService.summary(CurrentUser.from(authentication)));
   }
 
   @PostMapping("/export")
-  @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER','FIELD_COORDINATOR')")
   ApiResponse<ReportExportResponse> export(
       Authentication authentication,
       @RequestBody(required = false) FpoReportExportRequest request

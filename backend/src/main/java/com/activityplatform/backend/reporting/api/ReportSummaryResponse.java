@@ -5,7 +5,7 @@ import java.util.UUID;
 
 public record ReportSummaryResponse(
     UUID tenantId,
-    long participantCount,
+    long fieldCoordinatorCount,
     long totalActivities,
     long runningActivities,
     long completedActivities,

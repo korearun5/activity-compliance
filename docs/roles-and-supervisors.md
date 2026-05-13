@@ -2,7 +2,7 @@
 
 Last updated: 2026-05-13
 
-Use this document for Phase 1 role behavior. The older generic `SUPERVISOR`
+Use this document for Phase 1 role behavior. The older generic `FPO_MANAGER`
 label is a legacy platform term and must not be used for FPO Phase 1 screens,
 documentation, UAT, or new code paths.
 
@@ -80,12 +80,12 @@ Combined admin and FPO manager:
 
 ## Implementation Alignment Needed
 
-Current code still contains legacy `SUPERVISOR` and `PARTICIPANT` assumptions.
+Current code still contains legacy `FPO_MANAGER` and `FIELD_COORDINATOR` assumptions.
 For Phase 1 completion, replace or map those assumptions carefully:
 
 - Add `FPO_MANAGER` and `FIELD_COORDINATOR` role constants.
 - Keep `ADMIN` as platform-wide super user.
-- Do not rely on `PARTICIPANT` for farmer login in Phase 1.
+- Do not rely on `FIELD_COORDINATOR` for farmer login in Phase 1.
 - Enforce FPO scoping for `FPO_MANAGER` and `FIELD_COORDINATOR`.
 - Update backend authorization annotations and service checks.
 - Update frontend role labels, role ordering, and dashboard access rules.

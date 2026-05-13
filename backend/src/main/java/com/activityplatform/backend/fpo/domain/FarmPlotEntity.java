@@ -38,8 +38,10 @@ public class FarmPlotEntity {
   @Column(name = "area_acres", nullable = false)
   private BigDecimal areaAcres;
 
+  @Column(nullable = false)
   private BigDecimal latitude;
 
+  @Column(nullable = false)
   private BigDecimal longitude;
 
   @Column(name = "soil_type")

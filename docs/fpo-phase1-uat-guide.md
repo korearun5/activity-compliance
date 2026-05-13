@@ -58,9 +58,9 @@ Minimum dummy farmers:
 | UAT-04 | Create five dummy farmers | Farmers save with full name, mobile, village, taluka, district, state, gender, category, and active status. | Pending |
 | UAT-05 | Validate farmer mobile | Invalid non-10-digit Indian mobile number is rejected. | Pending |
 | UAT-06 | Add optional Aadhaar | Aadhaar can be left blank; invalid value is rejected if entered. | Pending |
-| UAT-07 | Add soil profile values | SOC, pH, N, P, K can be entered when a soil report exists; blank values are allowed. | Pending |
-| UAT-08 | Upload optional soil report | PDF/image upload stores a link and does not trigger carbon calculation. | Pending |
-| UAT-09 | Create land/GPS record | Survey number, acres, ownership, irrigation, latitude, and longitude persist. | Pending |
+| UAT-07 | Add soil profile values | SOC, pH, N, P, K can be entered when a soil report exists; blank values are allowed. | Ready |
+| UAT-08 | Add optional soil report link | PDF/image report link and metadata can be saved and does not trigger carbon calculation. | Ready |
+| UAT-09 | Create land/GPS record | Survey number, acres, ownership, irrigation, latitude, and longitude persist. | Ready |
 | UAT-10 | Verify GPS point only | No polygon/boundary drawing is required or shown as a blocker. | Pending |
 | UAT-11 | Configure crop master data | Paddy, Wheat, and approved categories are available. | Pending |
 | UAT-12 | Configure seasons | Kharif, Rabi, and Summer/Zaid with approved months and crop year labels are available. | Pending |

@@ -93,6 +93,13 @@ export const endpoints = {
       create: `${apiRoot}/fpo/seasons`,
       list: `${apiRoot}/fpo/seasons`,
       status: (seasonId: string) => `${apiRoot}/fpo/seasons/${seasonId}/status`
+    },
+    soilProfiles: {
+      byId: (soilProfileId: string) => `${apiRoot}/fpo/soil-profiles/${soilProfileId}`,
+      createForMember: (memberId: string) =>
+        `${apiRoot}/fpo/members/${memberId}/soil-profiles`,
+      listByMember: (memberId: string) =>
+        `${apiRoot}/fpo/members/${memberId}/soil-profiles`
     }
   },
   notifications: {
