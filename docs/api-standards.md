@@ -178,23 +178,24 @@ PATCH /api/v1/users/{userId}/status
 ```
 
 Participants use `GET /api/v1/users/me` to load their own profile. Frontend
-self-signup is disabled; participant accounts are created by admins or
-supervisors.
+self-signup is disabled. For FPO Phase 1, farmer profiles are created as FPO
+member records and do not require login users.
 
 ## Role Management
 
-Admins and supervisors can view the tenant role catalog:
+Admins can view and manage the role catalog. FPO managers may receive a scoped
+view for their own FPO during Phase 1 role-alignment work:
 
 ```http
 GET /api/v1/roles
-Authorization: Bearer <admin-or-supervisor-token>
+Authorization: Bearer <admin-token>
 ```
 
 They can also inspect a user's assigned roles:
 
 ```http
 GET /api/v1/users/{userId}/roles
-Authorization: Bearer <admin-or-supervisor-token>
+Authorization: Bearer <admin-token>
 ```
 
 Only admins can update user role assignments:
@@ -207,13 +208,14 @@ Content-Type: application/json
 
 ```json
 {
-  "roles": ["SUPERVISOR"]
+  "roles": ["FPO_MANAGER"]
 }
 ```
 
 Role updates are tenant-scoped and record a `USER_ROLES_UPDATED` audit event.
 The API blocks admins from changing their own roles through this endpoint to
-avoid accidental lockout. `PARTICIPANT` cannot be combined with staff roles.
+avoid accidental lockout. For FPO Phase 1, use `ADMIN`, `FPO_MANAGER`, and
+`FIELD_COORDINATOR`; do not use the legacy `SUPERVISOR` label for new FPO work.
 JWT role claims change only after the affected user receives new tokens.
 
 ## Module Subscriptions

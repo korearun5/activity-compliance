@@ -1,83 +1,68 @@
-# Roles And Supervisors
+# Roles, FPO Managers, And Field Coordinators
 
-The platform has three core roles:
+Last updated: 2026-05-13
 
-- `ADMIN`: full tenant administrator.
-- `SUPERVISOR`: operational manager who can run field workflow operations but
-  cannot control high-risk account permissions.
-- `PARTICIPANT`: field user who performs assigned activities and uploads proof.
+Use this document for Phase 1 role behavior. The older generic `SUPERVISOR`
+label is a legacy platform term and must not be used for FPO Phase 1 screens,
+documentation, UAT, or new code paths.
 
-## What A Supervisor Is
+## Phase 1 Role Model
 
-A supervisor is usually a field manager, project coordinator, district officer,
-or operations lead. They help run the workflow after the admin has configured
-the tenant.
+| Role | Scope |
+| ---- | ----- |
+| `ADMIN` | Platform super user. Can see all FPOs, all farmers, all coordinators, all FPO managers, and future platform modules. |
+| `FPO_MANAGER` | One-FPO manager. Can manage only assigned FPO farmers, field coordinators, crop plans, input demand, reports, advisories, and soil records. |
+| `FIELD_COORDINATOR` | Field staff. Can manage assigned villages/farmers and enter farmer, land, GPS, soil, and crop plan data on behalf of farmers. |
 
-Supervisors can:
+Farmers do not need login in Phase 1. Data entry is admin/coordinator-first.
 
-- View participant and activity data for the tenant.
-- Create and update workflow definitions.
-- Start or assign activities for participants.
-- Review proof/evidence submissions.
-- View report summaries and export reports.
-- Queue and update notification status records.
-- View role assignments.
+## Permission Defaults
 
-Supervisors cannot:
+| Capability | `ADMIN` | `FPO_MANAGER` | `FIELD_COORDINATOR` |
+| ---------- | ------- | ------------- | ------------------- |
+| Create FPO | Yes | No | No |
+| Manage users and roles | Yes | Limited to own FPO staff/farmers if implemented | No |
+| View all FPOs | Yes | No | No |
+| View assigned FPO | Yes | Yes | Yes |
+| Create/edit farmers | Yes | Yes, own FPO | Yes, assigned scope |
+| Create/edit land/GPS records | Yes | Yes, own FPO | Yes, assigned scope |
+| Enter soil profile values | Yes | Yes, own FPO | Yes, assigned scope |
+| Create/edit crop plans | Yes | Yes, own FPO | Yes, assigned scope |
+| Confirm crop plans | Yes | Yes, own FPO | Yes, assigned scope unless restricted later |
+| Run input demand | Yes | Yes, own FPO | View/assist unless product owner restricts |
+| Export reports | Yes | Yes, own FPO | View/export assigned scope if enabled |
+| Create advisory | Yes | Yes, own FPO | No by default |
+| View advisory | Yes | Yes, own FPO | Yes, assigned scope |
 
-- Change user roles.
-- Remove their own guardrails by assigning themselves admin permissions.
-- Bypass tenant boundaries.
+## Account Setup Flow
 
-Only admins can change roles.
+1. `ADMIN` creates or seeds the pilot FPO.
+2. `ADMIN` creates one `FPO_MANAGER` for the pilot FPO.
+3. `ADMIN` or `FPO_MANAGER` creates one or more `FIELD_COORDINATOR` users.
+4. Farmer profiles are created as FPO member records, not as login users, unless
+   a later Phase 2 change request enables farmer login.
+5. Staff users sign out and sign in again after role changes so JWT claims are
+   refreshed.
 
-## How To Add A Supervisor
+## API Role Examples
 
-Recommended app flow:
-
-1. Login as an admin.
-2. Open the Admin dashboard.
-3. Create the person as a normal participant/user from the `Participants` tab.
-4. Open the `Roles` tab.
-5. Find that user.
-6. Select `Supervisor`.
-7. Remove `Participant` if the person should only manage work and not submit
-   their own proof.
-
-The user should sign out and sign in again after roles change so the JWT token
-contains the latest role set.
-
-## API Flow
-
-Create the user:
-
-```http
-POST /api/v1/users
-```
-
-Then update roles:
-
-```http
-PUT /api/v1/users/{userId}/roles
-```
-
-Supervisor-only request body:
+FPO manager:
 
 ```json
 {
-  "roles": ["SUPERVISOR"]
+  "roles": ["FPO_MANAGER"]
 }
 ```
 
-User who can supervise and also submit their own participant work:
+Field coordinator:
 
 ```json
 {
-  "roles": ["SUPERVISOR", "PARTICIPANT"]
+  "roles": ["FIELD_COORDINATOR"]
 }
 ```
 
-Tenant admin:
+Platform admin:
 
 ```json
 {
@@ -85,19 +70,23 @@ Tenant admin:
 }
 ```
 
-## How To Use Supervisors
+Combined admin and FPO manager:
 
-Use supervisors when the admin should not be doing day-to-day operations.
+```json
+{
+  "roles": ["ADMIN", "FPO_MANAGER"]
+}
+```
 
-Typical usage:
+## Implementation Alignment Needed
 
-- Admin sets up the tenant, production settings, first users, and role policy.
-- Supervisor creates or updates workflow definitions for the local process.
-- Supervisor assigns activities to participants.
-- Participant completes tasks and uploads evidence.
-- Supervisor reviews proof and queues follow-up notifications.
-- Admin periodically reviews reports, exports, and audit records.
+Current code still contains legacy `SUPERVISOR` and `PARTICIPANT` assumptions.
+For Phase 1 completion, replace or map those assumptions carefully:
 
-For small deployments, the admin can do supervisor work too. For production or
-multi-region deployments, keep admin access limited and let supervisors manage
-daily workflow operations.
+- Add `FPO_MANAGER` and `FIELD_COORDINATOR` role constants.
+- Keep `ADMIN` as platform-wide super user.
+- Do not rely on `PARTICIPANT` for farmer login in Phase 1.
+- Enforce FPO scoping for `FPO_MANAGER` and `FIELD_COORDINATOR`.
+- Update backend authorization annotations and service checks.
+- Update frontend role labels, role ordering, and dashboard access rules.
+- Update JUnit and integration tests to cover role isolation.

@@ -52,7 +52,8 @@ Backend foundation:
 - PostgreSQL persistence and Flyway base schema.
 - JWT login, refresh, current-user endpoint, and role-based access.
 - Tenant-aware users and roles.
-- Roles: `ADMIN`, `SUPERVISOR`, `PARTICIPANT`.
+- Legacy roles currently in code: `ADMIN`, `SUPERVISOR`, `PARTICIPANT`.
+  Phase 1 target roles are `ADMIN`, `FPO_MANAGER`, and `FIELD_COORDINATOR`.
 - Admin/supervisor participant profile management.
 - Role management APIs.
 - Configurable workflow definitions.
@@ -134,34 +135,36 @@ The platform now has both reusable concepts and first-class FPO records:
 - `InputDemandEstimate`
 - `FpoAdvisory`
 
-The remaining risk is less about missing base tables and more about client
-specificity:
+The remaining risk is now implementation alignment against the locked Phase 1
+decision register:
 
-- Final farmer/member data dictionary.
-- Final crop, season, input catalog, unit, rounding, and buffer rules.
-- Final report columns, workbook layout, and sign-off process.
-- Farmer-side/mobile UX depth.
-- OTP, SMS, WhatsApp, map, and future integration provider choices.
+- Role and FPO isolation: `ADMIN`, `FPO_MANAGER`, `FIELD_COORDINATOR`.
+- Approved farmer, land, soil, crop, advisory, and report fields.
+- Confirmed-only input demand with 5% buffer, round-up, and `confirmed_at`.
+- Exact three-sheet Excel workbook and optional date-range behavior.
+- Advisory crop targeting and image attachments.
+- Production operations: AWS Mumbai planning, backups, monitoring, and security
+  patch ownership.
 
 ## Coverage Against Phase 1 Proposal
 
 | Proposal Item                       | Current Status                 | Developer Note                                                                                                                  |
 | ----------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
-| Mobile app for farmers/coordinators | Partial                        | Generic participant app exists; needs FPO-specific forms and flows.                                                             |
-| Web/admin dashboard                 | Partial                        | Admin foundation and FPO dashboard summary API exist; frontend FPO dashboard UI remains.                                        |
+| Mobile app for farmers/coordinators | Future for farmers, partial for coordinators | Farmer mobile app is excluded from Phase 1; coordinators use the admin web dashboard on laptop/tablet.                          |
+| Web/admin dashboard                 | Partial                        | Admin foundation and FPO dashboard summary API exist; align dashboard to locked Phase 1 fields and role scopes.                 |
 | Backend APIs and database           | Strong foundation              | FPO schema, member, land/plot, crop, season, history, crop plan, input catalog, input rule, and demand estimate APIs now exist. |
 | Farmer registration                 | Done for admin-created members | Participant creation plus FPO member profile API exists and admin UI is connected.                                              |
-| Mobile number authentication        | Not started                    | OTP/SMS provider decision required.                                                                                             |
-| Farmer profile management           | Functional foundation done     | Member fields, identity metadata, village/block/district, coordinator, status APIs, and admin UI exist.                         |
-| Landholding capture                 | Backend ready                  | Tables and APIs exist; add landholding UI next.                                                                                 |
+| Mobile number authentication        | Future                         | OTP/SMS is explicitly excluded from Phase 1.                                                                                     |
+| Farmer profile management           | Functional foundation done     | Align to full name, mobile, Aadhaar optional, village/taluka/district/state, gender, category, status, FPO, coordinator.        |
+| Landholding capture                 | Functional foundation done     | Align labels/options to survey/khasra, acres, ownership, irrigation, GPS latitude/longitude.                                    |
 | GPS farm geo-tagging                | Functional foundation done     | Plot coordinate fields, APIs, manual coordinate entry, and browser/device GPS capture exist.                                    |
 | Crop history                        | Done                           | Backend APIs and admin UI exist.                                                                                                |
 | Current crop capture                | Partial                        | Seasonal crop plans now capture current plans; mobile farmer-side view and workflow linkage remain.                             |
 | Seasonal crop planning              | Done                           | Crop, season, crop history, and crop plan APIs/UI exist.                                                                        |
 | Acreage/input demand engine         | Functional foundation done     | Input catalog, crop input rules, calculation service, summary APIs, and admin UI exist.                                         |
 | Basic notifications/advisory        | Backend ready                  | Advisory records and targeted read APIs exist; frontend UI remains.                                                             |
-| Reports and Excel export            | FPO backend export done        | Add frontend FPO dashboard/export UI.                                                                                           |
-| Role-based access control           | Done                           | May need field coordinator role mapping.                                                                                        |
+| Reports and Excel export            | FPO backend export foundation  | Refactor to approved `Farmer Register`, `Crop Plan Summary`, and `Input Demand` sheets.                                         |
+| Role-based access control           | Partial                        | Replace legacy supervisor assumptions with `FPO_MANAGER` and `FIELD_COORDINATOR` plus FPO scoping.                              |
 | Testing and deployment support      | Strong foundation              | Add tests for new FPO modules.                                                                                                  |
 
 Live coverage percentages are tracked only in
@@ -192,21 +195,9 @@ Duration:
 
 - 1 week.
 
-Required client inputs:
-
-- Final list of farmer/member fields.
-- Village/block/FPO hierarchy.
-- Landholding data fields.
-- Crop list.
-- Season list.
-- Crop planning workflow.
-- Input types and units.
-- Input calculation formulas.
-- Report formats expected by FPO/admin/government.
-- Language requirements.
-- OTP/SMS provider preference.
-- Map/GPS expectations.
-- Hosting preference.
+Client inputs are now captured in
+[Phase 1 Client Decision Register](phase1-client-decision-register.md). Do not
+ask the client again for decisions already marked answered there.
 
 Developer tasks:
 
@@ -216,8 +207,8 @@ Developer tasks:
 - Create final API list.
 - Create final report/export templates.
 - Identify third-party services: SMS/OTP, map provider, weather provider.
-- Confirm if mobile app must support offline mode in Phase 1.
-- Confirm if field coordinator is a separate role or a supervisor label.
+- Use the approved decision that mobile/offline farmer workflows are Phase 2.
+- Use the approved decision that `FIELD_COORDINATOR` is a separate Phase 1 role.
 - Convert approved scope into GitHub issues or task board.
 
 Acceptance criteria:
@@ -393,7 +384,8 @@ Frontend tasks:
   available.
 - Done: Allow manual coordinate entry for web/admin fallback.
 - Done: Display total active plot acreage by member.
-- Pending: Add map preview only if a map provider is selected.
+- Future: Map preview and polygon drawing are excluded from Phase 1; GPS point
+  fields are enough.
 
 Suggested plot fields:
 

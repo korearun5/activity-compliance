@@ -11,6 +11,13 @@ activity-compliance platform.
 - [Project Status And Gap Register](project-status-and-gap-register.md): current
   module completion percentages, go-live confidence, testing audit, and future
   gaps.
+- [Phase 1 Client Decision Register](phase1-client-decision-register.md):
+  locked FPO Phase 1 scope, answered client decisions, implementation defaults,
+  and items that should not be re-asked.
+- [FPO Phase 1 Data Dictionary](fpo-phase1-data-dictionary.md): approved
+  farmer, land, soil, crop, input demand, advisory, and report fields.
+- [FPO Phase 1 UAT Guide](fpo-phase1-uat-guide.md): client-approved UAT
+  scenarios, test data, entry criteria, and exit criteria.
 - [Developer Guide](developer-guide.md): setup, local commands, ports, backend
   and frontend standards, API areas, testing, and implementation workflow.
 - [QA Guide](qa-guide.md): automated checks, local smoke tests, API smoke tests,
@@ -61,6 +68,8 @@ To prevent duplicate status drift:
   [Project Status And Gap Register](project-status-and-gap-register.md).
 - Keep reset/restart commands only in
   [Clean Start Runbook](clean-start-runbook.md).
+- Keep client Phase 1 decisions only in
+  [Phase 1 Client Decision Register](phase1-client-decision-register.md).
 - Keep roadmap sequencing in [FPO MVP Roadmap](fpo-mvp-roadmap.md) and
   execution checklists in [FPO Developer Task List](fpo-developer-task-list.md).
 
