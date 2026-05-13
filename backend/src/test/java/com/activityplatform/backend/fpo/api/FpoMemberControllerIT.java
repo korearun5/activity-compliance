@@ -1,0 +1,350 @@
+package com.activityplatform.backend.fpo.api;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.activityplatform.backend.TestDataFactory;
+import com.activityplatform.backend.TestcontainersConfiguration;
+import com.activityplatform.backend.auth.domain.RoleEntity;
+import com.activityplatform.backend.auth.domain.TenantEntity;
+import com.activityplatform.backend.auth.domain.UserEntity;
+import com.activityplatform.backend.auth.repository.RoleRepository;
+import com.activityplatform.backend.auth.repository.TenantRepository;
+import com.activityplatform.backend.auth.repository.UserRepository;
+import com.activityplatform.backend.auth.service.JwtService;
+import com.activityplatform.backend.fpo.domain.FpoMemberProfileEntity;
+import com.activityplatform.backend.fpo.domain.FpoMemberStatus;
+import com.activityplatform.backend.fpo.repository.FpoMemberProfileRepository;
+import com.activityplatform.backend.platform.domain.ModuleCode;
+import com.activityplatform.backend.platform.domain.PlatformModuleEntity;
+import com.activityplatform.backend.platform.domain.TenantModuleSubscriptionEntity;
+import com.activityplatform.backend.platform.domain.TenantModuleSubscriptionStatus;
+import com.activityplatform.backend.platform.repository.PlatformModuleRepository;
+import com.activityplatform.backend.platform.repository.TenantModuleSubscriptionRepository;
+import com.activityplatform.backend.security.Role;
+import java.time.Instant;
+import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Import;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.web.servlet.MockMvc;
+import tools.jackson.databind.json.JsonMapper;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@Import(TestcontainersConfiguration.class)
+class FpoMemberControllerIT {
+  @Autowired
+  private MockMvc mockMvc;
+
+  @Autowired
+  private JsonMapper jsonMapper;
+
+  @Autowired
+  private TenantRepository tenantRepository;
+
+  @Autowired
+  private RoleRepository roleRepository;
+
+  @Autowired
+  private UserRepository userRepository;
+
+  @Autowired
+  private FpoMemberProfileRepository memberRepository;
+
+  @Autowired
+  private PlatformModuleRepository platformModuleRepository;
+
+  @Autowired
+  private TenantModuleSubscriptionRepository subscriptionRepository;
+
+  @Autowired
+  private PasswordEncoder passwordEncoder;
+
+  @Autowired
+  private JwtService jwtService;
+
+  private String adminToken;
+  private String participantToken;
+  private String disabledTenantAdminToken;
+  private TenantEntity tenant;
+  private TenantEntity disabledTenant;
+  private UserEntity adminUser;
+  private UserEntity participantUser;
+
+  @BeforeEach
+  void setup() {
+    tenant = tenantRepository.save(TestDataFactory.tenant("tenant-" + UUID.randomUUID()));
+    RoleEntity adminRole = roleRepository.save(TestDataFactory.role(tenant, Role.ADMIN));
+    RoleEntity participantRole = roleRepository.save(
+        TestDataFactory.role(tenant, Role.PARTICIPANT)
+    );
+
+    adminUser = userRepository.save(TestDataFactory.user(
+        tenant,
+        "admin-" + UUID.randomUUID(),
+        passwordEncoder.encode("admin12345"),
+        "Admin User",
+        adminRole
+    ));
+    participantUser = userRepository.save(TestDataFactory.user(
+        tenant,
+        "participant-" + UUID.randomUUID(),
+        passwordEncoder.encode("participant123"),
+        "Participant User",
+        participantRole
+    ));
+    enableMemberData(tenant);
+
+    disabledTenant = tenantRepository.save(
+        TestDataFactory.tenant("tenant-" + UUID.randomUUID())
+    );
+    RoleEntity disabledTenantAdminRole = roleRepository.save(
+        TestDataFactory.role(disabledTenant, Role.ADMIN)
+    );
+    UserEntity disabledTenantAdmin = userRepository.save(TestDataFactory.user(
+        disabledTenant,
+        "admin-" + UUID.randomUUID(),
+        passwordEncoder.encode("admin12345"),
+        "Disabled Tenant Admin",
+        disabledTenantAdminRole
+    ));
+
+    adminToken = jwtService.issueTokens(adminUser).accessToken();
+    participantToken = jwtService.issueTokens(participantUser).accessToken();
+    disabledTenantAdminToken = jwtService.issueTokens(disabledTenantAdmin).accessToken();
+  }
+
+  @Test
+  void testAdminCanCreateMemberWithNewParticipantUser() throws Exception {
+    String memberNumber = "MEM-" + UUID.randomUUID();
+    String username = "farmer-" + UUID.randomUUID();
+    CreateFpoMemberRequest request = createRequest(memberNumber, username);
+
+    mockMvc.perform(post("/api/v1/fpo/members")
+            .header("Authorization", "Bearer " + adminToken)
+            .contentType("application/json")
+            .content(jsonMapper.writeValueAsString(request)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data.memberNumber").value(memberNumber))
+        .andExpect(jsonPath("$.data.username").value(username.toLowerCase()))
+        .andExpect(jsonPath("$.data.mobileNumber").value("+919999900000"))
+        .andExpect(jsonPath("$.data.status").value("ACTIVE"));
+
+    UserEntity createdUser = userRepository
+        .findByTenantCodeIgnoreCaseAndUsernameIgnoreCase(tenant.getCode(), username)
+        .orElseThrow();
+    assertThat(passwordEncoder.matches("password123", createdUser.getPasswordHash()))
+        .isTrue();
+    assertThat(memberRepository.existsByTenantIdAndUserId(tenant.getId(), createdUser.getId()))
+        .isTrue();
+  }
+
+  @Test
+  void testAdminCanLinkExistingParticipantAndParticipantCanReadOwnProfile()
+      throws Exception {
+    CreateFpoMemberRequest request = createRequestWithExistingUser(
+        "MEM-" + UUID.randomUUID(),
+        participantUser.getId()
+    );
+
+    String response = mockMvc.perform(post("/api/v1/fpo/members")
+            .header("Authorization", "Bearer " + adminToken)
+            .contentType("application/json")
+            .content(jsonMapper.writeValueAsString(request)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.userId").value(participantUser.getId().toString()))
+        .andReturn()
+        .getResponse()
+        .getContentAsString();
+    FpoMemberResponse member = jsonMapper.readValue(
+        jsonMapper.readTree(response).get("data").toString(),
+        FpoMemberResponse.class
+    );
+
+    mockMvc.perform(get("/api/v1/fpo/members/me")
+            .header("Authorization", "Bearer " + participantToken))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.id").value(member.id().toString()))
+        .andExpect(jsonPath("$.data.userId").value(participantUser.getId().toString()));
+  }
+
+  @Test
+  void testListUpdateAndStatusChangeAreTenantScoped() throws Exception {
+    CreateFpoMemberRequest createRequest = createRequestWithExistingUser(
+        "MEM-" + UUID.randomUUID(),
+        participantUser.getId()
+    );
+    FpoMemberProfileEntity member = createMember(createRequest);
+
+    mockMvc.perform(get("/api/v1/fpo/members")
+            .header("Authorization", "Bearer " + adminToken))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.content[0].id").value(member.getId().toString()));
+
+    UpdateFpoMemberRequest updateRequest = new UpdateFpoMemberRequest(
+        member.getMemberNumber(),
+        "Updated Farmer",
+        "+91 88888 00000",
+        null,
+        "Updated Village",
+        "Updated Block",
+        "Updated District",
+        "FEMALE",
+        null,
+        34,
+        "SMALL",
+        adminUser.getId(),
+        FpoMemberStatus.ACTIVE
+    );
+
+    mockMvc.perform(put("/api/v1/fpo/members/" + member.getId())
+            .header("Authorization", "Bearer " + adminToken)
+            .contentType("application/json")
+            .content(jsonMapper.writeValueAsString(updateRequest)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.displayName").value("Updated Farmer"))
+        .andExpect(jsonPath("$.data.mobileNumber").value("+918888800000"))
+        .andExpect(jsonPath("$.data.coordinatorUserId").value(adminUser.getId().toString()));
+
+    mockMvc.perform(patch("/api/v1/fpo/members/" + member.getId() + "/status")
+            .header("Authorization", "Bearer " + adminToken)
+            .contentType("application/json")
+            .content(jsonMapper.writeValueAsString(
+                new UpdateFpoMemberStatusRequest(FpoMemberStatus.INACTIVE)
+            )))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.status").value("INACTIVE"));
+
+    mockMvc.perform(get("/api/v1/fpo/members/" + member.getId())
+            .header("Authorization", "Bearer " + disabledTenantAdminToken))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.error.code").value("MODULE_NOT_ENABLED"));
+  }
+
+  @Test
+  void testDuplicateMemberNumberReturnsConflict() throws Exception {
+    String memberNumber = "MEM-" + UUID.randomUUID();
+    createMember(createRequest(memberNumber, "farmer-" + UUID.randomUUID()));
+
+    mockMvc.perform(post("/api/v1/fpo/members")
+            .header("Authorization", "Bearer " + adminToken)
+            .contentType("application/json")
+            .content(jsonMapper.writeValueAsString(
+                createRequest(memberNumber.toLowerCase(), "farmer-" + UUID.randomUUID())
+            )))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.error.code").value("DUPLICATE_RESOURCE"));
+  }
+
+  @Test
+  void testParticipantCannotCreateMember() throws Exception {
+    mockMvc.perform(post("/api/v1/fpo/members")
+            .header("Authorization", "Bearer " + participantToken)
+            .contentType("application/json")
+            .content(jsonMapper.writeValueAsString(
+                createRequest("MEM-" + UUID.randomUUID(), "farmer-" + UUID.randomUUID())
+            )))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.error.code").value("ACCESS_DENIED"));
+  }
+
+  @Test
+  void testDisabledModuleBlocksMemberApi() throws Exception {
+    mockMvc.perform(post("/api/v1/fpo/members")
+            .header("Authorization", "Bearer " + disabledTenantAdminToken)
+            .contentType("application/json")
+            .content(jsonMapper.writeValueAsString(
+                createRequest("MEM-" + UUID.randomUUID(), "farmer-" + UUID.randomUUID())
+            )))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.error.code").value("MODULE_NOT_ENABLED"));
+  }
+
+  private FpoMemberProfileEntity createMember(CreateFpoMemberRequest request) throws Exception {
+    String response = mockMvc.perform(post("/api/v1/fpo/members")
+            .header("Authorization", "Bearer " + adminToken)
+            .contentType("application/json")
+            .content(jsonMapper.writeValueAsString(request)))
+        .andExpect(status().isOk())
+        .andReturn()
+        .getResponse()
+        .getContentAsString();
+    FpoMemberResponse created = jsonMapper.readValue(
+        jsonMapper.readTree(response).get("data").toString(),
+        FpoMemberResponse.class
+    );
+    return memberRepository.findById(created.id()).orElseThrow();
+  }
+
+  private CreateFpoMemberRequest createRequest(String memberNumber, String username) {
+    return new CreateFpoMemberRequest(
+        null,
+        username,
+        "password123",
+        memberNumber,
+        "New Farmer",
+        "+91 99999 00000",
+        null,
+        "Nashik Village",
+        "Nashik Block",
+        "Nashik District",
+        "MALE",
+        null,
+        42,
+        "MARGINAL",
+        adminUser.getId(),
+        FpoMemberStatus.ACTIVE
+    );
+  }
+
+  private CreateFpoMemberRequest createRequestWithExistingUser(
+      String memberNumber,
+      UUID userId
+  ) {
+    return new CreateFpoMemberRequest(
+        userId,
+        null,
+        null,
+        memberNumber,
+        "Linked Farmer",
+        "+91 99999 00000",
+        null,
+        "Linked Village",
+        "Linked Block",
+        "Linked District",
+        "MALE",
+        null,
+        42,
+        "MARGINAL",
+        adminUser.getId(),
+        FpoMemberStatus.ACTIVE
+    );
+  }
+
+  private void enableMemberData(TenantEntity moduleTenant) {
+    PlatformModuleEntity module = platformModuleRepository.findByCode(ModuleCode.MEMBER_DATA)
+        .orElseThrow();
+    Instant now = Instant.now();
+    subscriptionRepository.save(new TenantModuleSubscriptionEntity(
+        UUID.randomUUID(),
+        moduleTenant,
+        module,
+        TenantModuleSubscriptionStatus.ENABLED,
+        now,
+        null,
+        null,
+        now
+    ));
+  }
+}

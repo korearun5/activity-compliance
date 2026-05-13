@@ -43,13 +43,14 @@ import {
   upsertProofSubmission
 } from "../data/workflowActivityStore";
 import { StatusBadge } from "../ui/StatusBadge";
+import { UserCarbonScreen } from "./UserCarbonScreen";
 
 type UserHomeScreenProps = {
   username: string | null;
   onLogout: () => void;
 };
 
-type ParticipantTab = "cycles" | "dashboard" | "profile" | "history";
+type ParticipantTab = "carbon" | "cycles" | "dashboard" | "profile" | "history";
 
 type SelectedProof = {
   cycleId: string;
@@ -394,6 +395,7 @@ export function UserHomeScreen({ username, onLogout }: UserHomeScreenProps) {
         {[
           ["cycles", "Cycles"],
           ["dashboard", "Dashboard"],
+          ["carbon", "Carbon"],
           ["profile", "Profile"],
           ["history", "History"]
         ].map(([tab, label]) => (
@@ -449,6 +451,8 @@ export function UserHomeScreen({ username, onLogout }: UserHomeScreenProps) {
           {activeTab === "dashboard" ? (
             <DashboardView summary={summary} runningCycles={runningCycles} />
           ) : null}
+
+          {activeTab === "carbon" ? <UserCarbonScreen username={username} /> : null}
 
           {activeTab === "profile" ? (
             <ProfileView profileError={profileError} profileFields={profileFields} />
@@ -1045,13 +1049,15 @@ const styles = StyleSheet.create({
   navRow: {
     backgroundColor: "#e8eef2",
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: 4,
     padding: 6
   },
   navButton: {
     alignItems: "center",
     borderRadius: 6,
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: 110,
     minHeight: 40,
     justifyContent: "center"
   },

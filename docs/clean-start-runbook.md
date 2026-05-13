@@ -1,0 +1,200 @@
+# Clean Start Runbook
+
+Last audited: 2026-05-13
+
+Use this when the local environment feels stale, ports are confused, Docker
+volumes contain old data, or a developer wants to restart from a known-good
+state.
+
+## Default Local Ports
+
+| Service         | Default                       | Notes                                      |
+| --------------- | ----------------------------- | ------------------------------------------ |
+| Expo web        | `http://localhost:19006`      | Frontend Docker and local web target.      |
+| Expo/Metro      | `http://localhost:8081`       | Bundler/dev tooling port.                  |
+| Spring Boot API | `http://localhost:8080`       | `APP_PORT` if an override is required.     |
+| PostgreSQL      | `localhost:5432`              | `APP_POSTGRES_PORT` if an override is required. |
+| MinIO API       | `http://localhost:9000`       | Object storage API.                        |
+| MinIO console   | `http://localhost:9001`       | Local storage console.                     |
+| Swagger UI      | `http://localhost:8080/swagger-ui.html` | Available when backend is running. |
+
+If a default port is already used by another local service, override only that
+port in a private `.env` file and keep the matching app URL consistent.
+
+## Stop Everything
+
+From the repository root:
+
+```powershell
+docker compose down --remove-orphans
+```
+
+If the backend-only database compose was started from `backend/`, stop it too:
+
+```powershell
+cd backend
+docker compose down --remove-orphans
+cd ..
+```
+
+Stop any foreground terminals running these commands with `Ctrl+C`:
+
+```text
+npm run web
+npm start
+.\mvnw.cmd spring-boot:run
+```
+
+Optional port check:
+
+```powershell
+Get-NetTCPConnection -LocalPort 19006,8081,8080,5432,9000,9001 -ErrorAction SilentlyContinue |
+  Select-Object LocalAddress,LocalPort,State,OwningProcess
+```
+
+Only stop a process by port after confirming it belongs to this project:
+
+```powershell
+Stop-Process -Id <PID> -Force
+```
+
+## Clean Local Data
+
+Remove Docker volumes when you want a truly fresh database and object store:
+
+```powershell
+docker compose down -v --remove-orphans
+cd backend
+docker compose down -v --remove-orphans
+cd ..
+```
+
+Remove generated local artifacts:
+
+```powershell
+Remove-Item -Recurse -Force node_modules -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force .expo -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force backend\target -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force backend\storage -ErrorAction SilentlyContinue
+Remove-Item -Force expo-web*.log -ErrorAction SilentlyContinue
+```
+
+Keep `.env.example` and `.env.production.example`. Private `.env` files are
+ignored by Git and can be recreated from `.env.example` when needed.
+
+## Fresh Start: Full Docker Stack
+
+From the repository root:
+
+```powershell
+npm ci
+docker compose config
+docker compose up --build
+```
+
+Expected services:
+
+- Frontend: `http://localhost:19006`
+- Backend health: `http://localhost:8080/actuator/health`
+- Swagger UI: `http://localhost:8080/swagger-ui.html`
+- MinIO console: `http://localhost:9001`
+
+## Fresh Start: Split Local Development
+
+Use this when you want Docker for dependencies but local terminals for frontend
+and backend development.
+
+Start dependencies:
+
+```powershell
+docker compose up -d postgres minio
+```
+
+Start backend:
+
+```powershell
+cd backend
+$env:SPRING_PROFILES_ACTIVE="local"
+.\mvnw.cmd spring-boot:run
+```
+
+Start frontend from another terminal:
+
+```powershell
+npm ci
+npm run web
+```
+
+## Verification Checklist
+
+Run before declaring the environment clean:
+
+```powershell
+npm run typecheck
+npm run lint
+cd backend
+.\mvnw.cmd test
+.\mvnw.cmd -Pintegration-test verify
+```
+
+The integration profile uses JUnit, Spring MockMvc, Flyway, and PostgreSQL
+Testcontainers. Docker must be available for that command.
+
+## When Ports Conflict
+
+Prefer keeping defaults. If a conflict is unavoidable, create or edit a private
+`.env` file and override the smallest possible surface:
+
+```text
+APP_POSTGRES_PORT=<free-postgres-port>
+APP_DB_URL=jdbc:postgresql://localhost:<free-postgres-port>/activity_platform
+APP_PORT=<free-api-port>
+EXPO_PUBLIC_API_BASE_URL=http://localhost:<free-api-port>
+APP_CORS_ALLOWED_ORIGIN_WEB=http://localhost:19006
+```
+
+After changing ports, restart the affected services and rerun the verification
+checklist.
+
+## PostgreSQL Password Failure After Port Cleanup
+
+If the backend fails with:
+
+```text
+FATAL: password authentication failed for user "activity_app"
+```
+
+first check whether another PostgreSQL is already answering on the default
+port:
+
+```powershell
+Get-NetTCPConnection -LocalPort 5432 -ErrorAction SilentlyContinue |
+  Select-Object LocalAddress,LocalPort,State,OwningProcess
+Get-Process -Id <OwningProcess>
+```
+
+If the process is not this project's Docker container, choose one path:
+
+Use default port `5432`:
+
+```powershell
+docker compose down --remove-orphans
+# Stop or disable the other local PostgreSQL only if it is safe for your machine.
+docker compose up -d postgres
+cd backend
+$env:SPRING_PROFILES_ACTIVE="local"
+Remove-Item Env:APP_DB_URL -ErrorAction SilentlyContinue
+.\mvnw.cmd spring-boot:run
+```
+
+Keep the other PostgreSQL running and use a project-only override:
+
+```powershell
+docker compose down --remove-orphans
+$env:APP_POSTGRES_PORT="55432"
+docker compose up -d postgres
+cd backend
+$env:SPRING_PROFILES_ACTIVE="local"
+$env:APP_DB_URL="jdbc:postgresql://localhost:55432/activity_platform"
+.\mvnw.cmd spring-boot:run
+```

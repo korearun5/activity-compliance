@@ -6,6 +6,7 @@ import { logger } from "../core/logging/logger";
 import { Account, UserRole } from "../core/model/types";
 import { readJsonArray } from "../core/storage/jsonStore";
 import { storageKeys } from "../core/storage/storageKeys";
+import { loadEnabledModules } from "../data/moduleStore";
 import { loginWithBackend, toFrontendRole } from "./backendAuth";
 
 export type Role = UserRole;
@@ -48,7 +49,8 @@ export async function logout() {
     AsyncStorage.removeItem(storageKeys.auth.sessionRole),
     AsyncStorage.removeItem(storageKeys.auth.sessionUsername),
     AsyncStorage.removeItem(storageKeys.legacy.auth.sessionRole),
-    AsyncStorage.removeItem(storageKeys.legacy.auth.sessionUsername)
+    AsyncStorage.removeItem(storageKeys.legacy.auth.sessionUsername),
+    AsyncStorage.removeItem(storageKeys.platform.enabledModules)
   ]);
 }
 
@@ -110,7 +112,8 @@ async function tryBackendLogin(
       AsyncStorage.setItem(storageKeys.auth.accessToken, response.accessToken),
       AsyncStorage.setItem(storageKeys.auth.refreshToken, response.refreshToken),
       AsyncStorage.setItem(storageKeys.auth.sessionRole, role),
-      AsyncStorage.setItem(storageKeys.auth.sessionUsername, username.trim())
+      AsyncStorage.setItem(storageKeys.auth.sessionUsername, username.trim()),
+      loadEnabledModules(response.accessToken)
     ]);
 
     return role;

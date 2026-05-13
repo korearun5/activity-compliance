@@ -20,6 +20,8 @@ Spring Boot backend for the reusable activity-compliance platform.
 - `workflow`: reusable workflow and task definition logic.
 - `activity`: workflow execution and timeline tracking.
 - `evidence`: proof/photo metadata and review status.
+- `fpo`: FPO member, farm asset, crop planning, input demand, advisory, and
+  reporting domain logic.
 - `storage`: shared validation with local and MinIO adapters.
 - `audit`: append-only compliance events.
 - `reporting`: PDF/Excel export foundation.
@@ -31,7 +33,7 @@ Spring Boot backend for the reusable activity-compliance platform.
 Default connection:
 
 ```text
-jdbc:postgresql://localhost:55432/activity_platform
+jdbc:postgresql://localhost:5432/activity_platform
 username: activity_app
 password: activity_app
 ```
@@ -39,7 +41,7 @@ password: activity_app
 Override with:
 
 ```powershell
-$env:APP_DB_URL="jdbc:postgresql://localhost:55432/activity_platform"
+$env:APP_DB_URL="jdbc:postgresql://localhost:5432/activity_platform"
 $env:APP_DB_USERNAME="activity_app"
 $env:APP_DB_PASSWORD="activity_app"
 ```
@@ -141,4 +143,5 @@ strong JWT secret, HTTPS CORS origins, and MinIO storage are required.
 
 The integration profile uses Testcontainers PostgreSQL and exercises the API
 contracts used by the frontend workflow, activity, evidence, reporting, role,
-and notification flows.
+platform module, FPO member, farm asset, crop planning, input demand,
+reporting, role, and notification flows.

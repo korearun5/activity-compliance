@@ -10,19 +10,26 @@ import {
 } from "react-native";
 
 import { getErrorMessage } from "../core/errors/AppError";
-import { EvidenceStatus, UserProfileInput } from "../core/model/types";
+import { EvidenceStatus } from "../core/model/types";
 import {
-  countParticipantActivities,
-  countParticipantProofs,
-  createRegisteredParticipant,
-  CreateRegisteredParticipantInput,
-  getRegisteredParticipants,
-  RegisteredParticipant,
-  updateRegisteredParticipantStatus
-} from "../data/adminRegistryStore";
+  countMemberActivities,
+  countMemberProofs,
+  createFpoMember,
+  CreateFpoMemberInput,
+  FpoMember,
+  getFpoMembers,
+  updateFpoMember,
+  UpdateFpoMemberInput,
+  updateFpoMemberStatus
+} from "../data/fpoMemberStore";
 import { getSavedCropCycles } from "../data/cropCycleStore";
 import { CropCycle, ProofSubmission } from "../data/agricultureConfig";
 import { getSavedProofs } from "../data/proofStore";
+import {
+  isModuleEnabled,
+  loadEnabledModules,
+  PlatformModuleCode
+} from "../data/moduleStore";
 import {
   exportBackendReport,
   getBackendReportSummary,
@@ -43,7 +50,12 @@ import {
   updateBackendWorkflowStatus,
   createBackendWorkflowDefinition
 } from "../data/workflowActivityStore";
-import { AdminNotificationsTab } from "./AdminNotificationsTab";
+import { AdminAdvisoriesTab } from "./AdminAdvisoriesTab";
+import { AdminCarbonOverviewTab } from "./AdminCarbonOverviewTab";
+import { AdminCropPlanningTab } from "./AdminCropPlanningTab";
+import { AdminFarmAssetsPanel } from "./AdminFarmAssetsPanel";
+import { AdminFpoReportsPanel } from "./AdminFpoReportsPanel";
+import { AdminInputDemandTab } from "./AdminInputDemandTab";
 import { AdminRolesTab } from "./AdminRolesTab";
 import { AdminWorkflowsTab } from "./AdminWorkflowsTab";
 import { StatusBadge } from "../ui/StatusBadge";
@@ -53,26 +65,47 @@ type AdminHomeScreenProps = {
 };
 
 type AdminTab =
-  | "notifications"
+  | "advisories"
+  | "carbon"
+  | "cropPlanning"
+  | "inputDemand"
   | "overview"
   | "participants"
   | "reports"
   | "roles"
   | "workflows";
 
+type AdminTabConfig = {
+  label: string;
+  module?: PlatformModuleCode;
+  tab: AdminTab;
+};
+
+const adminTabs: AdminTabConfig[] = [
+  { label: "Overview", tab: "overview" },
+  { label: "Carbon", tab: "carbon" },
+  { label: "Workflows", module: "ACTIVITY_COMPLIANCE", tab: "workflows" },
+  { label: "Members", module: "MEMBER_DATA", tab: "participants" },
+  { label: "Crop Planning", module: "CROP_PLANNING", tab: "cropPlanning" },
+  { label: "Input Demand", module: "INPUT_DEMAND", tab: "inputDemand" },
+  { label: "Roles", tab: "roles" },
+  { label: "Advisories", module: "ADVISORY", tab: "advisories" },
+  { label: "Reports", module: "REPORT_EXPORT", tab: "reports" }
+];
+
 export function AdminHomeScreen({ onLogout }: AdminHomeScreenProps) {
   const [activeTab, setActiveTab] = useState<AdminTab>("overview");
-  const [registeredParticipants, setRegisteredParticipants] = useState<
-    RegisteredParticipant[]
-  >([]);
+  const [members, setMembers] = useState<FpoMember[]>([]);
   const [savedCycles, setSavedCycles] = useState<CropCycle[]>([]);
   const [savedProofs, setSavedProofs] = useState<ProofSubmission[]>([]);
-  const [workflowDefinitions, setWorkflowDefinitions] = useState<BackendWorkflow[]>(
-    []
+  const [enabledModules, setEnabledModules] = useState<PlatformModuleCode[] | null>(
+    null
   );
+  const [workflowDefinitions, setWorkflowDefinitions] = useState<BackendWorkflow[]>([]);
   const [canReviewEvidence, setCanReviewEvidence] = useState(false);
   const [reportSummary, setReportSummary] = useState<ReportSummary | null>(null);
   const [adminDataError, setAdminDataError] = useState("");
+  const [memberEditError, setMemberEditError] = useState("");
   const [participantFormError, setParticipantFormError] = useState("");
   const [reportExport, setReportExport] = useState<ReportExport | null>(null);
   const [reportExportError, setReportExportError] = useState("");
@@ -85,7 +118,9 @@ export function AdminHomeScreen({ onLogout }: AdminHomeScreenProps) {
   const [exportingReportFormat, setExportingReportFormat] = useState<
     ReportExport["format"] | null
   >(null);
+  const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
   const [reviewingProofId, setReviewingProofId] = useState<string | null>(null);
+  const [updatingMemberId, setUpdatingMemberId] = useState<string | null>(null);
   const [updatingWorkflowId, setUpdatingWorkflowId] = useState<string | null>(null);
   const [updatingParticipantUsername, setUpdatingParticipantUsername] = useState<
     string | null
@@ -96,12 +131,12 @@ export function AdminHomeScreen({ onLogout }: AdminHomeScreenProps) {
       let participantLoadError = "";
 
       try {
-        const participants = await getRegisteredParticipants();
-        setRegisteredParticipants(participants);
+        const fpoMembers = await getFpoMembers();
+        setMembers(fpoMembers);
       } catch (error) {
         participantLoadError = getErrorMessage(
           error,
-          "Unable to load participant profiles."
+          "Unable to load FPO member profiles."
         );
         setAdminDataError(participantLoadError);
       }
@@ -146,25 +181,25 @@ export function AdminHomeScreen({ onLogout }: AdminHomeScreenProps) {
     loadAdminData();
   }, []);
 
-  async function handleCreateParticipant({
-    password,
-    profile,
-    username
-  }: CreateRegisteredParticipantInput) {
+  useEffect(() => {
+    async function loadModules() {
+      setEnabledModules(await loadEnabledModules());
+    }
+
+    loadModules();
+  }, []);
+
+  async function handleCreateMember(input: CreateFpoMemberInput) {
     setIsCreatingParticipant(true);
     setParticipantFormError("");
 
     try {
-      const participant = await createRegisteredParticipant({
-        password,
-        profile,
-        username
-      });
-      upsertParticipant(participant);
+      const member = await createFpoMember(input);
+      upsertMember(member);
       return true;
     } catch (error) {
       setParticipantFormError(
-        getErrorMessage(error, "Unable to create participant profile.")
+        getErrorMessage(error, "Unable to create FPO member profile.")
       );
       return false;
     } finally {
@@ -172,20 +207,36 @@ export function AdminHomeScreen({ onLogout }: AdminHomeScreenProps) {
     }
   }
 
-  async function handleToggleParticipantStatus(participant: RegisteredParticipant) {
-    const nextStatus = participant.status === "Active" ? "Inactive" : "Active";
-    setUpdatingParticipantUsername(participant.username);
+  async function handleUpdateMember(member: FpoMember, input: UpdateFpoMemberInput) {
+    setUpdatingMemberId(member.memberId);
+    setMemberEditError("");
+
+    try {
+      const updatedMember = await updateFpoMember(member, input);
+      upsertMember(updatedMember);
+      setEditingMemberId(null);
+      return true;
+    } catch (error) {
+      setMemberEditError(
+        getErrorMessage(error, "Unable to update FPO member profile.")
+      );
+      return false;
+    } finally {
+      setUpdatingMemberId(null);
+    }
+  }
+
+  async function handleToggleMemberStatus(member: FpoMember) {
+    const nextStatus = member.status === "Active" ? "Inactive" : "Active";
+    setUpdatingParticipantUsername(member.username);
     setParticipantFormError("");
 
     try {
-      const updatedParticipant = await updateRegisteredParticipantStatus(
-        participant,
-        nextStatus
-      );
-      upsertParticipant(updatedParticipant);
+      const updatedMember = await updateFpoMemberStatus(member, nextStatus);
+      upsertMember(updatedMember);
     } catch (error) {
       setParticipantFormError(
-        getErrorMessage(error, "Unable to update participant status.")
+        getErrorMessage(error, "Unable to update FPO member status.")
       );
     } finally {
       setUpdatingParticipantUsername(null);
@@ -274,9 +325,7 @@ export function AdminHomeScreen({ onLogout }: AdminHomeScreenProps) {
         currentWorkflows.map((item) => (item.id === workflow.id ? workflow : item))
       );
     } catch (error) {
-      setWorkflowFormError(
-        getErrorMessage(error, "Unable to update workflow status.")
-      );
+      setWorkflowFormError(getErrorMessage(error, "Unable to update workflow status."));
     } finally {
       setUpdatingWorkflowId(null);
     }
@@ -308,27 +357,35 @@ export function AdminHomeScreen({ onLogout }: AdminHomeScreenProps) {
     }
   }
 
-  function upsertParticipant(participant: RegisteredParticipant) {
-    setRegisteredParticipants((currentParticipants) => [
-      participant,
-      ...currentParticipants.filter(
-        (item) => item.username.toLowerCase() !== participant.username.toLowerCase()
-      )
+  function upsertMember(member: FpoMember) {
+    setMembers((currentMembers) => [
+      member,
+      ...currentMembers.filter((item) => item.memberId !== member.memberId)
     ]);
   }
 
-  const participants = registeredParticipants;
+  const participants = members;
   const allCycles = savedCycles;
   const runningCycles = allCycles.filter((cycle) => cycle.status === "running");
   const completedCycles = allCycles.filter((cycle) => cycle.status === "completed");
   const proofRecords = savedProofs;
-  const regions = [...new Set(participants.map((participant) => participant.region))];
+  const regions = [...new Set(participants.map((member) => member.region))];
   const crops = [...new Set(allCycles.map((cycle) => cycle.crop))];
   const complianceScore = calculateComplianceScore(allCycles, proofRecords);
+  const visibleTabs = useMemo(
+    () =>
+      adminTabs.filter(
+        (item) =>
+          !item.module ||
+          enabledModules === null ||
+          isModuleEnabled(enabledModules, item.module)
+      ),
+    [enabledModules]
+  );
 
   const summary = useMemo(
     () => [
-      { label: "Participants", value: String(participants.length) },
+      { label: "Members", value: String(participants.length) },
       { label: "Running cycles", value: String(runningCycles.length) },
       { label: "Completed", value: String(completedCycles.length) },
       { label: "Proof records", value: String(proofRecords.length) }
@@ -341,6 +398,12 @@ export function AdminHomeScreen({ onLogout }: AdminHomeScreenProps) {
     ]
   );
 
+  useEffect(() => {
+    if (!visibleTabs.some((item) => item.tab === activeTab)) {
+      setActiveTab("overview");
+    }
+  }, [activeTab, visibleTabs]);
+
   return (
     <SafeAreaView style={styles.screen}>
       <ScrollView
@@ -351,10 +414,10 @@ export function AdminHomeScreen({ onLogout }: AdminHomeScreenProps) {
           <View style={styles.headerRow}>
             <View style={styles.headerText}>
               <Text style={styles.eyebrow}>Admin dashboard</Text>
-              <Text style={styles.title}>Process Verification</Text>
+              <Text style={styles.title}>Carbon Farming Operations</Text>
               <Text style={styles.copy}>
-                Track participants, activity progress, proof records, and report-ready
-                compliance evidence.
+                Track FPO members, regenerative activities, proof records, advisories,
+                and report-ready carbon evidence.
               </Text>
             </View>
             <Pressable
@@ -377,18 +440,11 @@ export function AdminHomeScreen({ onLogout }: AdminHomeScreenProps) {
           </View>
 
           <View style={styles.tabRow}>
-            {[
-              ["overview", "Overview"],
-              ["workflows", "Workflows"],
-              ["participants", "Participants"],
-              ["roles", "Roles"],
-              ["notifications", "Notifications"],
-              ["reports", "Reports"]
-            ].map(([tab, label]) => (
+            {visibleTabs.map(({ label, tab }) => (
               <Pressable
                 key={tab}
                 style={[styles.tabButton, activeTab === tab && styles.tabButtonActive]}
-                onPress={() => setActiveTab(tab as AdminTab)}
+                onPress={() => setActiveTab(tab)}
               >
                 <Text
                   style={[
@@ -416,17 +472,24 @@ export function AdminHomeScreen({ onLogout }: AdminHomeScreenProps) {
           ) : null}
 
           {activeTab === "participants" ? (
-            <ParticipantsTab
+            <MembersTab
               allCycles={allCycles}
               createError={participantFormError}
+              editError={memberEditError}
+              editingMemberId={editingMemberId}
               isCreatingParticipant={isCreatingParticipant}
-              onCreateParticipant={handleCreateParticipant}
-              onToggleParticipantStatus={handleToggleParticipantStatus}
+              onCreateMember={handleCreateMember}
+              onEditMemberIdChange={setEditingMemberId}
+              onToggleMemberStatus={handleToggleMemberStatus}
+              onUpdateMember={handleUpdateMember}
               participants={participants}
               proofRecords={proofRecords}
+              updatingMemberId={updatingMemberId}
               updatingParticipantUsername={updatingParticipantUsername}
             />
           ) : null}
+
+          {activeTab === "carbon" ? <AdminCarbonOverviewTab /> : null}
 
           {activeTab === "workflows" ? (
             <AdminWorkflowsTab
@@ -444,15 +507,18 @@ export function AdminHomeScreen({ onLogout }: AdminHomeScreenProps) {
             />
           ) : null}
 
+          {activeTab === "cropPlanning" ? (
+            <AdminCropPlanningTab members={participants} />
+          ) : null}
+
+          {activeTab === "inputDemand" ? <AdminInputDemandTab /> : null}
+
           {activeTab === "roles" ? (
             <AdminRolesTab canUseBackend={canReviewEvidence} />
           ) : null}
 
-          {activeTab === "notifications" ? (
-            <AdminNotificationsTab
-              canUseBackend={canReviewEvidence}
-              participants={participants}
-            />
+          {activeTab === "advisories" ? (
+            <AdminAdvisoriesTab participants={participants} />
           ) : null}
 
           {activeTab === "reports" ? (
@@ -489,10 +555,7 @@ async function loadBackendAdminData(): Promise<
 async function loadLocalAdminData(): Promise<
   [CropCycle[], ProofSubmission[], ReportSummary | null, BackendWorkflow[]]
 > {
-  const [cycles, proofs] = await Promise.all([
-    getSavedCropCycles(),
-    getSavedProofs()
-  ]);
+  const [cycles, proofs] = await Promise.all([getSavedCropCycles(), getSavedProofs()]);
   return [cycles, proofs, null, []];
 }
 
@@ -512,7 +575,7 @@ function OverviewTab({
     proof: ProofSubmission,
     status: "APPROVED" | "REJECTED"
   ) => Promise<void>;
-  participants: RegisteredParticipant[];
+  participants: FpoMember[];
   proofRecords: ProofSubmission[];
   reviewError: string;
   reviewingProofId: string | null;
@@ -610,7 +673,7 @@ function OverviewTab({
         </View>
       )}
 
-      <Text style={styles.sectionTitle}>Participants by region</Text>
+      <Text style={styles.sectionTitle}>Members by village</Text>
       {participants.length ? (
         participants.map((participant) => (
           <View key={participant.username} style={styles.compactRow}>
@@ -622,89 +685,193 @@ function OverviewTab({
         ))
       ) : (
         <View style={styles.emptyCard}>
-          <Text style={styles.cardDescription}>
-            No participants are registered yet.
-          </Text>
+          <Text style={styles.cardDescription}>No FPO members are registered yet.</Text>
         </View>
       )}
     </View>
   );
 }
 
-function ParticipantsTab({
+function MembersTab({
   allCycles,
   createError,
+  editError,
+  editingMemberId,
   isCreatingParticipant,
-  onCreateParticipant,
-  onToggleParticipantStatus,
+  onCreateMember,
+  onEditMemberIdChange,
+  onToggleMemberStatus,
+  onUpdateMember,
   participants,
   proofRecords,
+  updatingMemberId,
   updatingParticipantUsername
 }: {
   allCycles: CropCycle[];
   createError: string;
+  editError: string;
+  editingMemberId: string | null;
   isCreatingParticipant: boolean;
-  onCreateParticipant: (data: CreateRegisteredParticipantInput) => Promise<boolean>;
-  onToggleParticipantStatus: (participant: RegisteredParticipant) => Promise<void>;
-  participants: RegisteredParticipant[];
+  onCreateMember: (data: CreateFpoMemberInput) => Promise<boolean>;
+  onEditMemberIdChange: (memberId: string | null) => void;
+  onToggleMemberStatus: (member: FpoMember) => Promise<void>;
+  onUpdateMember: (member: FpoMember, data: UpdateFpoMemberInput) => Promise<boolean>;
+  participants: FpoMember[];
   proofRecords: ProofSubmission[];
+  updatingMemberId: string | null;
   updatingParticipantUsername: string | null;
 }) {
+  const [farmAssetMemberId, setFarmAssetMemberId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const filteredMembers = normalizedQuery
+    ? participants.filter((member) =>
+        [
+          member.name,
+          member.memberNumber,
+          member.mobileNumber,
+          member.village,
+          member.blockName,
+          member.districtName,
+          member.username
+        ]
+          .filter((value): value is string => Boolean(value))
+          .some((value) => value.toLowerCase().includes(normalizedQuery))
+      )
+    : participants;
+
   return (
     <View style={styles.section}>
-      <CreateParticipantForm
+      <CreateMemberForm
         error={createError}
         isSubmitting={isCreatingParticipant}
-        onSubmit={onCreateParticipant}
+        onSubmit={onCreateMember}
       />
 
-      {participants.length ? (
-        participants.map((participant) => (
+      <View style={styles.managementCard}>
+        <Text style={styles.cardTitle}>FPO member directory</Text>
+        <AdminField
+          label="Search members"
+          value={searchQuery}
+          onChange={setSearchQuery}
+        />
+      </View>
+
+      {filteredMembers.length ? (
+        filteredMembers.map((participant) => (
           <View key={participant.username} style={styles.participantCard}>
-            <View style={styles.reviewText}>
-              <Text style={styles.cardTitle}>{participant.name}</Text>
-              <Text style={styles.cardDescription}>
-                {participant.region} - {participant.village} - {participant.phone}
-              </Text>
-              <Text style={styles.cardMeta}>
-                {countParticipantActivities(participant, allCycles, "running")} running,{" "}
-                {countParticipantActivities(participant, allCycles, "completed")}{" "}
-                completed, {countParticipantProofs(participant, proofRecords)} proof
-                record(s)
-              </Text>
-            </View>
-            <View style={styles.participantActions}>
-              <StatusBadge
-                label={participant.status}
-                tone={participant.status === "Active" ? "good" : "warning"}
-              />
-              {participant.status !== "Profile pending" ? (
+            <View style={styles.memberCardHeader}>
+              <View style={styles.reviewText}>
+                <Text style={styles.cardTitle}>{participant.name}</Text>
+                <Text style={styles.cardDescription}>
+                  Member {participant.memberNumber} - {participant.village} -{" "}
+                  {participant.phone}
+                </Text>
+                <Text style={styles.cardDescription}>
+                  {participant.siteName} - Login {participant.username}
+                </Text>
+                {participant.farmerCategory || participant.age !== undefined ? (
+                  <Text style={styles.cardMeta}>
+                    {[participant.farmerCategory, formatAge(participant.age)]
+                      .filter(Boolean)
+                      .join(" - ")}
+                  </Text>
+                ) : null}
+                <Text style={styles.cardMeta}>
+                  {countMemberActivities(participant, allCycles, "running")} running,{" "}
+                  {countMemberActivities(participant, allCycles, "completed")}{" "}
+                  completed, {countMemberProofs(participant, proofRecords)} proof
+                  record(s)
+                </Text>
+              </View>
+              <View style={styles.participantActions}>
+                <StatusBadge
+                  label={participant.status}
+                  tone={participant.status === "Active" ? "good" : "warning"}
+                />
                 <Pressable
                   accessibilityRole="button"
-                  disabled={updatingParticipantUsername === participant.username}
+                  disabled={updatingMemberId === participant.memberId}
                   style={({ pressed }) => [
-                    styles.actionButton,
-                    (pressed || updatingParticipantUsername === participant.username) &&
+                    styles.secondaryActionButton,
+                    (pressed || updatingMemberId === participant.memberId) &&
                       styles.actionButtonPressed
                   ]}
-                  onPress={() => onToggleParticipantStatus(participant)}
+                  onPress={() =>
+                    onEditMemberIdChange(
+                      editingMemberId === participant.memberId
+                        ? null
+                        : participant.memberId
+                    )
+                  }
                 >
-                  <Text style={styles.actionButtonText}>
-                    {updatingParticipantUsername === participant.username
-                      ? "Saving..."
-                      : participant.status === "Active"
-                        ? "Deactivate"
-                        : "Activate"}
+                  <Text style={styles.secondaryActionButtonText}>
+                    {editingMemberId === participant.memberId ? "Close" : "Edit"}
                   </Text>
                 </Pressable>
-              ) : null}
+                <Pressable
+                  accessibilityRole="button"
+                  style={({ pressed }) => [
+                    styles.secondaryActionButton,
+                    pressed && styles.actionButtonPressed
+                  ]}
+                  onPress={() =>
+                    setFarmAssetMemberId(
+                      farmAssetMemberId === participant.memberId
+                        ? null
+                        : participant.memberId
+                    )
+                  }
+                >
+                  <Text style={styles.secondaryActionButtonText}>
+                    {farmAssetMemberId === participant.memberId
+                      ? "Hide land"
+                      : "Land records"}
+                  </Text>
+                </Pressable>
+                {participant.status !== "Profile pending" ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    disabled={updatingParticipantUsername === participant.username}
+                    style={({ pressed }) => [
+                      styles.actionButton,
+                      (pressed ||
+                        updatingParticipantUsername === participant.username) &&
+                        styles.actionButtonPressed
+                    ]}
+                    onPress={() => onToggleMemberStatus(participant)}
+                  >
+                    <Text style={styles.actionButtonText}>
+                      {updatingParticipantUsername === participant.username
+                        ? "Saving..."
+                        : participant.status === "Active"
+                          ? "Deactivate"
+                          : "Activate"}
+                    </Text>
+                  </Pressable>
+                ) : null}
+              </View>
             </View>
+            {editingMemberId === participant.memberId ? (
+              <EditMemberForm
+                error={editError}
+                isSubmitting={updatingMemberId === participant.memberId}
+                member={participant}
+                onCancel={() => onEditMemberIdChange(null)}
+                onSubmit={(input) => onUpdateMember(participant, input)}
+              />
+            ) : null}
+            {farmAssetMemberId === participant.memberId ? (
+              <AdminFarmAssetsPanel member={participant} />
+            ) : null}
           </View>
         ))
       ) : (
         <View style={styles.emptyCard}>
           <Text style={styles.cardDescription}>
-            No participant profiles are available yet.
+            {participants.length
+              ? "No FPO members match this search."
+              : "No FPO member profiles are available yet."}
           </Text>
         </View>
       )}
@@ -712,40 +879,56 @@ function ParticipantsTab({
   );
 }
 
-function CreateParticipantForm({
+function CreateMemberForm({
   error,
   isSubmitting,
   onSubmit
 }: {
   error: string;
   isSubmitting: boolean;
-  onSubmit: (data: CreateRegisteredParticipantInput) => Promise<boolean>;
+  onSubmit: (data: CreateFpoMemberInput) => Promise<boolean>;
 }) {
-  const [name, setName] = useState("");
+  const [age, setAge] = useState("");
+  const [alternateMobileNumber, setAlternateMobileNumber] = useState("");
+  const [blockName, setBlockName] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [districtName, setDistrictName] = useState("");
+  const [farmerCategory, setFarmerCategory] = useState("");
+  const [gender, setGender] = useState("");
+  const [memberNumber, setMemberNumber] = useState("");
+  const [mobileNumber, setMobileNumber] = useState("");
   const [password, setPassword] = useState("");
-  const [phone, setPhone] = useState("");
-  const [region, setRegion] = useState("");
   const [username, setUsername] = useState("");
   const [village, setVillage] = useState("");
   const [localError, setLocalError] = useState("");
 
   async function handleSubmit() {
-    const profile: UserProfileInput = {
-      displayName: name.trim(),
-      locationName: region.trim(),
-      phone: phone.trim(),
-      siteName: village.trim()
+    const input: CreateFpoMemberInput = {
+      age: age.trim(),
+      alternateMobileNumber: alternateMobileNumber.trim(),
+      blockName: blockName.trim(),
+      displayName: displayName.trim(),
+      districtName: districtName.trim(),
+      farmerCategory: farmerCategory.trim(),
+      gender: gender.trim(),
+      memberNumber: memberNumber.trim(),
+      mobileNumber: mobileNumber.trim(),
+      password,
+      username: username.trim(),
+      village: village.trim()
     };
 
     if (
-      !username.trim() ||
-      !password ||
-      !profile.displayName ||
-      !profile.phone ||
-      !profile.locationName ||
-      !profile.siteName
+      !input.memberNumber ||
+      !input.displayName ||
+      !input.mobileNumber ||
+      !input.village ||
+      !input.username ||
+      !input.password
     ) {
-      setLocalError("Enter all participant profile fields.");
+      setLocalError(
+        "Enter member number, name, mobile number, village, username, and password."
+      );
       return;
     }
 
@@ -754,18 +937,25 @@ function CreateParticipantForm({
       return;
     }
 
+    if (!isValidOptionalAge(input.age)) {
+      setLocalError("Age must be a whole number from 0 to 120.");
+      return;
+    }
+
     setLocalError("");
-    const created = await onSubmit({
-      password,
-      profile,
-      username: username.trim()
-    });
+    const created = await onSubmit(input);
 
     if (created) {
-      setName("");
+      setAge("");
+      setAlternateMobileNumber("");
+      setBlockName("");
+      setDisplayName("");
+      setDistrictName("");
+      setFarmerCategory("");
+      setGender("");
+      setMemberNumber("");
+      setMobileNumber("");
       setPassword("");
-      setPhone("");
-      setRegion("");
       setUsername("");
       setVillage("");
     }
@@ -773,17 +963,36 @@ function CreateParticipantForm({
 
   return (
     <View style={styles.managementCard}>
-      <Text style={styles.cardTitle}>Create participant</Text>
+      <Text style={styles.cardTitle}>Create FPO member</Text>
       <View style={styles.formGrid}>
-        <AdminField label="Full name" value={name} onChange={setName} />
         <AdminField
-          label="Phone"
-          value={phone}
-          onChange={setPhone}
+          label="Member number"
+          value={memberNumber}
+          onChange={setMemberNumber}
+        />
+        <AdminField label="Full name" value={displayName} onChange={setDisplayName} />
+        <AdminField
+          label="Mobile number"
+          value={mobileNumber}
+          onChange={setMobileNumber}
           keyboardType="phone-pad"
         />
-        <AdminField label="Region" value={region} onChange={setRegion} />
+        <AdminField
+          label="Alternate mobile"
+          value={alternateMobileNumber}
+          onChange={setAlternateMobileNumber}
+          keyboardType="phone-pad"
+        />
         <AdminField label="Village" value={village} onChange={setVillage} />
+        <AdminField label="Block" value={blockName} onChange={setBlockName} />
+        <AdminField label="District" value={districtName} onChange={setDistrictName} />
+        <AdminField label="Gender" value={gender} onChange={setGender} />
+        <AdminField label="Age" value={age} onChange={setAge} keyboardType="numeric" />
+        <AdminField
+          label="Farmer category"
+          value={farmerCategory}
+          onChange={setFarmerCategory}
+        />
         <AdminField label="Username" value={username} onChange={setUsername} />
         <AdminField
           label="Password"
@@ -808,8 +1017,133 @@ function CreateParticipantForm({
           onPress={handleSubmit}
         >
           <Text style={styles.createButtonText}>
-            {isSubmitting ? "Creating..." : "Create profile"}
+            {isSubmitting ? "Creating..." : "Create member"}
           </Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+function EditMemberForm({
+  error,
+  isSubmitting,
+  member,
+  onCancel,
+  onSubmit
+}: {
+  error: string;
+  isSubmitting: boolean;
+  member: FpoMember;
+  onCancel: () => void;
+  onSubmit: (data: UpdateFpoMemberInput) => Promise<boolean>;
+}) {
+  const [age, setAge] = useState(member.age?.toString() ?? "");
+  const [alternateMobileNumber, setAlternateMobileNumber] = useState(
+    member.alternateMobileNumber ?? ""
+  );
+  const [blockName, setBlockName] = useState(member.blockName ?? "");
+  const [displayName, setDisplayName] = useState(member.displayName);
+  const [districtName, setDistrictName] = useState(member.districtName ?? "");
+  const [farmerCategory, setFarmerCategory] = useState(member.farmerCategory ?? "");
+  const [gender, setGender] = useState(member.gender ?? "");
+  const [memberNumber, setMemberNumber] = useState(member.memberNumber);
+  const [mobileNumber, setMobileNumber] = useState(member.mobileNumber);
+  const [village, setVillage] = useState(member.village);
+  const [localError, setLocalError] = useState("");
+
+  async function handleSubmit() {
+    const input: UpdateFpoMemberInput = {
+      age: age.trim(),
+      alternateMobileNumber: alternateMobileNumber.trim(),
+      blockName: blockName.trim(),
+      displayName: displayName.trim(),
+      districtName: districtName.trim(),
+      farmerCategory: farmerCategory.trim(),
+      gender: gender.trim(),
+      memberNumber: memberNumber.trim(),
+      mobileNumber: mobileNumber.trim(),
+      village: village.trim()
+    };
+
+    if (
+      !input.memberNumber ||
+      !input.displayName ||
+      !input.mobileNumber ||
+      !input.village
+    ) {
+      setLocalError("Enter member number, name, mobile number, and village.");
+      return;
+    }
+
+    if (!isValidOptionalAge(input.age)) {
+      setLocalError("Age must be a whole number from 0 to 120.");
+      return;
+    }
+
+    setLocalError("");
+    await onSubmit(input);
+  }
+
+  return (
+    <View style={styles.inlineEditCard}>
+      <Text style={styles.subsectionTitle}>Edit member profile</Text>
+      <View style={styles.formGrid}>
+        <AdminField
+          label="Member number"
+          value={memberNumber}
+          onChange={setMemberNumber}
+        />
+        <AdminField label="Full name" value={displayName} onChange={setDisplayName} />
+        <AdminField
+          label="Mobile number"
+          value={mobileNumber}
+          onChange={setMobileNumber}
+          keyboardType="phone-pad"
+        />
+        <AdminField
+          label="Alternate mobile"
+          value={alternateMobileNumber}
+          onChange={setAlternateMobileNumber}
+          keyboardType="phone-pad"
+        />
+        <AdminField label="Village" value={village} onChange={setVillage} />
+        <AdminField label="Block" value={blockName} onChange={setBlockName} />
+        <AdminField label="District" value={districtName} onChange={setDistrictName} />
+        <AdminField label="Gender" value={gender} onChange={setGender} />
+        <AdminField label="Age" value={age} onChange={setAge} keyboardType="numeric" />
+        <AdminField
+          label="Farmer category"
+          value={farmerCategory}
+          onChange={setFarmerCategory}
+        />
+      </View>
+
+      {localError || error ? (
+        <Text style={styles.formError}>{localError || error}</Text>
+      ) : null}
+
+      <View style={styles.formActions}>
+        <Pressable
+          accessibilityRole="button"
+          disabled={isSubmitting}
+          style={({ pressed }) => [
+            styles.createButton,
+            (pressed || isSubmitting) && styles.createButtonPressed
+          ]}
+          onPress={handleSubmit}
+        >
+          <Text style={styles.createButtonText}>
+            {isSubmitting ? "Saving..." : "Save member"}
+          </Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          disabled={isSubmitting}
+          style={styles.secondaryActionButton}
+          onPress={onCancel}
+        >
+          <Text style={styles.secondaryActionButtonText}>Cancel</Text>
         </Pressable>
       </View>
     </View>
@@ -823,7 +1157,7 @@ function AdminField({
   secureTextEntry,
   value
 }: {
-  keyboardType?: "default" | "phone-pad";
+  keyboardType?: "default" | "numeric" | "phone-pad";
   label: string;
   onChange: (value: string) => void;
   secureTextEntry?: boolean;
@@ -874,6 +1208,8 @@ function ReportsTab({
 
   return (
     <View style={styles.section}>
+      <AdminFpoReportsPanel />
+
       <View style={styles.reportCard}>
         <Text style={styles.cardTitle}>Government evidence report</Text>
         <Text style={styles.cardDescription}>
@@ -997,6 +1333,19 @@ function calculateComplianceScore(cycles: CropCycle[], proofs: ProofSubmission[]
   ).length;
 
   return Math.round((acceptedProofCount / totalSteps) * 100);
+}
+
+function formatAge(age: number | undefined) {
+  return age === undefined ? "" : `${age} years`;
+}
+
+function isValidOptionalAge(age: string | undefined) {
+  if (!age) {
+    return true;
+  }
+
+  const parsedAge = Number(age);
+  return Number.isInteger(parsedAge) && parsedAge >= 0 && parsedAge <= 120;
 }
 
 function evidenceStatusLabel(status: EvidenceStatus) {
@@ -1148,6 +1497,11 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     marginTop: 4
   },
+  subsectionTitle: {
+    color: "#172126",
+    fontSize: 15,
+    fontWeight: "800"
+  },
   reviewCard: {
     alignItems: "flex-start",
     backgroundColor: "#ffffff",
@@ -1275,7 +1629,10 @@ const styles = StyleSheet.create({
     fontWeight: "700"
   },
   formActions: {
-    alignItems: "flex-start"
+    alignItems: "flex-start",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10
   },
   createButton: {
     alignItems: "center",
@@ -1300,14 +1657,26 @@ const styles = StyleSheet.create({
     borderColor: "#d9e4ea",
     borderRadius: 8,
     borderWidth: 1,
+    gap: 12,
+    padding: 16
+  },
+  memberCardHeader: {
+    alignItems: "flex-start",
     flexDirection: "row",
     gap: 12,
     justifyContent: "space-between",
-    padding: 16
+    width: "100%"
   },
   participantActions: {
     alignItems: "flex-end",
     gap: 10
+  },
+  inlineEditCard: {
+    borderTopColor: "#e6eef2",
+    borderTopWidth: 1,
+    gap: 14,
+    paddingTop: 14,
+    width: "100%"
   },
   actionButton: {
     alignItems: "center",
@@ -1324,6 +1693,21 @@ const styles = StyleSheet.create({
   },
   actionButtonText: {
     color: "#1f6f73",
+    fontSize: 13,
+    fontWeight: "800"
+  },
+  secondaryActionButton: {
+    alignItems: "center",
+    borderColor: "#9fb4bf",
+    borderRadius: 8,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 38,
+    minWidth: 88,
+    paddingHorizontal: 12
+  },
+  secondaryActionButtonText: {
+    color: "#53666f",
     fontSize: 13,
     fontWeight: "800"
   },

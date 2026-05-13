@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { getErrorMessage } from "../core/errors/AppError";
-import { RegisteredParticipant } from "../data/adminRegistryStore";
+import { FpoMember } from "../data/fpoMemberStore";
 import {
   getBackendNotifications,
   NotificationChannel,
@@ -15,7 +15,7 @@ import { StatusBadge } from "../ui/StatusBadge";
 
 type AdminNotificationsTabProps = {
   canUseBackend: boolean;
-  participants: RegisteredParticipant[];
+  participants: FpoMember[];
 };
 
 const channelOptions: NotificationChannel[] = ["IN_APP", "SMS", "EMAIL", "PUSH"];

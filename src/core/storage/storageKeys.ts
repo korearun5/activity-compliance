@@ -17,6 +17,20 @@ export const storageKeys = {
   evidence: {
     records: `${namespace}:evidence:records`
   },
+  fpo: {
+    advisories: `${namespace}:fpo:advisories`,
+    cropHistory: `${namespace}:fpo:crop-history`,
+    cropPlans: `${namespace}:fpo:crop-plans`,
+    crops: `${namespace}:fpo:crops`,
+    demandEstimates: `${namespace}:fpo:demand-estimates`,
+    demandSummary: `${namespace}:fpo:demand-summary`,
+    inputRules: `${namespace}:fpo:input-rules`,
+    inputs: `${namespace}:fpo:inputs`,
+    landholdings: `${namespace}:fpo:landholdings`,
+    members: `${namespace}:fpo:members`,
+    plots: `${namespace}:fpo:plots`,
+    seasons: `${namespace}:fpo:seasons`
+  },
   legacy: {
     activity: {
       records: `${legacyNamespace}:farmer-crop-cycles`
@@ -40,6 +54,9 @@ export const storageKeys = {
   profile: {
     byUsername: (username: string) =>
       `${namespace}:profile:${username.toLowerCase()}`
+  },
+  platform: {
+    enabledModules: `${namespace}:platform:enabled-modules`
   },
   registry: {
     users: `${namespace}:registry:users`

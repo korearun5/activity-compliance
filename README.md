@@ -10,6 +10,8 @@ Expo React Native frontend and Spring Boot backend for a reusable activity-compl
 - Backend evidence APIs for proof upload metadata, local storage, and admin review.
 - Admin overview for users, workflow definitions, assigned activities, proof records,
   and report-ready metrics.
+- FPO module foundation for members, land/plots, crop planning, input demand,
+  advisories, and FPO report exports.
 
 ## Run Frontend
 
@@ -60,7 +62,7 @@ mvn spring-boot:run
 ```
 
 The backend defaults to Docker PostgreSQL at
-`jdbc:postgresql://localhost:55432/activity_platform` for host-side local runs.
+`jdbc:postgresql://localhost:5432/activity_platform` for host-side local runs.
 
 ## Full Docker Stack
 
@@ -83,6 +85,8 @@ fallback only for development/offline prototype use.
 See:
 
 - [Documentation Index](docs/README.md)
+- [Clean Start Runbook](docs/clean-start-runbook.md)
+- [Project Status And Gap Register](docs/project-status-and-gap-register.md)
 - [Architecture](docs/architecture.md)
 - [API Standards](docs/api-standards.md)
 - [Use Cases](docs/use-cases.md)

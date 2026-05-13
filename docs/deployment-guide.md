@@ -15,7 +15,7 @@ Services:
 
 - Frontend Expo web: `http://localhost:19006`
 - Backend API: `http://localhost:8080`
-- PostgreSQL host port: `localhost:55432`
+- PostgreSQL host port: `localhost:5432`
 - MinIO API: `http://localhost:9000`
 - MinIO console: `http://localhost:9001`
 

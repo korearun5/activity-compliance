@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
-import { RegisteredParticipant } from "../data/adminRegistryStore";
+import { FpoMember } from "../data/fpoMemberStore";
 import {
   BackendWorkflow,
   BackendWorkflowStatus,
@@ -21,7 +21,7 @@ type AdminWorkflowsTabProps = {
     workflowId: string,
     status: BackendWorkflowStatus
   ) => Promise<void>;
-  participants: RegisteredParticipant[];
+  participants: FpoMember[];
   startingActivity: boolean;
   updatingWorkflowId: string | null;
   workflows: BackendWorkflow[];
@@ -330,7 +330,7 @@ function StartActivityForm({
   error: string;
   isSubmitting: boolean;
   onSubmit: (input: StartBackendActivityInput) => Promise<boolean>;
-  participants: RegisteredParticipant[];
+  participants: FpoMember[];
 }) {
   const [localError, setLocalError] = useState("");
   const [locationName, setLocationName] = useState("");

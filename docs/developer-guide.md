@@ -17,6 +17,22 @@ for other client workflows such as warehouse inspections, construction progress,
 NGO field activity tracking, dairy operations, factory audits, and field worker
 tracking.
 
+For the detailed FPO-specific roadmap, current coverage, and developer task
+breakdown, see [FPO MVP Roadmap](fpo-mvp-roadmap.md). That document is internal
+planning material and should not be shared with a client before commercial
+agreement.
+
+For execution-level tasks, use
+[FPO Developer Task List](fpo-developer-task-list.md).
+
+For clean reset commands, current completion percentages, and open go-live gaps,
+use [Clean Start Runbook](clean-start-runbook.md) and
+[Project Status And Gap Register](project-status-and-gap-register.md).
+
+For module subscriptions, feature gating, source handover risk, and the
+modular-monolith-first decision, see
+[Modular Platform Strategy](modular-platform-strategy.md).
+
 ## Repository Layout
 
 ```text
@@ -47,6 +63,7 @@ tracking.
 |   |   |-- common/
 |   |   |-- evidence/
 |   |   |-- notification/
+|   |   |-- fpo/
 |   |   |-- platform/
 |   |   |-- reporting/
 |   |   |-- security/
@@ -75,7 +92,7 @@ Default local ports:
 
 - Expo web: `19006`
 - Spring Boot API: `8080`
-- PostgreSQL host port: `55432`
+- PostgreSQL host port: `5432`
 - MinIO API: `9000`
 - MinIO console: `9001`
 
@@ -146,7 +163,7 @@ Default database from `backend/compose.yaml`:
 database: activity_platform
 username: activity_app
 password: activity_app
-host port: 55432
+host port: 5432
 container port: 5432
 ```
 
@@ -160,7 +177,7 @@ Default local seed values:
 ```text
 tenantCode: default
 admin username: admin
-admin password: local-admin-password
+admin password: arun
 participant username: participant
 participant password: local-participant-password
 ```
@@ -232,7 +249,7 @@ Backend:
 | ----------------------------- | --------------------------------------------------- |
 | `SPRING_PROFILES_ACTIVE`      | Use `local` for local seed/config.                  |
 | `APP_PORT`                    | Spring Boot port, default `8080`.                   |
-| `APP_POSTGRES_PORT`           | Local Docker PostgreSQL host port, default `55432`. |
+| `APP_POSTGRES_PORT`           | Local Docker PostgreSQL host port, default `5432`.  |
 | `APP_DB_URL`                  | JDBC database URL.                                  |
 | `APP_DB_USERNAME`             | Database username.                                  |
 | `APP_DB_PASSWORD`             | Database password.                                  |
@@ -280,7 +297,7 @@ Content-Type: application/json
 {
   "tenantCode": "default",
   "username": "admin",
-  "password": "password"
+  "password": "arun"
 }
 ```
 
@@ -435,6 +452,10 @@ Database:
 
 ## Known Current Development State
 
+For the live completion percentages and gap list, use
+[Project Status And Gap Register](project-status-and-gap-register.md). Keep this
+section as a short implementation summary only.
+
 Implemented foundation:
 
 - JWT login/refresh/current user.
@@ -442,12 +463,21 @@ Implemented foundation:
 - Tenant-aware users and roles.
 - Admin/supervisor participant profile management.
 - Backend-owned participant profile display through `GET /api/v1/users/me`.
+- Platform module subscriptions and module guards.
 - Configurable workflow definitions.
 - Activity timeline tracking.
 - Evidence metadata/upload foundation.
 - Audit events for important state changes.
 - Local PostgreSQL compose setup.
 - Frontend admin participant creation connected to backend.
+- FPO member management backend and admin UI.
+- FPO landholding and farm plot backend and admin UI.
+- FPO crop catalog, season, crop history, and seasonal crop plan backend and UI.
+- FPO input catalog, input rule, demand calculation, and demand summary backend
+  and UI.
+- FPO dashboard summary and Excel export foundation.
+- FPO advisory backend and admin UI.
+- Carbon app-flow prototype screens backed by dummy frontend data.
 
 Current production-readiness coverage:
 
@@ -464,6 +494,9 @@ Current production-readiness coverage:
 Remaining before a client production handoff:
 
 - Run client UAT with real workflow definitions and real export templates.
+- Freeze FPO data dictionary, input formulas, and report layouts.
+- Add frontend automated tests and browser/E2E smoke coverage.
+- Add MinIO/S3-compatible storage integration tests.
 - Configure managed secrets, backups, monitoring, alerting, and log retention.
 - Decide whether production OpenAPI/Swagger should remain disabled or be exposed
   only through protected internal access.

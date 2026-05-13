@@ -8,6 +8,7 @@ import com.activityplatform.backend.auth.domain.UserEntity;
 import com.activityplatform.backend.auth.repository.RoleRepository;
 import com.activityplatform.backend.auth.repository.TenantRepository;
 import com.activityplatform.backend.auth.repository.UserRepository;
+import com.activityplatform.backend.platform.service.TenantModuleService;
 import com.activityplatform.backend.security.Role;
 import java.time.Instant;
 import java.util.List;
@@ -29,6 +30,7 @@ public class SeedDataInitializer implements ApplicationRunner {
   private final RoleRepository roleRepository;
   private final SeedProperties seedProperties;
   private final TenantRepository tenantRepository;
+  private final TenantModuleService tenantModuleService;
   private final UserRepository userRepository;
 
   public SeedDataInitializer(
@@ -36,12 +38,14 @@ public class SeedDataInitializer implements ApplicationRunner {
       RoleRepository roleRepository,
       SeedProperties seedProperties,
       TenantRepository tenantRepository,
+      TenantModuleService tenantModuleService,
       UserRepository userRepository
   ) {
     this.passwordEncoder = passwordEncoder;
     this.roleRepository = roleRepository;
     this.seedProperties = seedProperties;
     this.tenantRepository = tenantRepository;
+    this.tenantModuleService = tenantModuleService;
     this.userRepository = userRepository;
   }
 
@@ -71,6 +75,7 @@ public class SeedDataInitializer implements ApplicationRunner {
         .toList();
 
     validSeedUsers.forEach(user -> upsertUser(tenant, user, now));
+    tenantModuleService.enableDefaultFpoModules(tenant);
 
     log.info(
         "Seed data ensured for tenant={} userCount={}",

@@ -1,14 +1,57 @@
+# Dependencies
 node_modules/
+
+# Expo / React Native
 .expo/
+.expo-shared/
 dist/
 web-build/
+.metro-cache/
+
+# Java / Maven build output
+target/
+**/target/
+*.class
+*.jar
+*.war
+*.ear
+!backend/mvnw
+!backend/mvnw.cmd
+!backend/.mvn/wrapper/maven-wrapper.properties
+!backend/.mvn/wrapper/maven-wrapper.jar
+
+# Test and coverage output
+coverage/
+.nyc_output/
+backend/coverage/
+backend/.jacoco/
+
+# Runtime logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 expo-web*.log
+*.log
 backend/*.log
-.DS_Store
+
+# Local storage and generated app data
+/backend/storage/
+/storage/
+
+# Local environment files
 .env
 .env.*
 !.env.example
 !.env.production.example
+
+# OS and editor local files
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+*.swo
+.idea/
+*.iws
+*.iml
+*.ipr

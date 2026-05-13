@@ -1,0 +1,369 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+import { apiClient, ApiClientError } from "../core/api/client";
+import { endpoints } from "../core/api/endpoints";
+import {
+  AdvisoryStatus,
+  AdvisoryTargetType,
+  FpoAdvisoryRequest,
+  FpoAdvisoryResponse,
+  NotificationChannel,
+  UpdateFpoAdvisoryStatusRequest
+} from "../core/api/fpoContracts";
+import { AppError } from "../core/errors/AppError";
+import { logger } from "../core/logging/logger";
+import { readJsonArray, writeJson } from "../core/storage/jsonStore";
+import { storageKeys } from "../core/storage/storageKeys";
+
+export type AdvisoryRecord = {
+  channel: NotificationChannel;
+  createdAt: string;
+  createdByName?: string;
+  cropId?: string;
+  cropName?: string;
+  id: string;
+  message: string;
+  publishedAt?: string;
+  seasonId?: string;
+  seasonName?: string;
+  seasonYear?: number;
+  status: AdvisoryStatus;
+  targetMemberId?: string;
+  targetMemberName?: string;
+  targetType: AdvisoryTargetType;
+  targetVillage?: string;
+  tenantId?: string;
+  title: string;
+  updatedAt: string;
+};
+
+export type AdvisoryInput = {
+  channel?: NotificationChannel;
+  cropId?: string;
+  message: string;
+  seasonId?: string;
+  status?: AdvisoryStatus;
+  targetMemberId?: string;
+  targetType?: AdvisoryTargetType;
+  targetVillage?: string;
+  title: string;
+};
+
+export type AdvisoryFilters = {
+  cropId?: string;
+  seasonId?: string;
+  status?: AdvisoryStatus;
+  targetVillage?: string;
+};
+
+const dummyAdvisories: AdvisoryRecord[] = [
+  {
+    channel: "IN_APP",
+    createdAt: "2026-05-09T10:30:00.000Z",
+    createdByName: "System demo",
+    cropName: "Soybean",
+    id: "local-advisory-1",
+    message:
+      "Retain crop residue after land preparation and add compost before sowing to improve soil organic carbon.",
+    publishedAt: "2026-05-09T11:00:00.000Z",
+    seasonName: "Kharif",
+    seasonYear: 2026,
+    status: "PUBLISHED",
+    targetType: "ALL_MEMBERS",
+    title: "Residue retention for carbon build-up",
+    updatedAt: "2026-05-09T11:00:00.000Z"
+  },
+  {
+    channel: "IN_APP",
+    createdAt: "2026-05-10T08:15:00.000Z",
+    createdByName: "System demo",
+    cropName: "Pomegranate",
+    id: "local-advisory-2",
+    message:
+      "Use Trichoderma with compost around the root zone and avoid excess chemical nitrogen this week.",
+    seasonName: "Annual",
+    seasonYear: 2026,
+    status: "DRAFT",
+    targetType: "VILLAGE",
+    targetVillage: "Koregaon",
+    title: "Biological input dosage reminder",
+    updatedAt: "2026-05-10T08:15:00.000Z"
+  }
+];
+
+export async function getAdvisories(
+  filters: AdvisoryFilters = {}
+): Promise<AdvisoryRecord[]> {
+  const accessToken = await getAccessToken();
+
+  if (accessToken) {
+    try {
+      const response = await apiClient.get<FpoAdvisoryResponse[]>(
+        advisoryListEndpoint(filters),
+        { accessToken }
+      );
+      const advisories = response.map(toAdvisoryRecord);
+
+      await writeJson(storageKeys.fpo.advisories, advisories);
+      return advisories;
+    } catch (error) {
+      if (!canUseLocalFallback(error)) {
+        throw toAdvisoryError(error);
+      }
+
+      logger.warn("Backend advisories unavailable; using cached advisory records.", {
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  }
+
+  const advisories = await getLocalAdvisories();
+  return advisories.filter((advisory) => matchesFilters(advisory, filters));
+}
+
+export async function createAdvisory(input: AdvisoryInput) {
+  const request = toAdvisoryRequest(input);
+  const accessToken = await getAccessToken();
+
+  if (accessToken) {
+    try {
+      const response = await apiClient.post<FpoAdvisoryRequest, FpoAdvisoryResponse>(
+        endpoints.fpo.advisories.create,
+        request,
+        { accessToken }
+      );
+      const advisory = toAdvisoryRecord(response);
+
+      await upsertLocalAdvisory(advisory);
+      return advisory;
+    } catch (error) {
+      if (!canUseLocalFallback(error)) {
+        throw toAdvisoryError(error);
+      }
+
+      logger.warn("Backend advisory creation unavailable; using cached records.", {
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  }
+
+  return upsertLocalAdvisory({
+    channel: request.channel ?? "IN_APP",
+    createdAt: new Date().toISOString(),
+    cropId: request.cropId,
+    id: `local-advisory-${Date.now()}`,
+    message: request.message,
+    publishedAt: request.status === "PUBLISHED" ? new Date().toISOString() : undefined,
+    seasonId: request.seasonId,
+    status: request.status ?? "DRAFT",
+    targetMemberId: request.targetMemberId,
+    targetType: request.targetType ?? "ALL_MEMBERS",
+    targetVillage: request.targetVillage,
+    title: request.title,
+    updatedAt: new Date().toISOString()
+  });
+}
+
+export async function updateAdvisoryStatus(
+  advisory: AdvisoryRecord,
+  status: AdvisoryStatus
+) {
+  const accessToken = await getAccessToken();
+
+  if (accessToken && !advisory.id.startsWith("local-")) {
+    try {
+      const response = await apiClient.patch<
+        UpdateFpoAdvisoryStatusRequest,
+        FpoAdvisoryResponse
+      >(endpoints.fpo.advisories.status(advisory.id), { status }, { accessToken });
+      const updated = toAdvisoryRecord(response);
+
+      await upsertLocalAdvisory(updated);
+      return updated;
+    } catch (error) {
+      if (!canUseLocalFallback(error)) {
+        throw toAdvisoryError(error);
+      }
+
+      logger.warn("Backend advisory status update unavailable; using cache.", {
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  }
+
+  return upsertLocalAdvisory({
+    ...advisory,
+    publishedAt:
+      status === "PUBLISHED"
+        ? (advisory.publishedAt ?? new Date().toISOString())
+        : undefined,
+    status,
+    updatedAt: new Date().toISOString()
+  });
+}
+
+function toAdvisoryRecord(response: FpoAdvisoryResponse): AdvisoryRecord {
+  return {
+    channel: response.channel,
+    createdAt: response.createdAt,
+    createdByName: response.createdByName ?? undefined,
+    cropId: response.cropId ?? undefined,
+    cropName: response.cropName ?? undefined,
+    id: response.id,
+    message: response.message,
+    publishedAt: response.publishedAt ?? undefined,
+    seasonId: response.seasonId ?? undefined,
+    seasonName: response.seasonName ?? undefined,
+    seasonYear: response.seasonYear ?? undefined,
+    status: response.status,
+    targetMemberId: response.targetMemberId ?? undefined,
+    targetMemberName: response.targetMemberName ?? undefined,
+    targetType: response.targetType,
+    targetVillage: response.targetVillage ?? undefined,
+    tenantId: response.tenantId,
+    title: response.title,
+    updatedAt: response.updatedAt
+  };
+}
+
+function toAdvisoryRequest(input: AdvisoryInput): FpoAdvisoryRequest {
+  const targetType = input.targetType ?? "ALL_MEMBERS";
+  const title = input.title.trim();
+  const message = input.message.trim();
+  const targetVillage = cleanOptional(input.targetVillage);
+  const targetMemberId = cleanOptional(input.targetMemberId);
+
+  if (!title || !message) {
+    throw new AppError("VALIDATION_FAILED", "Enter advisory title and message.");
+  }
+
+  if (targetType === "VILLAGE" && !targetVillage) {
+    throw new AppError("VALIDATION_FAILED", "Enter target village.");
+  }
+
+  if (targetType === "MEMBER" && !targetMemberId) {
+    throw new AppError("VALIDATION_FAILED", "Select target member.");
+  }
+
+  return {
+    channel: input.channel ?? "IN_APP",
+    cropId: cleanOptional(input.cropId),
+    message,
+    seasonId: cleanOptional(input.seasonId),
+    status: input.status ?? "DRAFT",
+    targetMemberId: targetType === "MEMBER" ? targetMemberId : undefined,
+    targetType,
+    targetVillage: targetType === "VILLAGE" ? targetVillage : undefined,
+    title
+  };
+}
+
+function toStoredAdvisory(advisory: Partial<AdvisoryRecord>): AdvisoryRecord | null {
+  if (
+    typeof advisory.id !== "string" ||
+    typeof advisory.title !== "string" ||
+    typeof advisory.message !== "string" ||
+    typeof advisory.createdAt !== "string" ||
+    typeof advisory.updatedAt !== "string"
+  ) {
+    return null;
+  }
+
+  return {
+    channel: advisory.channel ?? "IN_APP",
+    createdAt: advisory.createdAt,
+    createdByName: advisory.createdByName,
+    cropId: advisory.cropId,
+    cropName: advisory.cropName,
+    id: advisory.id,
+    message: advisory.message,
+    publishedAt: advisory.publishedAt,
+    seasonId: advisory.seasonId,
+    seasonName: advisory.seasonName,
+    seasonYear: advisory.seasonYear,
+    status: advisory.status ?? "DRAFT",
+    targetMemberId: advisory.targetMemberId,
+    targetMemberName: advisory.targetMemberName,
+    targetType: advisory.targetType ?? "ALL_MEMBERS",
+    targetVillage: advisory.targetVillage,
+    tenantId: advisory.tenantId,
+    title: advisory.title,
+    updatedAt: advisory.updatedAt
+  };
+}
+
+async function getLocalAdvisories() {
+  const saved = await readJsonArray<Partial<AdvisoryRecord>>([
+    storageKeys.fpo.advisories
+  ]);
+  const advisories = saved
+    .map(toStoredAdvisory)
+    .filter((advisory): advisory is AdvisoryRecord => Boolean(advisory));
+
+  if (advisories.length) {
+    return advisories;
+  }
+
+  await writeJson(storageKeys.fpo.advisories, dummyAdvisories);
+  return dummyAdvisories;
+}
+
+async function upsertLocalAdvisory(advisory: AdvisoryRecord) {
+  const current = await getLocalAdvisories();
+  await writeJson(storageKeys.fpo.advisories, [
+    advisory,
+    ...current.filter((item) => item.id !== advisory.id)
+  ]);
+  return advisory;
+}
+
+function advisoryListEndpoint(filters: AdvisoryFilters) {
+  const params = new URLSearchParams();
+  if (filters.status) params.append("status", filters.status);
+  if (filters.cropId) params.append("cropId", filters.cropId);
+  if (filters.seasonId) params.append("seasonId", filters.seasonId);
+  if (filters.targetVillage) params.append("targetVillage", filters.targetVillage);
+  const query = params.toString();
+  return query
+    ? `${endpoints.fpo.advisories.list}?${query}`
+    : endpoints.fpo.advisories.list;
+}
+
+function matchesFilters(advisory: AdvisoryRecord, filters: AdvisoryFilters) {
+  return (
+    (!filters.status || advisory.status === filters.status) &&
+    (!filters.cropId || advisory.cropId === filters.cropId) &&
+    (!filters.seasonId || advisory.seasonId === filters.seasonId) &&
+    (!filters.targetVillage ||
+      advisory.targetVillage?.toLowerCase() === filters.targetVillage.toLowerCase())
+  );
+}
+
+async function getAccessToken() {
+  return AsyncStorage.getItem(storageKeys.auth.accessToken);
+}
+
+function cleanOptional(value: string | undefined) {
+  const trimmed = value?.trim();
+  return trimmed || undefined;
+}
+
+function canUseLocalFallback(error: unknown) {
+  return !(error instanceof ApiClientError);
+}
+
+function toAdvisoryError(error: unknown) {
+  if (error instanceof ApiClientError) {
+    if (error.status === 400) {
+      return new AppError("VALIDATION_FAILED", error.message);
+    }
+
+    if (error.status === 401 || error.status === 403) {
+      return new AppError("ACCESS_DENIED", error.message);
+    }
+
+    return new AppError("API_REQUEST_FAILED", error.message);
+  }
+
+  return new AppError("API_REQUEST_FAILED", "Unable to manage advisories.");
+}

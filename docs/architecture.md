@@ -17,6 +17,7 @@ Shared backend and frontend code should use platform language:
 
 - `Tenant`: one client organization.
 - `User`: admin, supervisor, participant, farmer, field worker, or inspector.
+- `Module`: sellable product capability enabled per tenant.
 - `Workflow`: configurable process definition.
 - `Task`: one ordered workflow step.
 - `Activity`: one execution of a workflow.
@@ -32,6 +33,9 @@ labels. They should not be hardcoded into the reusable core.
 
 For the deeper component-by-component view and database class diagrams, see
 [Component And Data Model Diagrams](component-and-data-model-diagrams.md).
+For module packaging, tenant subscription checks, and the decision to avoid
+microservices until operationally necessary, see
+[Modular Platform Strategy](modular-platform-strategy.md).
 
 ```mermaid
 flowchart LR
@@ -60,8 +64,10 @@ flowchart TB
     subgraph Backend["Spring Boot Backend"]
         Security["Security + JWT"]
         Auth["Auth Module"]
+        Platform["Platform Module"]
         User["User Module"]
         RoleMgmt["Role Management Module"]
+        FPO["FPO Module"]
         Workflow["Workflow Module"]
         Activity["Activity Module"]
         Evidence["Evidence Module"]
@@ -78,15 +84,21 @@ flowchart TB
     AuthFacade -. temporary fallback .-> LocalFallback
     ApiClient --> Security
     Security --> Auth
+    Security --> Platform
     Security --> User
     Security --> RoleMgmt
+    Security --> FPO
     Security --> Workflow
     Security --> Activity
     Security --> Evidence
     Security --> Notification
+    Platform --> Audit
     User --> Audit
     RoleMgmt --> User
     RoleMgmt --> Audit
+    FPO --> Platform
+    FPO --> User
+    FPO --> Audit
     Workflow --> Audit
     Activity --> Audit
     Evidence --> Audit
@@ -102,19 +114,27 @@ flowchart TB
 ```mermaid
 flowchart LR
     Common["common"] --> Auth["auth"]
+    Common --> Platform["platform"]
     Common --> User["user"]
     Common --> RoleMgmt["role"]
+    Common --> FPO["fpo"]
     Common --> Workflow["workflow"]
     Common --> Activity["activity"]
     Common --> Evidence["evidence"]
     Common --> Notification["notification"]
     Security["security"] --> Auth
+    Security --> Platform
     Security --> User
     Security --> RoleMgmt
+    Security --> FPO
     Security --> Notification
+    Platform --> Audit["audit"]
     User --> Audit["audit"]
     RoleMgmt --> User
     RoleMgmt --> Audit
+    FPO --> Platform
+    FPO --> User
+    FPO --> Audit
     Workflow --> Audit
     Activity --> Audit
     Evidence --> Audit
@@ -133,8 +153,11 @@ Module responsibilities:
 - `common`: API envelope, page response, exception handling, request tracing.
 - `security`: Spring Security, JWT resource server, role conversion.
 - `auth`: login, refresh, current user, seed users, tenant/user/role entities.
+- `platform`: module catalog, tenant subscriptions, and module guards.
 - `user`: admin profile management for participant/farmer users.
 - `role`: tenant role catalog and admin-controlled user role assignment.
+- `fpo`: FPO member profiles, landholdings, plots, and Phase 1
+  farmer/land/crop/input data model.
 - `workflow`: reusable workflow definitions and task templates.
 - `activity`: workflow execution, participant timeline, task status.
 - `evidence`: proof upload metadata and evidence review status.
@@ -171,6 +194,13 @@ erDiagram
     TENANTS ||--o{ USERS : owns
     TENANTS ||--o{ ROLES : owns
     USERS }o--o{ ROLES : has
+    TENANTS ||--o{ TENANT_MODULE_SUBSCRIPTIONS : subscribes
+    PLATFORM_MODULES ||--o{ TENANT_MODULE_SUBSCRIPTIONS : enabled_by
+    TENANTS ||--o{ FPO_MEMBER_PROFILES : owns
+    USERS ||--o| FPO_MEMBER_PROFILES : has
+    FPO_MEMBER_PROFILES ||--o{ FARM_LANDHOLDINGS : owns
+    FPO_MEMBER_PROFILES ||--o{ FARM_PLOTS : owns
+    FARM_LANDHOLDINGS ||--o{ FARM_PLOTS : groups
     TENANTS ||--o{ WORKFLOW_DEFINITIONS : owns
     WORKFLOW_DEFINITIONS ||--o{ WORKFLOW_TASKS : contains
     TENANTS ||--o{ ACTIVITIES : owns
@@ -215,6 +245,45 @@ sequenceDiagram
     API->>DB: Assign PARTICIPANT role
     API->>AUD: USER_CREATED
     API-->>UI: UserResponse
+```
+
+### Admin Creates FPO Member
+
+```mermaid
+sequenceDiagram
+    participant Admin
+    participant UI as Admin Dashboard
+    participant API as FPO Member API
+    participant MOD as Module Guard
+    participant DB as PostgreSQL
+    participant AUD as Audit
+
+    Admin->>UI: Enter farmer/member profile
+    UI->>API: POST /api/v1/fpo/members
+    API->>MOD: Require MEMBER_DATA
+    API->>DB: Link participant user and member profile
+    API->>AUD: FPO_MEMBER_CREATED
+    API-->>UI: FpoMemberResponse
+```
+
+### Admin Maintains FPO Land Records
+
+```mermaid
+sequenceDiagram
+    participant Admin
+    participant UI as Admin Dashboard
+    participant API as Farm Asset API
+    participant MOD as Module Guard
+    participant DB as PostgreSQL
+    participant AUD as Audit
+
+    Admin->>UI: Enter landholding or plot details
+    UI->>API: POST /api/v1/fpo/members/{memberId}/landholdings or /plots
+    API->>MOD: Require LAND_RECORDS
+    API->>DB: Validate member, tenant, area, and coordinates
+    API->>DB: Save farm asset record
+    API->>AUD: FPO_LANDHOLDING_CREATED or FPO_PLOT_CREATED
+    API-->>UI: Farm asset response
 ```
 
 ### Participant Loads Own Profile
@@ -264,6 +333,7 @@ Frontend folders:
 - `src/core/storage`: AsyncStorage JSON helpers.
 - `src/core/workflow`: frontend workflow helpers.
 - `src/data`: local prototype stores and agriculture configuration.
+- `src/data/moduleStore.ts`: enabled-module cache for tenant navigation.
 - `src/screens`: app screens.
 - `src/ui`: shared UI components.
 
@@ -271,6 +341,10 @@ The frontend is backend-first for login, admin participant management,
 workflow/activity timelines, proof upload, evidence review, reports, role
 management, notifications, and participant profile display. Local storage
 fallback remains only for development/offline prototype use.
+
+After backend login, the frontend loads `/api/v1/platform/modules/enabled` and
+hides disabled admin tabs. This is a UX guard only; backend module checks remain
+the enforcement boundary.
 
 ## Backend Architecture
 
@@ -358,7 +432,7 @@ backend never returns stack traces in API responses.
 ```mermaid
 flowchart LR
     Browser["Browser / Expo Web :19006"] --> Backend["Spring Boot :8080"]
-    Backend --> Postgres["PostgreSQL Container :5432 / Host :55432"]
+    Backend --> Postgres["PostgreSQL Container :5432 / Host :5432"]
     Backend --> Files["./backend/storage/local or MinIO"]
     Backend --> Minio["MinIO Container :9000"]
 ```
@@ -367,7 +441,7 @@ Default local ports:
 
 - Expo web: `19006`
 - Spring Boot: `8080`
-- PostgreSQL host port: `55432`
+- PostgreSQL host port: `5432`
 - MinIO API: `9000`
 - MinIO console: `9001`
 

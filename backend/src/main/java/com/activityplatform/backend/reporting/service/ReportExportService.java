@@ -13,6 +13,7 @@ import com.activityplatform.backend.common.error.ApplicationException;
 import com.activityplatform.backend.common.error.ErrorCode;
 import com.activityplatform.backend.evidence.domain.EvidenceEntity;
 import com.activityplatform.backend.evidence.repository.EvidenceRepository;
+import com.activityplatform.backend.fpo.service.FpoReportWorkbookService;
 import com.activityplatform.backend.reporting.api.ReportBreakdownResponse;
 import com.activityplatform.backend.reporting.api.ReportExportRequest;
 import com.activityplatform.backend.reporting.api.ReportExportResponse;
@@ -41,6 +42,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ReportExportService {
   private static final String DEFAULT_REPORT_TYPE = "GOVERNMENT_EVIDENCE";
+  private static final String FPO_REPORT_TYPE = "FPO_OPERATIONS";
   private static final String PDF_CONTENT_TYPE = "application/pdf";
   private static final String XLSX_CONTENT_TYPE =
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
@@ -49,6 +51,7 @@ public class ReportExportService {
   private final AuditEventService auditEventService;
   private final EvidenceRepository evidenceRepository;
   private final FileStorageService fileStorageService;
+  private final FpoReportWorkbookService fpoReportWorkbookService;
   private final ReportExportRepository reportExportRepository;
   private final ReportSummaryService reportSummaryService;
   private final TenantRepository tenantRepository;
@@ -59,6 +62,7 @@ public class ReportExportService {
       AuditEventService auditEventService,
       EvidenceRepository evidenceRepository,
       FileStorageService fileStorageService,
+      FpoReportWorkbookService fpoReportWorkbookService,
       ReportExportRepository reportExportRepository,
       ReportSummaryService reportSummaryService,
       TenantRepository tenantRepository,
@@ -68,6 +72,7 @@ public class ReportExportService {
     this.auditEventService = auditEventService;
     this.evidenceRepository = evidenceRepository;
     this.fileStorageService = fileStorageService;
+    this.fpoReportWorkbookService = fpoReportWorkbookService;
     this.reportExportRepository = reportExportRepository;
     this.reportSummaryService = reportSummaryService;
     this.tenantRepository = tenantRepository;
@@ -94,11 +99,7 @@ public class ReportExportService {
 
     auditExport(export, actor, AuditAction.REPORT_EXPORT_REQUESTED);
 
-    ExportDataset dataset = loadDataset(currentUser);
-    ExportDocument document = switch (request.format()) {
-      case PDF -> new ExportDocument(buildPdf(export, dataset), filename(export), PDF_CONTENT_TYPE);
-      case XLSX -> new ExportDocument(buildXlsx(currentUser, export, dataset), filename(export), XLSX_CONTENT_TYPE);
-    };
+    ExportDocument document = buildDocument(currentUser, export, request);
     StoredFile storedFile = fileStorageService.store(new FileStorageRequest(
         currentUser.tenantId(),
         "reports",
@@ -112,6 +113,34 @@ public class ReportExportService {
     ReportExportEntity savedExport = reportExportRepository.save(export);
     auditExport(savedExport, actor, AuditAction.REPORT_EXPORT_COMPLETED);
     return ReportExportResponse.from(savedExport);
+  }
+
+  private ExportDocument buildDocument(
+      CurrentUser currentUser,
+      ReportExportEntity export,
+      ReportExportRequest request
+  ) {
+    if (request.format() == ReportFormat.XLSX && isFpoReportType(export.getReportType())) {
+      return new ExportDocument(
+          fpoReportWorkbookService.buildWorkbook(currentUser.tenantId()),
+          filename(export),
+          XLSX_CONTENT_TYPE
+      );
+    }
+
+    ExportDataset dataset = loadDataset(currentUser);
+    return switch (request.format()) {
+      case PDF -> new ExportDocument(
+          buildPdf(export, dataset),
+          filename(export),
+          PDF_CONTENT_TYPE
+      );
+      case XLSX -> new ExportDocument(
+          buildXlsx(currentUser, export, dataset),
+          filename(export),
+          XLSX_CONTENT_TYPE
+      );
+    };
   }
 
   private ExportDataset loadDataset(CurrentUser currentUser) {
@@ -400,6 +429,10 @@ public class ReportExportService {
 
   private String reportType(String value) {
     return value == null || value.isBlank() ? DEFAULT_REPORT_TYPE : value.trim();
+  }
+
+  private boolean isFpoReportType(String value) {
+    return FPO_REPORT_TYPE.equalsIgnoreCase(value);
   }
 
   private String label(String value) {

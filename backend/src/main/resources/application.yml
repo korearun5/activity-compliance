@@ -2,7 +2,7 @@ spring:
   application:
     name: activity-compliance-backend
   datasource:
-    url: ${APP_DB_URL:jdbc:postgresql://localhost:55432/activity_platform}
+    url: ${APP_DB_URL:jdbc:postgresql://localhost:5432/activity_platform}
     username: ${APP_DB_USERNAME:activity_app}
     password: ${APP_DB_PASSWORD:activity_app}
   flyway:

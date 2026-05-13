@@ -65,7 +65,7 @@ export APP_MINIO_SECURE=true
 export APP_MINIO_CREATE_BUCKET_IF_MISSING=false
 
 # Server
-export APP_PORT=8443
+export APP_PORT=8080
 export APP_SSL_ENABLED=true
 export APP_SSL_KEYSTORE_PATH=/etc/app/keystore.p12
 export APP_SSL_KEYSTORE_PASSWORD=<keystore-password>
@@ -171,7 +171,7 @@ COPY keystore.p12 /etc/app/keystore.p12
 
 ENV JAVA_OPTS="-Xmx1g -Xms512m -XX:+UseG1GC"
 
-EXPOSE 8443
+EXPOSE 8080
 
 CMD java ${JAVA_OPTS} \
   -Dspring.profiles.active=prod \
@@ -189,7 +189,7 @@ services:
   app:
     build: .
     ports:
-      - "8443:8443"
+      - "8080:8080"
     environment:
       - SPRING_PROFILES_ACTIVE=prod
       - APP_DB_URL=jdbc:postgresql://db:5432/activity_platform

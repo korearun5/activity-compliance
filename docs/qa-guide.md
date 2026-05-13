@@ -27,6 +27,9 @@ Not final yet:
 - Production disaster recovery testing.
 - Final client sign-off scenarios.
 
+For live test gaps and completion percentages, use
+[Project Status And Gap Register](project-status-and-gap-register.md).
+
 ## Test Environment
 
 Local services:
@@ -35,7 +38,7 @@ Local services:
 | --------------- | --------------------------------------- |
 | Expo web        | `http://localhost:19006`                |
 | Spring Boot API | `http://localhost:8080`                 |
-| PostgreSQL      | `localhost:55432`                       |
+| PostgreSQL      | `localhost:5432`                        |
 | Swagger UI      | `http://localhost:8080/swagger-ui.html` |
 
 Start database:
@@ -95,6 +98,12 @@ Current integration tests cover:
 
 - Activity list/start/not found/unauthorized.
 - Evidence list/not found/upload validation/unauthorized.
+- Platform module subscription and enabled-module flows.
+- FPO member profile CRUD/status/security.
+- FPO landholding and farm plot CRUD/status/security.
+- FPO crop catalog, season, history, and seasonal plan flows.
+- FPO input catalog, input rules, calculation, and summary flows.
+- FPO report summary and export flows.
 - User create/list/get/update/status/security.
 - Workflow list/create/security/not found/unauthorized.
 
@@ -103,6 +112,11 @@ Current unit tests cover:
 - API response envelope.
 - JWT issue/refresh claims.
 - JWT role conversion.
+- FPO crop planning validation.
+- FPO farm asset validation.
+- FPO input demand calculation.
+- FPO dashboard summary aggregation.
+- FPO workbook generation.
 - Workflow definition logic.
 - Workflow progression logic.
 
@@ -356,9 +370,14 @@ Do not use real farmer/client personal data in development or screenshots.
 - Full manual test cases by module.
 - Browser and device matrix.
 - API contract tests.
+- Frontend component/screen tests.
+- Browser/E2E smoke tests.
 - Load testing for evidence uploads and reports.
 - Backup/restore test.
 - MinIO storage integration test.
+- Object storage Testcontainers coverage if MinIO remains production-compatible
+  storage.
+- Jacoco coverage thresholds if CI should enforce a numeric quality floor.
 - Security test checklist.
 - Production deployment verification checklist.
 - Client UAT sign-off scenarios.

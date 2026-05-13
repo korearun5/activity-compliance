@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: ${APP_DB_URL:jdbc:postgresql://localhost:55432/activity_platform}
+    url: ${APP_DB_URL:jdbc:postgresql://localhost:5432/activity_platform}
 
 app:
   auth:
@@ -16,7 +16,7 @@ app:
     tenant-name: ${APP_SEED_TENANT_NAME:Local Development Client}
     users:
       - username: ${APP_SEED_ADMIN_USERNAME:admin}
-        password: ${APP_SEED_ADMIN_PASSWORD:local-admin-password}
+        password: ${APP_SEED_ADMIN_PASSWORD:arun}
         display-name: ${APP_SEED_ADMIN_DISPLAY_NAME:Platform Admin}
         phone: ${APP_SEED_ADMIN_PHONE:}
         location-name: ${APP_SEED_ADMIN_LOCATION:Head Office}

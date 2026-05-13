@@ -10,11 +10,11 @@ import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
-class SimpleXlsxWorkbookBuilder {
+public class SimpleXlsxWorkbookBuilder {
   private static final int EXCEL_MAX_CELL_LENGTH = 32767;
   private static final int EXCEL_MAX_SHEET_NAME_LENGTH = 31;
 
-  byte[] build(List<Sheet> sheets) {
+  public byte[] build(List<Sheet> sheets) {
     if (sheets == null || sheets.isEmpty()) {
       throw new IllegalArgumentException("At least one sheet is required.");
     }
@@ -247,6 +247,6 @@ class SimpleXlsxWorkbookBuilder {
     zip.closeEntry();
   }
 
-  record Sheet(String name, List<List<String>> rows) {
+  public record Sheet(String name, List<List<String>> rows) {
   }
 }

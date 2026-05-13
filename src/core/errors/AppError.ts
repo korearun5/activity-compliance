@@ -4,6 +4,7 @@ export type AppErrorCode =
   | "AUTH_INVALID_CREDENTIALS"
   | "AUTH_USERNAME_TAKEN"
   | "DATA_PARSE_FAILED"
+  | "DUPLICATE_RESOURCE"
   | "VALIDATION_FAILED";
 
 export class AppError extends Error {

@@ -297,8 +297,10 @@ Planned report contents:
 
 Current status:
 
-- Reporting module and domain foundation exist.
-- Final summary/export endpoints are planned for a later implementation slice.
+- Reporting summary, PDF export, and Excel export endpoints are implemented for
+  the generic activity/evidence model.
+- FPO-specific farmer, landholding, crop-plan, acreage, and input-demand report
+  formats are still pending. See [FPO MVP Roadmap](fpo-mvp-roadmap.md).
 
 ## Role Permission Matrix
 
