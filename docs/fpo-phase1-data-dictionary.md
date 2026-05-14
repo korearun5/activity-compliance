@@ -30,6 +30,15 @@ checks.
 | `FIELD_COORDINATOR` | Field staff role. Can manage assigned villages/farmers and enter data on farmer behalf. |
 | `FARMER` | Farmer/member login role. Can use username/password in Phase 1 to view own member data and use own workflow/activity area. OTP remains Phase 2. |
 
+Creation rules:
+
+- `ADMIN` remains seed/manual in Phase 1.
+- Staff user creation creates `FPO_MANAGER` or `FIELD_COORDINATOR` logins only.
+- Farmer profile creation creates or links the `FARMER` login and the
+  farmer/FPO member profile together.
+- Do not assign `FARMER` through generic role management because it would bypass
+  mandatory farmer profile fields.
+
 ## Farmer Profile
 
 | Field | Required | Validation / Values | Notes |

@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { FarmRecordStatus, CropPlanStatus } from "../core/api/fpoContracts";
 import { getErrorMessage } from "../core/errors/AppError";
+import type { Role } from "../auth/authService";
 import {
   createCropCatalog,
   createCropHistory,
@@ -28,8 +29,11 @@ import { FpoMember } from "../data/fpoMemberStore";
 import { StatusBadge } from "../ui/StatusBadge";
 
 type AdminCropPlanningTabProps = {
+  currentRole: StaffRole;
   members: FpoMember[];
 };
+
+type StaffRole = Exclude<Role, "farmer">;
 
 const planStatuses: CropPlanStatus[] = [
   "DRAFT",
@@ -38,7 +42,10 @@ const planStatuses: CropPlanStatus[] = [
   "CANCELLED"
 ];
 
-export function AdminCropPlanningTab({ members }: AdminCropPlanningTabProps) {
+export function AdminCropPlanningTab({
+  currentRole,
+  members
+}: AdminCropPlanningTabProps) {
   const [cropHistory, setCropHistory] = useState<CropHistory[]>([]);
   const [crops, setCrops] = useState<CropCatalog[]>([]);
   const [error, setError] = useState("");
@@ -50,6 +57,8 @@ export function AdminCropPlanningTab({ members }: AdminCropPlanningTabProps) {
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [seasons, setSeasons] = useState<CropSeason[]>([]);
   const [selectedMemberId, setSelectedMemberId] = useState("");
+  const canManageMasterData =
+    currentRole === "admin" || currentRole === "fpoManager";
 
   const activeCrops = useMemo(
     () => crops.filter((crop) => crop.status === "ACTIVE"),
@@ -103,7 +112,12 @@ export function AdminCropPlanningTab({ members }: AdminCropPlanningTabProps) {
   }, [visiblePlans]);
 
   useEffect(() => {
-    if (!selectedMemberId && members.length) {
+    if (!members.length) {
+      setSelectedMemberId("");
+      return;
+    }
+
+    if (!members.some((member) => member.memberId === selectedMemberId)) {
       setSelectedMemberId(members[0].memberId);
     }
   }, [members, selectedMemberId]);
@@ -307,21 +321,27 @@ export function AdminCropPlanningTab({ members }: AdminCropPlanningTabProps) {
         ))}
       </View>
 
-      <CropCatalogForm
-        isSubmitting={savingKey === "crop:create"}
-        onSubmit={handleCreateCrop}
-      />
+      {canManageMasterData ? (
+        <CropCatalogForm
+          isSubmitting={savingKey === "crop:create"}
+          onSubmit={handleCreateCrop}
+        />
+      ) : null}
       <CropCatalogList
+        canManage={canManageMasterData}
         crops={crops}
         onChangeStatus={handleCropStatus}
         savingKey={savingKey}
       />
 
-      <CropSeasonForm
-        isSubmitting={savingKey === "season:create"}
-        onSubmit={handleCreateSeason}
-      />
+      {canManageMasterData ? (
+        <CropSeasonForm
+          isSubmitting={savingKey === "season:create"}
+          onSubmit={handleCreateSeason}
+        />
+      ) : null}
       <CropSeasonList
+        canManage={canManageMasterData}
         onChangeStatus={handleSeasonStatus}
         savingKey={savingKey}
         seasons={seasons}
@@ -425,10 +445,12 @@ function CropCatalogForm({
 }
 
 function CropCatalogList({
+  canManage,
   crops,
   onChangeStatus,
   savingKey
 }: {
+  canManage: boolean;
   crops: CropCatalog[];
   onChangeStatus: (crop: CropCatalog, status: FarmRecordStatus) => Promise<void>;
   savingKey: string | null;
@@ -449,11 +471,18 @@ function CropCatalogList({
                 </Text>
                 <Text style={styles.rowMeta}>{crop.category || "No category"}</Text>
               </View>
-              <RowStatusActions
-                isSaving={isSaving}
-                onPress={() => onChangeStatus(crop, nextStatus)}
-                status={crop.status}
-              />
+              {canManage ? (
+                <RowStatusActions
+                  isSaving={isSaving}
+                  onPress={() => onChangeStatus(crop, nextStatus)}
+                  status={crop.status}
+                />
+              ) : (
+                <StatusBadge
+                  label={recordStatusLabel(crop.status)}
+                  tone={recordStatusTone(crop.status)}
+                />
+              )}
             </View>
           );
         })
@@ -542,10 +571,12 @@ function CropSeasonForm({
 }
 
 function CropSeasonList({
+  canManage,
   onChangeStatus,
   savingKey,
   seasons
 }: {
+  canManage: boolean;
   onChangeStatus: (season: CropSeason, status: FarmRecordStatus) => Promise<void>;
   savingKey: string | null;
   seasons: CropSeason[];
@@ -573,11 +604,18 @@ function CropSeasonList({
                     : ""}
                 </Text>
               </View>
-              <RowStatusActions
-                isSaving={isSaving}
-                onPress={() => onChangeStatus(season, nextStatus)}
-                status={season.status}
-              />
+              {canManage ? (
+                <RowStatusActions
+                  isSaving={isSaving}
+                  onPress={() => onChangeStatus(season, nextStatus)}
+                  status={season.status}
+                />
+              ) : (
+                <StatusBadge
+                  label={recordStatusLabel(season.status)}
+                  tone={recordStatusTone(season.status)}
+                />
+              )}
             </View>
           );
         })
@@ -599,8 +637,8 @@ function MemberChoice({
 }) {
   return (
     <View style={styles.card}>
-      <Text style={styles.cardTitle}>Member crop records</Text>
-      <Text style={styles.fieldLabel}>Selected member</Text>
+      <Text style={styles.cardTitle}>Farmer crop records</Text>
+      <Text style={styles.fieldLabel}>Selected farmer</Text>
       <View style={styles.choiceRow}>
         {members.map((member) => (
           <Pressable
@@ -625,7 +663,9 @@ function MemberChoice({
         ))}
       </View>
       {!members.length ? (
-        <Text style={styles.emptyText}>Create a member before adding crop records.</Text>
+        <Text style={styles.emptyText}>
+          Create a farmer profile before adding crop records.
+        </Text>
       ) : null}
     </View>
   );
@@ -652,7 +692,12 @@ function CropHistoryForm({
   const [yieldUnit, setYieldUnit] = useState("");
 
   useEffect(() => {
-    if (!cropId && crops.length) {
+    if (!crops.length) {
+      setCropId("");
+      return;
+    }
+
+    if (!crops.some((crop) => crop.id === cropId)) {
       setCropId(crops[0].id);
     }
   }, [cropId, crops]);
@@ -853,26 +898,53 @@ function CropPlanForm({
   const [seasonId, setSeasonId] = useState("");
 
   useEffect(() => {
-    if (selectedMemberId) {
+    if (selectedMemberId && selectedMemberId !== memberId) {
       setMemberId(selectedMemberId);
+      return;
     }
-  }, [selectedMemberId]);
+
+    if (!members.length) {
+      setMemberId("");
+      return;
+    }
+
+    if (!members.some((member) => member.memberId === memberId)) {
+      setMemberId(members[0].memberId);
+    }
+  }, [memberId, members, selectedMemberId]);
 
   useEffect(() => {
-    if (!cropId && crops.length) {
+    if (!crops.length) {
+      setCropId("");
+      return;
+    }
+
+    if (!crops.some((crop) => crop.id === cropId)) {
       setCropId(crops[0].id);
     }
   }, [cropId, crops]);
 
   useEffect(() => {
-    if (!seasonId && seasons.length) {
+    if (!seasons.length) {
+      setSeasonId("");
+      return;
+    }
+
+    if (!seasons.some((season) => season.id === seasonId)) {
       setSeasonId(seasons[0].id);
     }
   }, [seasonId, seasons]);
 
   async function handleSubmit() {
-    if (!memberId || !cropId || !seasonId || !plannedAreaAcres.trim()) {
-      setLocalError("Select member, crop, season, and planned acreage.");
+    const missingFields = [
+      !memberId ? "farmer" : "",
+      !cropId ? "crop" : "",
+      !seasonId ? "season" : "",
+      !plannedAreaAcres.trim() ? "planned acreage" : ""
+    ].filter(Boolean);
+
+    if (missingFields.length) {
+      setLocalError(`Select or enter ${formatList(missingFields)}.`);
       return;
     }
 
@@ -897,13 +969,13 @@ function CropPlanForm({
   return (
     <View style={styles.card}>
       <Text style={styles.cardTitle}>Add seasonal crop plan</Text>
-      <Text style={styles.fieldLabel}>Member</Text>
+      <Text style={styles.fieldLabel}>Farmer</Text>
       <ChoiceButtons
         choices={members.map((member) => ({
           id: member.memberId,
           label: `${member.memberNumber} - ${member.name}`
         }))}
-        emptyLabel="Create a member first."
+        emptyLabel="Create a farmer profile first."
         onSelect={setMemberId}
         selectedId={memberId}
       />
@@ -1221,6 +1293,14 @@ function formatArea(value: number) {
 
 function formatNumber(value: number) {
   return Number.isInteger(value) ? String(value) : value.toFixed(2);
+}
+
+function formatList(values: string[]) {
+  if (values.length <= 1) {
+    return values[0] ?? "";
+  }
+
+  return `${values.slice(0, -1).join(", ")} and ${values[values.length - 1]}`;
 }
 
 const styles = StyleSheet.create({

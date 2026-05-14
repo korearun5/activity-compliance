@@ -10,6 +10,7 @@ import com.activityplatform.backend.audit.domain.AuditAction;
 import com.activityplatform.backend.audit.service.AuditEventService;
 import com.activityplatform.backend.common.error.ApplicationException;
 import com.activityplatform.backend.common.error.ErrorCode;
+import com.activityplatform.backend.fpo.repository.FpoMemberProfileRepository;
 import com.activityplatform.backend.role.api.RoleResponse;
 import com.activityplatform.backend.role.api.UpdateUserRolesRequest;
 import com.activityplatform.backend.role.api.UserRolesResponse;
@@ -31,17 +32,20 @@ import org.springframework.transaction.annotation.Transactional;
 public class RoleManagementService {
   private final AuditEventService auditEventService;
   private final RoleRepository roleRepository;
+  private final FpoMemberProfileRepository memberRepository;
   private final TenantRepository tenantRepository;
   private final UserRepository userRepository;
 
   public RoleManagementService(
       AuditEventService auditEventService,
       RoleRepository roleRepository,
+      FpoMemberProfileRepository memberRepository,
       TenantRepository tenantRepository,
       UserRepository userRepository
   ) {
     this.auditEventService = auditEventService;
     this.roleRepository = roleRepository;
+    this.memberRepository = memberRepository;
     this.tenantRepository = tenantRepository;
     this.userRepository = userRepository;
   }
@@ -79,6 +83,7 @@ public class RoleManagementService {
     UserEntity user = requireUser(currentUser, userId);
     EnumSet<Role> requestedRoles = normalizeRoles(request.roles());
     validateRoleCombination(requestedRoles);
+    validateFarmerRoleOwnership(currentUser, user, requestedRoles);
     Set<String> previousRoles = roleNames(user);
 
     Set<RoleEntity> roleEntities = new LinkedHashSet<>();
@@ -121,6 +126,23 @@ public class RoleManagementService {
 
     if (roles.contains(Role.FARMER) && roles.size() > 1) {
       throw validation("Farmer cannot be combined with staff roles.");
+    }
+  }
+
+  private void validateFarmerRoleOwnership(
+      CurrentUser currentUser,
+      UserEntity user,
+      Set<Role> requestedRoles
+  ) {
+    boolean isLinkedFarmer = memberRepository
+        .existsByTenantIdAndUserId(currentUser.tenantId(), user.getId());
+
+    if (requestedRoles.contains(Role.FARMER) && !isLinkedFarmer) {
+      throw validation("Farmer role is assigned through farmer profile creation.");
+    }
+
+    if (isLinkedFarmer && !requestedRoles.equals(Set.of(Role.FARMER))) {
+      throw validation("Farmer profile users must keep only the farmer role.");
     }
   }
 

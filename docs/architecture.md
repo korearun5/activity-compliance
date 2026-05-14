@@ -40,7 +40,8 @@ microservices until operationally necessary, see
 ```mermaid
 flowchart LR
     Admin["Admin / FPO_MANAGER"] --> App["Expo React Native App"]
-    FIELD_COORDINATOR["FIELD_COORDINATOR / Farmer"] --> App
+    FIELD_COORDINATOR["FIELD_COORDINATOR"] --> App
+    Farmer["FARMER"] --> App
     App --> Api["Spring Boot REST API"]
     Api --> Db["PostgreSQL"]
     Api --> Storage["File Storage Adapter"]
@@ -261,7 +262,7 @@ sequenceDiagram
     Admin->>UI: Enter farmer/member profile
     UI->>API: POST /api/v1/fpo/members
     API->>MOD: Require MEMBER_DATA
-    API->>DB: Link FIELD_COORDINATOR user and member profile
+    API->>DB: Create/link FARMER user and assign optional FIELD_COORDINATOR
     API->>AUD: FPO_MEMBER_CREATED
     API-->>UI: FpoMemberResponse
 ```

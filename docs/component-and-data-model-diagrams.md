@@ -10,7 +10,8 @@ flowchart TB
     subgraph Clients["Client Layer"]
         AdminUser["Admin"]
         FPO_MANAGERUser["FPO_MANAGER"]
-        FIELD_COORDINATORUser["FIELD_COORDINATOR / Farmer"]
+        FIELD_COORDINATORUser["FIELD_COORDINATOR"]
+        FarmerUser["FARMER"]
     end
 
     subgraph ExpoApp["Expo React Native App"]

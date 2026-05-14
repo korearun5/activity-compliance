@@ -21,6 +21,7 @@ export type CreateBackendUserRequest = {
   locationName: string;
   password: string;
   phone: string;
+  role: Extract<BackendRole, "FIELD_COORDINATOR" | "FPO_MANAGER">;
   siteName: string;
   username: string;
 };

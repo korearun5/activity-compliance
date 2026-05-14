@@ -332,17 +332,19 @@ Rules:
 
 - Member numbers are unique per tenant.
 - Mobile numbers are unique per tenant.
-- A member links to one FIELD_COORDINATOR user.
+- A member links to one `FARMER` login user and may be assigned to one
+  `FIELD_COORDINATOR`.
 - Admins and FPO_MANAGERs can manage members.
-- FIELD_COORDINATORs can read only their own member profile.
+- FIELD_COORDINATORs can manage assigned farmer profiles.
+- FARMERs can read only their own member profile.
 - Changes emit `FPO_MEMBER_CREATED`, `FPO_MEMBER_UPDATED`, or
   `FPO_MEMBER_STATUS_CHANGED` audit events.
 
 ## FPO Landholding And Plot APIs
 
 FPO farm asset APIs are guarded by the `LAND_RECORDS` module. Admins and
-FPO_MANAGERs can manage records. FIELD_COORDINATORs can read only their own member
-records.
+FPO_MANAGERs can manage records. FIELD_COORDINATORs can manage assigned farmer
+records. FARMERs can read their own records.
 
 Landholdings:
 

@@ -47,7 +47,7 @@ order unless the product scope changes.
 |        1 | FPO-000       | Freeze Phase 1 data dictionary and report formats        | Product/Tech Lead   | Client input    | Done    |
 |        2 | FPO-101       | Add FPO base schema migration                            | Backend             | FPO-000         | Done    |
 |        3 | FPO-102       | Add FPO member profile backend APIs                      | Backend             | FPO-101         | Done    |
-|        4 | FPO-FE-101    | Replace generic participant list with farmer/member list | Frontend            | FPO-102         | Done    |
+|        4 | FPO-FE-101    | Replace generic participant list with farmer profile/login list | Frontend            | FPO-102         | Done    |
 |        5 | FPO-201       | Add landholding and farm plot backend APIs               | Backend             | FPO-102         | Done    |
 |        6 | FPO-FE-201    | Add landholding and plot UI with GPS fields              | Frontend            | FPO-201         | Done    |
 |        7 | FPO-301       | Add crop catalog, season, history, and crop plan APIs    | Backend             | FPO-201         | Done    |
@@ -217,6 +217,8 @@ Backend implementation tasks:
 - Allow admin/FPO manager writes across the FPO and assigned field coordinator
   writes for assigned farmers.
 - Allow farmer to read own member profile.
+- Keep staff login creation (`FPO_MANAGER`, `FIELD_COORDINATOR`) separate from
+  farmer profile/login creation (`FARMER`).
 - Emit audit events:
   - `FPO_MEMBER_CREATED`
   - `FPO_MEMBER_UPDATED`
@@ -239,6 +241,8 @@ Acceptance criteria:
 - Farmer can read their own profile through `/api/v1/fpo/members/me`.
 - Member is linked to an existing `FARMER` user or a newly created farmer
   account.
+- Generic user creation cannot create orphan `FARMER` users; farmers are
+  created through the farmer profile flow.
 - `MEMBER_DATA` module guard returns `MODULE_NOT_ENABLED` when disabled.
 - No demo member data appears unless seeded intentionally.
 
@@ -250,7 +254,8 @@ Status:
 
 Goal:
 
-- Replace generic participant management with FPO member management in admin UI.
+- Replace generic participant management with farmer profile/login management
+  in admin UI.
 
 Frontend files likely touched:
 
@@ -997,7 +1002,7 @@ Security tasks:
 
 Acceptance criteria:
 
-- Farmer can log in by mobile number if provider is configured.
+- Farmer can log in by mobile number if provider is configured in Phase 2.
 
 ### FPO-FE-701: Add OTP Login UI
 

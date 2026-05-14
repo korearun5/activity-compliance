@@ -6,18 +6,22 @@
 flowchart LR
     Admin["Admin"]
     FPO_MANAGER["FPO_MANAGER"]
-    FIELD_COORDINATOR["FIELD_COORDINATOR / Farmer"]
+    FIELD_COORDINATOR["FIELD_COORDINATOR"]
+    Farmer["FARMER"]
     Government["Government / Client Reviewer"]
     System["System"]
 
-    Admin --> UserMgmt["Manage FIELD_COORDINATOR profiles"]
+    Admin --> UserMgmt["Manage staff logins"]
+    Admin --> FarmerMgmt["Manage farmer profiles"]
     Admin --> WorkflowMgmt["Configure workflows"]
     Admin --> ReportMgmt["Generate compliance reports"]
     FPO_MANAGER --> UserMgmt
     FPO_MANAGER --> WorkflowMgmt
     FPO_MANAGER --> EvidenceReview["Review evidence"]
-    FIELD_COORDINATOR --> ActivityTracking["Track assigned farming/process activity"]
-    FIELD_COORDINATOR --> EvidenceSubmit["Submit photo proof"]
+    FIELD_COORDINATOR --> FarmerMgmt
+    FIELD_COORDINATOR --> ActivityTracking["Track own assigned farming/process activity"]
+    Farmer --> ActivityTracking
+    Farmer --> EvidenceSubmit["Submit photo proof"]
     Government --> ReportView["Review exported reports"]
     System --> AuditTrail["Record audit trail"]
     System --> Notifications["Send notifications (future)"]
@@ -29,7 +33,8 @@ flowchart LR
 flowchart TB
     Admin["Admin"]
     FPO_MANAGER["FPO_MANAGER"]
-    FIELD_COORDINATOR["FIELD_COORDINATOR / Farmer"]
+    FIELD_COORDINATOR["FIELD_COORDINATOR"]
+    Farmer["FARMER"]
     Reviewer["Government / Client Reviewer"]
 
     UC1["Login"]

@@ -79,14 +79,37 @@ public class UserService {
   }
 
   @Transactional
-  public UserResponse createFieldCoordinator(CurrentUser currentUser, CreateUserRequest request) {
+  public UserResponse createStaffUser(CurrentUser currentUser, CreateUserRequest request) {
     requireManager(currentUser);
-    return createSingleRoleUser(currentUser, request, Role.FIELD_COORDINATOR);
+    Role requestedRole = request.role();
+
+    if (requestedRole == null) {
+      throw validation("Staff role is required.");
+    }
+
+    if (requestedRole != Role.FPO_MANAGER && requestedRole != Role.FIELD_COORDINATOR) {
+      throw validation("Staff user role must be FPO_MANAGER or FIELD_COORDINATOR.");
+    }
+
+    if (currentUser.hasAnyRole(Role.FPO_MANAGER)
+        && !currentUser.hasAnyRole(Role.ADMIN)
+        && requestedRole != Role.FIELD_COORDINATOR) {
+      throw new ApplicationException(
+          ErrorCode.ACCESS_DENIED,
+          "FPO managers can create field coordinator users only.",
+          HttpStatus.FORBIDDEN
+      );
+    }
+
+    return createSingleRoleUser(currentUser, request, requestedRole);
   }
 
   @Transactional
   public UserResponse createFarmer(CurrentUser currentUser, CreateUserRequest request) {
     requirePhaseOneStaff(currentUser);
+    if (request.role() != null && request.role() != Role.FARMER) {
+      throw validation("Farmer profile creation must create a FARMER user.");
+    }
     return createSingleRoleUser(currentUser, request, Role.FARMER);
   }
 
@@ -270,5 +293,9 @@ public class UserService {
 
   private ApplicationException notFound(String message) {
     return new ApplicationException(ErrorCode.RESOURCE_NOT_FOUND, message, HttpStatus.NOT_FOUND);
+  }
+
+  private ApplicationException validation(String message) {
+    return new ApplicationException(ErrorCode.VALIDATION_FAILED, message, HttpStatus.BAD_REQUEST);
   }
 }

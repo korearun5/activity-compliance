@@ -1,5 +1,6 @@
 package com.activityplatform.backend.user.api;
 
+import com.activityplatform.backend.security.Role;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -23,6 +24,7 @@ public record CreateUserRequest(
     @Size(max = 160)
     String locationName,
     @Size(max = 160)
-    String siteName
+    String siteName,
+    Role role
 ) {
 }

@@ -50,14 +50,18 @@ export default function App() {
     return null;
   }
 
+  const staffRole = isStaffRole(role) ? role : null;
+
   return (
     <>
       <StatusBar barStyle="dark-content" />
       <NavigationContainer>
         <Stack.Navigator screenOptions={{ headerShown: false }}>
-          {role === "admin" || role === "fpoManager" || role === "fieldCoordinator" ? (
+          {staffRole ? (
             <Stack.Screen name="AdminHome">
-              {() => <AdminHomeScreen onLogout={handleLogout} />}
+              {() => (
+                <AdminHomeScreen currentRole={staffRole} onLogout={handleLogout} />
+              )}
             </Stack.Screen>
           ) : role === "farmer" ? (
             <Stack.Screen name="UserHome">
@@ -72,4 +76,8 @@ export default function App() {
       </NavigationContainer>
     </>
   );
+}
+
+function isStaffRole(role: Role | null): role is Exclude<Role, "farmer"> {
+  return role === "admin" || role === "fpoManager" || role === "fieldCoordinator";
 }

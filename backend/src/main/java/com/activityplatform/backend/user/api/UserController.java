@@ -55,7 +55,7 @@ public class UserController {
       Authentication authentication,
       @Valid @RequestBody CreateUserRequest request
   ) {
-    return ApiResponse.success(userService.createFieldCoordinator(CurrentUser.from(authentication), request));
+    return ApiResponse.success(userService.createStaffUser(CurrentUser.from(authentication), request));
   }
 
   @PutMapping("/{userId}")

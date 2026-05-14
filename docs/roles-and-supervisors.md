@@ -39,12 +39,25 @@ username/password in Phase 1 for their own workflow area.
 ## Account Setup Flow
 
 1. `ADMIN` creates or seeds the pilot FPO.
-2. `ADMIN` creates one `FPO_MANAGER` for the pilot FPO.
-3. `ADMIN` or `FPO_MANAGER` creates one or more `FIELD_COORDINATOR` users.
+2. `ADMIN` creates one `FPO_MANAGER` login for the pilot FPO from staff user
+   management.
+3. `ADMIN` or `FPO_MANAGER` creates one or more `FIELD_COORDINATOR` logins from
+   staff user management.
 4. `ADMIN`, `FPO_MANAGER`, or assigned `FIELD_COORDINATOR` creates farmer
    profiles as FPO member records linked to `FARMER` users.
 5. Staff users sign out and sign in again after role changes so JWT claims are
    refreshed.
+
+## Creation Boundaries
+
+- `ADMIN` is seed/manual for Phase 1. Do not add normal UI-driven admin
+  creation unless a future operations requirement asks for it.
+- `/api/v1/users` is for staff logins only: `FPO_MANAGER` and
+  `FIELD_COORDINATOR`.
+- `/api/v1/fpo/members` is the farmer creation flow. It creates or links the
+  farmer/member profile and the `FARMER` login together.
+- `FARMER` must not be assigned through generic role management because that
+  would create an orphan login with no farmer profile.
 
 ## API Role Examples
 
@@ -99,6 +112,9 @@ Current alignment:
 - `fpo_member_profiles.coordinator_user_id` points to the assigned
   `FIELD_COORDINATOR`.
 - FPO scoping and member ownership are enforced in backend services.
+- Staff login creation is separate from farmer profile/login creation.
 - Frontend routes staff roles to the admin dashboard and `FARMER` to the user
   workflow dashboard.
+- Frontend role management locks farmer-role changes and directs farmer login
+  management back to farmer profiles.
 - Focused JUnit and Testcontainers integration tests cover this foundation.

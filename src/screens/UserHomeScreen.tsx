@@ -89,7 +89,7 @@ export function UserHomeScreen({ username, onLogout }: UserHomeScreenProps) {
         setProfileError("");
       } catch (error) {
         setProfileFields(profileTemplate);
-        setProfileError(getErrorMessage(error, "Unable to load participant profile."));
+        setProfileError(getErrorMessage(error, "Unable to load farmer profile."));
       }
 
       if (hasToken) {
@@ -726,7 +726,7 @@ function StartCropForm({
         <View style={styles.emptyCard}>
           <Text style={styles.cardDescription}>
             No crop workflow is configured yet. An admin must add the workflow and task
-            list before participants can start work.
+            list before farmers can start work.
           </Text>
         </View>
       )}
@@ -819,9 +819,9 @@ function ProfileView({
   return (
     <View style={styles.section}>
       <View>
-        <Text style={styles.pageTitle}>Participant profile</Text>
+        <Text style={styles.pageTitle}>Farmer profile</Text>
         <Text style={styles.pageCopy}>
-          Basic participant information used for activity records and reports.
+          Farmer information used for activity records and reports.
         </Text>
       </View>
       {profileError ? <Text style={styles.errorText}>{profileError}</Text> : null}

@@ -1,7 +1,10 @@
 import { apiClient } from "../core/api/client";
 import { PageResponse } from "../core/api/contracts";
 import { endpoints } from "../core/api/endpoints";
-import { BackendUserResponse } from "../core/api/userContracts";
+import {
+  BackendUserResponse,
+  CreateBackendUserRequest
+} from "../core/api/userContracts";
 
 export type BackendRole = {
   code: "ADMIN" | "FIELD_COORDINATOR" | "FPO_MANAGER" | "FARMER";
@@ -25,6 +28,8 @@ export type RoleManagedUser = Pick<
   | "username"
 >;
 
+export type CreateStaffUserInput = CreateBackendUserRequest;
+
 export type UserRoles = {
   roles: BackendRole["code"][];
   tenantId: string;
@@ -43,16 +48,16 @@ export async function getBackendRoleManagedUsers() {
     { size: 100, sort: "displayName,asc" }
   );
 
-  return response.content.map((user) => ({
-    displayName: user.displayName,
-    id: user.id,
-    locationName: user.locationName,
-    roles: user.roles,
-    siteName: user.siteName,
-    status: user.status,
-    tenantId: user.tenantId,
-    username: user.username
-  }));
+  return response.content.map(toRoleManagedUser);
+}
+
+export async function createBackendStaffUser(input: CreateStaffUserInput) {
+  const user = await apiClient.post<CreateBackendUserRequest, BackendUserResponse>(
+    endpoints.users.create,
+    input
+  );
+
+  return toRoleManagedUser(user);
 }
 
 export async function getBackendUserRoles(userId: string) {
@@ -67,4 +72,17 @@ export async function updateBackendUserRoles(
     endpoints.roles.userRoles(userId),
     { roles }
   );
+}
+
+function toRoleManagedUser(user: BackendUserResponse): RoleManagedUser {
+  return {
+    displayName: user.displayName,
+    id: user.id,
+    locationName: user.locationName,
+    roles: user.roles,
+    siteName: user.siteName,
+    status: user.status,
+    tenantId: user.tenantId,
+    username: user.username
+  };
 }

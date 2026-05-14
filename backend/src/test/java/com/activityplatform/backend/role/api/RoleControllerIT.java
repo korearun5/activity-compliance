@@ -157,6 +157,18 @@ class RoleControllerIT {
   }
 
   @Test
+  void testAdminCannotAssignFarmerRoleThroughGenericRoleApi() throws Exception {
+    mockMvc.perform(put("/api/v1/users/" + FIELD_COORDINATORUser.getId() + "/roles")
+            .header("Authorization", "Bearer " + adminToken)
+            .contentType("application/json")
+            .content(jsonMapper.writeValueAsString(new UpdateUserRolesRequest(
+                Set.of(Role.FARMER)
+            ))))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error.code").value("VALIDATION_FAILED"));
+  }
+
+  @Test
   void testFPO_MANAGERCannotUpdateRoles() throws Exception {
     mockMvc.perform(put("/api/v1/users/" + FIELD_COORDINATORUser.getId() + "/roles")
             .header("Authorization", "Bearer " + FPO_MANAGERToken)

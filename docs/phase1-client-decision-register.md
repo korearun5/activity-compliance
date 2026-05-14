@@ -24,6 +24,7 @@ Use this table to avoid reconnecting with the client for the same questions.
 | Phase 1 scope | Answered | Build only the included Phase 1 items and keep Phase 2 items out. |
 | Role model | Answered | Use `ADMIN`, `FPO_MANAGER`, `FIELD_COORDINATOR`, and `FARMER`; do not add a separate `SUPERVISOR` role. |
 | Farmer login | Answered | Include `FARMER` username/password login for Phase 1 workflow/self-view access. Do not build OTP login in Phase 1. |
+| User creation flow | Answered | `ADMIN` is seed/manual. Create `FPO_MANAGER` and `FIELD_COORDINATOR` from staff user management. Create `FARMER` only through farmer profile/FPO member creation. |
 | OTP login | Answered | Do not build OTP in Phase 1. Username/password is used for all Phase 1 login roles. |
 | Farmer fields | Answered | Use the approved farmer profile fields in this file. |
 | Geography labels | Answered | Use village, taluka, district, state. Do not ask about block again. |
@@ -93,6 +94,11 @@ Notes:
   logically separate.
 - Phase 1 uses username and password login for staff and farmer roles.
 - OTP/mobile-number login remains Phase 2.
+- `ADMIN` creation can remain manual/seeded for Phase 1.
+- `FPO_MANAGER` and `FIELD_COORDINATOR` are staff logins created from user
+  management.
+- `FARMER` is created through the farmer profile flow so the login always has a
+  linked FPO member/farmer profile.
 
 ## Farmer Profile
 

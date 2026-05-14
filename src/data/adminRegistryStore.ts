@@ -89,6 +89,7 @@ export async function createRegisteredFieldCoordinator({
           locationName: normalizedProfile.locationName,
           password,
           phone: normalizedProfile.phone,
+          role: "FIELD_COORDINATOR",
           siteName: normalizedProfile.siteName,
           username: trimmedUsername
         },

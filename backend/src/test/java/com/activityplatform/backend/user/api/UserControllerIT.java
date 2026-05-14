@@ -61,6 +61,7 @@ class UserControllerIT {
 
   private String adminToken;
   private String FIELD_COORDINATORToken;
+  private String fpoManagerToken;
   private TenantEntity tenant;
   private UserEntity FIELD_COORDINATORUser;
   private UserEntity otherTenantUser;
@@ -70,6 +71,7 @@ class UserControllerIT {
     tenant = tenantRepository.save(TestDataFactory.tenant("tenant-" + UUID.randomUUID()));
     RoleEntity adminRole = roleRepository.save(TestDataFactory.role(tenant, Role.ADMIN));
     RoleEntity FIELD_COORDINATORRole = roleRepository.save(TestDataFactory.role(tenant, Role.FIELD_COORDINATOR));
+    RoleEntity fpoManagerRole = roleRepository.save(TestDataFactory.role(tenant, Role.FPO_MANAGER));
 
     UserEntity adminUser = userRepository.save(TestDataFactory.user(
         tenant,
@@ -84,6 +86,13 @@ class UserControllerIT {
         passwordEncoder.encode("FIELD_COORDINATOR123"),
         "FIELD_COORDINATOR User",
         FIELD_COORDINATORRole
+    ));
+    UserEntity fpoManagerUser = userRepository.save(TestDataFactory.user(
+        tenant,
+        "fpo-manager-" + UUID.randomUUID(),
+        passwordEncoder.encode("fpoManager123"),
+        "FPO Manager User",
+        fpoManagerRole
     ));
 
     TenantEntity otherTenant = tenantRepository.save(
@@ -102,6 +111,7 @@ class UserControllerIT {
 
     adminToken = jwtService.issueTokens(adminUser).accessToken();
     FIELD_COORDINATORToken = jwtService.issueTokens(FIELD_COORDINATORUser).accessToken();
+    fpoManagerToken = jwtService.issueTokens(fpoManagerUser).accessToken();
   }
 
   @Test
@@ -114,7 +124,8 @@ class UserControllerIT {
         "New Farmer",
         "  +91 99999 00000  ",
         "  Nashik  ",
-        "  Plot 14  "
+        "  Plot 14  ",
+        Role.FIELD_COORDINATOR
     );
 
     mockMvc.perform(post("/api/v1/users")
@@ -142,6 +153,92 @@ class UserControllerIT {
   }
 
   @Test
+  void testCreateFpoManagerAsAdmin() throws Exception {
+    String username = "fpo-manager-" + UUID.randomUUID();
+    CreateUserRequest request = new CreateUserRequest(
+        username,
+        "password123",
+        "Pilot FPO Manager",
+        "9999900001",
+        "Wagholi",
+        "Pilot FPO",
+        Role.FPO_MANAGER
+    );
+
+    mockMvc.perform(post("/api/v1/users")
+            .header("Authorization", "Bearer " + adminToken)
+            .contentType("application/json")
+            .content(jsonMapper.writeValueAsString(request)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data.username").value(username.toLowerCase(Locale.ROOT)))
+        .andExpect(jsonPath("$.data.roles[0]").value("FPO_MANAGER"));
+
+    UserEntity savedUser = userRepository
+        .findByTenantCodeIgnoreCaseAndUsernameIgnoreCase(tenant.getCode(), username)
+        .orElseThrow();
+    assertThat(savedUser.getRoles()).extracting(RoleEntity::getCode)
+        .containsExactly(Role.FPO_MANAGER.name());
+  }
+
+  @Test
+  void testGenericUserCreateRejectsFarmerRole() throws Exception {
+    CreateUserRequest request = new CreateUserRequest(
+        "farmer-user-" + UUID.randomUUID(),
+        "password123",
+        "Farmer User",
+        "9999900002",
+        "Wagholi",
+        "Pilot FPO",
+        Role.FARMER
+    );
+
+    mockMvc.perform(post("/api/v1/users")
+            .header("Authorization", "Bearer " + adminToken)
+            .contentType("application/json")
+            .content(jsonMapper.writeValueAsString(request)))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error.code").value("VALIDATION_FAILED"));
+  }
+
+  @Test
+  void testFpoManagerCanCreateFieldCoordinatorOnly() throws Exception {
+    CreateUserRequest coordinatorRequest = new CreateUserRequest(
+        "coordinator-" + UUID.randomUUID(),
+        "password123",
+        "Village Coordinator",
+        "9999900003",
+        "Wagholi",
+        "Pilot FPO",
+        Role.FIELD_COORDINATOR
+    );
+
+    mockMvc.perform(post("/api/v1/users")
+            .header("Authorization", "Bearer " + fpoManagerToken)
+            .contentType("application/json")
+            .content(jsonMapper.writeValueAsString(coordinatorRequest)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.roles[0]").value("FIELD_COORDINATOR"));
+
+    CreateUserRequest managerRequest = new CreateUserRequest(
+        "blocked-manager-" + UUID.randomUUID(),
+        "password123",
+        "Blocked Manager",
+        "9999900004",
+        "Wagholi",
+        "Pilot FPO",
+        Role.FPO_MANAGER
+    );
+
+    mockMvc.perform(post("/api/v1/users")
+            .header("Authorization", "Bearer " + fpoManagerToken)
+            .contentType("application/json")
+            .content(jsonMapper.writeValueAsString(managerRequest)))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.error.code").value("ACCESS_DENIED"));
+  }
+
+  @Test
   void testCreateFIELD_COORDINATORRejectsDuplicateUsername() throws Exception {
     String username = "duplicate-" + UUID.randomUUID();
     CreateUserRequest firstRequest = new CreateUserRequest(
@@ -150,7 +247,8 @@ class UserControllerIT {
         "First User",
         null,
         null,
-        null
+        null,
+        Role.FIELD_COORDINATOR
     );
     CreateUserRequest duplicateRequest = new CreateUserRequest(
         username.toUpperCase(Locale.ROOT),
@@ -158,7 +256,8 @@ class UserControllerIT {
         "Duplicate User",
         null,
         null,
-        null
+        null,
+        Role.FIELD_COORDINATOR
     );
 
     mockMvc.perform(post("/api/v1/users")
@@ -183,7 +282,8 @@ class UserControllerIT {
         "Blocked User",
         null,
         null,
-        null
+        null,
+        Role.FIELD_COORDINATOR
     );
 
     mockMvc.perform(post("/api/v1/users")
@@ -202,7 +302,8 @@ class UserControllerIT {
         "",
         null,
         null,
-        null
+        null,
+        Role.FIELD_COORDINATOR
     );
 
     mockMvc.perform(post("/api/v1/users")
@@ -223,7 +324,7 @@ class UserControllerIT {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.success").value(true))
         .andExpect(jsonPath("$.data.content").isArray())
-        .andExpect(jsonPath("$.data.page.totalElements").value(2));
+        .andExpect(jsonPath("$.data.page.totalElements").value(3));
   }
 
   @Test

@@ -30,6 +30,7 @@ import {
   loadEnabledModules,
   PlatformModuleCode
 } from "../data/moduleStore";
+import type { Role } from "../auth/authService";
 import {
   exportBackendReport,
   getBackendReportSummary,
@@ -61,8 +62,11 @@ import { AdminWorkflowsTab } from "./AdminWorkflowsTab";
 import { StatusBadge } from "../ui/StatusBadge";
 
 type AdminHomeScreenProps = {
+  currentRole: StaffDashboardRole;
   onLogout: () => void;
 };
+
+type StaffDashboardRole = Exclude<Role, "farmer">;
 
 type AdminTab =
   | "advisories"
@@ -78,6 +82,7 @@ type AdminTab =
 type AdminTabConfig = {
   label: string;
   module?: PlatformModuleCode;
+  roles?: StaffDashboardRole[];
   tab: AdminTab;
 };
 
@@ -85,15 +90,23 @@ const adminTabs: AdminTabConfig[] = [
   { label: "Overview", tab: "overview" },
   { label: "Carbon", tab: "carbon" },
   { label: "Workflows", module: "ACTIVITY_COMPLIANCE", tab: "workflows" },
-  { label: "Members", module: "MEMBER_DATA", tab: "participants" },
+  { label: "Farmers", module: "MEMBER_DATA", tab: "participants" },
   { label: "Crop Planning", module: "CROP_PLANNING", tab: "cropPlanning" },
-  { label: "Input Demand", module: "INPUT_DEMAND", tab: "inputDemand" },
-  { label: "Roles", tab: "roles" },
+  {
+    label: "Input Demand",
+    module: "INPUT_DEMAND",
+    roles: ["admin", "fpoManager"],
+    tab: "inputDemand"
+  },
+  { label: "Roles", roles: ["admin", "fpoManager"], tab: "roles" },
   { label: "Advisories", module: "ADVISORY", tab: "advisories" },
   { label: "Reports", module: "REPORT_EXPORT", tab: "reports" }
 ];
 
-export function AdminHomeScreen({ onLogout }: AdminHomeScreenProps) {
+export function AdminHomeScreen({
+  currentRole,
+  onLogout
+}: AdminHomeScreenProps) {
   const [activeTab, setActiveTab] = useState<AdminTab>("overview");
   const [members, setMembers] = useState<FpoMember[]>([]);
   const [savedCycles, setSavedCycles] = useState<CropCycle[]>([]);
@@ -136,7 +149,7 @@ export function AdminHomeScreen({ onLogout }: AdminHomeScreenProps) {
       } catch (error) {
         participantLoadError = getErrorMessage(
           error,
-          "Unable to load FPO member profiles."
+          "Unable to load farmer profiles."
         );
         setAdminDataError(participantLoadError);
       }
@@ -199,7 +212,7 @@ export function AdminHomeScreen({ onLogout }: AdminHomeScreenProps) {
       return true;
     } catch (error) {
       setParticipantFormError(
-        getErrorMessage(error, "Unable to create FPO member profile.")
+        getErrorMessage(error, "Unable to create farmer profile and login.")
       );
       return false;
     } finally {
@@ -218,7 +231,7 @@ export function AdminHomeScreen({ onLogout }: AdminHomeScreenProps) {
       return true;
     } catch (error) {
       setMemberEditError(
-        getErrorMessage(error, "Unable to update FPO member profile.")
+        getErrorMessage(error, "Unable to update farmer profile.")
       );
       return false;
     } finally {
@@ -238,7 +251,7 @@ export function AdminHomeScreen({ onLogout }: AdminHomeScreenProps) {
       upsertMember(updatedMember);
     } catch (error) {
       setParticipantFormError(
-        getErrorMessage(error, "Unable to update FPO member status.")
+        getErrorMessage(error, "Unable to update farmer status.")
       );
     } finally {
       setUpdatingParticipantUsername(null);
@@ -378,16 +391,17 @@ export function AdminHomeScreen({ onLogout }: AdminHomeScreenProps) {
     () =>
       adminTabs.filter(
         (item) =>
-          !item.module ||
-          enabledModules === null ||
-          isModuleEnabled(enabledModules, item.module)
+          (!item.roles || item.roles.includes(currentRole)) &&
+          (!item.module ||
+            enabledModules === null ||
+            isModuleEnabled(enabledModules, item.module))
       ),
-    [enabledModules]
+    [currentRole, enabledModules]
   );
 
   const summary = useMemo(
     () => [
-      { label: "Members", value: String(participants.length) },
+      { label: "Farmers", value: String(participants.length) },
       { label: "Running cycles", value: String(runningCycles.length) },
       { label: "Completed", value: String(completedCycles.length) },
       { label: "Proof records", value: String(proofRecords.length) }
@@ -415,10 +429,10 @@ export function AdminHomeScreen({ onLogout }: AdminHomeScreenProps) {
         <View style={styles.shell}>
           <View style={styles.headerRow}>
             <View style={styles.headerText}>
-              <Text style={styles.eyebrow}>Admin dashboard</Text>
+              <Text style={styles.eyebrow}>{dashboardEyebrow(currentRole)}</Text>
               <Text style={styles.title}>Carbon Farming Operations</Text>
               <Text style={styles.copy}>
-                Track FPO members, regenerative activities, proof records, advisories,
+                Track farmer profiles, regenerative activities, proof records, advisories,
                 and report-ready carbon evidence.
               </Text>
             </View>
@@ -510,13 +524,13 @@ export function AdminHomeScreen({ onLogout }: AdminHomeScreenProps) {
           ) : null}
 
           {activeTab === "cropPlanning" ? (
-            <AdminCropPlanningTab members={participants} />
+            <AdminCropPlanningTab currentRole={currentRole} members={participants} />
           ) : null}
 
           {activeTab === "inputDemand" ? <AdminInputDemandTab /> : null}
 
           {activeTab === "roles" ? (
-            <AdminRolesTab canUseBackend={canReviewEvidence} />
+            <AdminRolesTab canUseBackend={canReviewEvidence} currentRole={currentRole} />
           ) : null}
 
           {activeTab === "advisories" ? (
@@ -675,7 +689,7 @@ function OverviewTab({
         </View>
       )}
 
-      <Text style={styles.sectionTitle}>Members by village</Text>
+      <Text style={styles.sectionTitle}>Farmers by village</Text>
       {participants.length ? (
         participants.map((participant) => (
           <View key={participant.username} style={styles.compactRow}>
@@ -687,7 +701,7 @@ function OverviewTab({
         ))
       ) : (
         <View style={styles.emptyCard}>
-          <Text style={styles.cardDescription}>No FPO members are registered yet.</Text>
+          <Text style={styles.cardDescription}>No farmer profiles are registered yet.</Text>
         </View>
       )}
     </View>
@@ -755,9 +769,9 @@ function MembersTab({
       />
 
       <View style={styles.managementCard}>
-        <Text style={styles.cardTitle}>FPO member directory</Text>
+        <Text style={styles.cardTitle}>Farmer profile directory</Text>
         <AdminField
-          label="Search members"
+          label="Search farmers"
           value={searchQuery}
           onChange={setSearchQuery}
         />
@@ -908,8 +922,8 @@ function MembersTab({
         <View style={styles.emptyCard}>
           <Text style={styles.cardDescription}>
             {participants.length
-              ? "No FPO members match this search."
-              : "No FPO member profiles are available yet."}
+              ? "No farmer profiles match this search."
+              : "No farmer profiles are available yet."}
           </Text>
         </View>
       )}
@@ -1022,7 +1036,7 @@ function CreateMemberForm({
 
   return (
     <View style={styles.managementCard}>
-      <Text style={styles.cardTitle}>Create FPO member</Text>
+      <Text style={styles.cardTitle}>Create farmer profile and login</Text>
       <View style={styles.formGrid}>
         <AdminField
           label="Member number"
@@ -1083,7 +1097,7 @@ function CreateMemberForm({
           onPress={handleSubmit}
         >
           <Text style={styles.createButtonText}>
-            {isSubmitting ? "Creating..." : "Create member"}
+          {isSubmitting ? "Creating..." : "Create farmer login"}
           </Text>
         </Pressable>
       </View>
@@ -1174,7 +1188,7 @@ function EditMemberForm({
 
   return (
     <View style={styles.inlineEditCard}>
-      <Text style={styles.subsectionTitle}>Edit member profile</Text>
+      <Text style={styles.subsectionTitle}>Edit farmer profile</Text>
       <View style={styles.formGrid}>
         <AdminField
           label="Member number"
@@ -1228,7 +1242,7 @@ function EditMemberForm({
           onPress={handleSubmit}
         >
           <Text style={styles.createButtonText}>
-            {isSubmitting ? "Saving..." : "Save member"}
+            {isSubmitting ? "Saving..." : "Save farmer"}
           </Text>
         </Pressable>
         <Pressable
@@ -1427,6 +1441,19 @@ function calculateComplianceScore(cycles: CropCycle[], proofs: ProofSubmission[]
   ).length;
 
   return Math.round((acceptedProofCount / totalSteps) * 100);
+}
+
+function dashboardEyebrow(role: StaffDashboardRole) {
+  switch (role) {
+    case "admin":
+      return "Platform admin dashboard";
+    case "fpoManager":
+      return "FPO manager dashboard";
+    case "fieldCoordinator":
+      return "Field coordinator dashboard";
+    default:
+      return "Operations dashboard";
+  }
 }
 
 function formatAge(age: number | undefined) {

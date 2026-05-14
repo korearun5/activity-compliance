@@ -248,7 +248,8 @@ public class FpoMemberService {
             request.displayName(),
             FpoMemberProfileRules.normalizeIndianMobile(request.mobileNumber()),
             request.village(),
-            request.taluka()
+            request.taluka(),
+            Role.FARMER
         )
     );
 
