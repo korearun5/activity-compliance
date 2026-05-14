@@ -342,11 +342,16 @@ export type InputDemandEstimateResponse = {
   memberName: string;
   memberNumber: string;
   memberVillage: string;
+  bufferPercent: number;
+  bufferQuantity: number;
+  finalDemandQuantity: number;
+  recommendedQuantityPerAcre: number;
   seasonCode: string;
   seasonId: Id;
   seasonName: string;
   seasonYear: number;
   status: InputDemandEstimateStatus;
+  totalDemandQuantity: number;
   tenantId: Id;
   unit: string;
   updatedAt: string;
@@ -368,7 +373,10 @@ export type InputDemandByInputResponse = {
   inputCode: string;
   inputId: Id;
   inputName: string;
+  bufferQuantity: number;
+  finalDemandQuantity: number;
   planCount: number;
+  totalDemandQuantity: number;
   unit: string;
 };
 

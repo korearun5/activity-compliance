@@ -72,9 +72,9 @@ them in this order unless a production defect interrupts the work.
 | 3 | FPO-ALIGN-003 | Align farmer profile fields: taluka/state, Aadhaar optional, status `Suspended`, category labels | Backend/Frontend/QA | Done |
 | 4 | FPO-ALIGN-004 | Add soil profile entry and optional report attachment without carbon calculation | Backend/Frontend/QA | Done |
 | 5 | FPO-ALIGN-005 | Align land/GPS labels and approved ownership/irrigation options | Backend/Frontend/QA | Done |
-| 6 | FPO-ALIGN-006 | Add crop plan `confirmed_at`, crop year string, and optional expected yield | Backend/Frontend/QA | Pending |
-| 7 | FPO-ALIGN-007 | Apply input demand 5% buffer, round-up, and confirmed-only report filtering | Backend/Frontend/QA | Pending |
-| 8 | FPO-ALIGN-008 | Refactor FPO Excel export to the approved three-sheet workbook | Backend/Frontend/QA | Pending |
+| 6 | FPO-ALIGN-006 | Add crop plan `confirmed_at`, crop year string, and optional expected yield | Backend/Frontend/QA | Done |
+| 7 | FPO-ALIGN-007 | Apply input demand 5% buffer, round-up, and confirmed-only report filtering | Backend/Frontend/QA | Done |
+| 8 | FPO-ALIGN-008 | Refactor FPO Excel export to the approved three-sheet workbook | Backend/Frontend/QA | Done |
 | 9 | FPO-ALIGN-009 | Add advisory crop targeting and multiple image attachments through storage | Backend/Frontend/QA | Pending |
 | 10 | FPO-ALIGN-010 | Convert UAT guide scenarios into smoke/integration coverage where practical | QA/Backend/Frontend | Pending |
 
@@ -553,9 +553,12 @@ Fields:
 - `plotId`.
 - `cropId`.
 - `seasonId`.
+- `cropYear`.
 - `plannedAreaAcres`.
 - `plannedSowingDate`.
 - `expectedHarvestDate`.
+- `expectedYieldQuintals`.
+- `confirmedAt`.
 - `status`.
 
 Optional link:
@@ -588,6 +591,8 @@ Acceptance criteria:
 - Done: Admin/FPO manager and assigned field coordinator can create, update, view, filter, and change plan
   status.
 - Done: Farmers can read their own crop plans.
+- Done: Crop plans store a crop year label, optional expected yield, and
+  confirmation timestamp for Phase 1 demand/report filters.
 
 ### FPO-FE-301: Add Crop Planning UI
 
@@ -601,6 +606,7 @@ Frontend tasks:
 - Done: Add season setup screen inside the same tab.
 - Done: Add member crop history section.
 - Done: Add seasonal crop plan form.
+- Done: Add crop year and optional expected yield controls to crop plan entry.
 - Done: Add filters for season, crop, and status.
 - Done: Add summary cards for planned acreage, farmer count, village count,
   and plan count.
@@ -713,23 +719,31 @@ Request:
 Calculation:
 
 ```text
-requiredQuantity = plannedAcreage * quantityPerAcre
+totalDemand = plannedAcreage * quantityPerAcre
+bufferQuantity = totalDemand * 5%
+finalDemand = round up(totalDemand + bufferQuantity)
 ```
 
 Persist:
 
 - Crop plan.
 - Input.
-- Estimated quantity.
+- Recommended quantity per acre.
+- Total demand quantity.
+- Buffer percent and buffer quantity.
+- Rounded final demand quantity.
 - Unit.
 - Estimate status.
 
 Tests:
 
-- Done: Calculation matches expected numeric examples.
+- Done: Calculation matches expected numeric examples with 5% buffer and
+  round-up.
 - Done: Multiple active stages for the same input are summed into one estimate
   per crop plan and input.
 - Done: Missing rules are counted and skipped without creating bad estimates.
+- Done: Non-confirmed crop plan status requests are rejected because Phase 1
+  input demand must be calculated only from `CONFIRMED` plans.
 - Done: Controller integration coverage is present, but requires Docker/
   Testcontainers to be reachable when executed.
 
@@ -776,6 +790,8 @@ Frontend tasks:
 - Done: Demand calculation run button.
 - Done: Demand summary view by input, crop, and village.
 - Done: Farmer-wise demand estimate list.
+- Done: Display base demand, 5% buffer, and rounded final demand in demand
+  summaries.
 - Done: Reusable `inputDemandStore` backed by `/api/v1/fpo/inputs`,
   `/api/v1/fpo/input-rules`, and `/api/v1/fpo/demand-estimates`.
 - Pending: FPO-specific export button belongs to FPO-FE-501 report UI work.
@@ -836,27 +852,25 @@ Endpoint:
 
 Workbook sheets:
 
-- `Farmer Master`.
-- `Landholdings`.
-- `Farm Plots`.
-- `Crop History`.
-- `Seasonal Crop Plans`.
-- `Input Demand Summary`.
-- `Farmer-wise Input Demand`.
+- `Farmer Register`.
+- `Crop Plan Summary`.
+- `Input Demand`.
 
 Tests:
 
 - Done: Workbook is generated as a valid XLSX package.
-- Done: Sheet names match the Phase 1 export spec.
-- Done: Required columns exist for farmer, land, plot, crop history, crop
-  plan, input demand summary, and farmer-wise input demand sheets.
-- Pending: Row-count checks against database fixtures can be added with the
-  broader API smoke/UAT catalog.
+- Done: Sheet names match the approved Phase 1 export spec exactly.
+- Done: Required columns exist for `Farmer Register`, `Crop Plan Summary`, and
+  `Input Demand`.
+- Done: Workbook service and controller integration tests assert the old broad
+  workbook sheets are not emitted.
+- Pending: Report filter UI/backend application and export branding/footer
+  polish remain separate go-live cleanup.
 
 Acceptance criteria:
 
-- Done: Export file contains the FPO/admin/government sheets needed for Phase
-  1 review.
+- Done: Export file contains the three approved Phase 1 sheets needed for
+  client review.
 
 ### FPO-FE-501: Add FPO Dashboard And Export UI
 

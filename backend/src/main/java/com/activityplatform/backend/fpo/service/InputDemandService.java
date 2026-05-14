@@ -57,6 +57,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class InputDemandService {
   private static final int QUANTITY_SCALE = 4;
+  private static final BigDecimal PHASE1_BUFFER_PERCENT = new BigDecimal("5.00");
+  private static final BigDecimal ONE_HUNDRED = new BigDecimal("100");
 
   private final AuditEventService auditEventService;
   private final CropCatalogRepository cropRepository;
@@ -266,9 +268,7 @@ public class InputDemandService {
         ? null
         : requireActiveCrop(currentUser, request.cropId());
     String village = normalizeOptional(request.village());
-    CropPlanStatus planStatus = request.planStatus() == null
-        ? CropPlanStatus.CONFIRMED
-        : request.planStatus();
+    CropPlanStatus planStatus = requireConfirmedPlanStatus(request.planStatus());
     List<SeasonalCropPlanEntity> plans = matchingPlans(
         currentUser,
         season.getId(),
@@ -465,13 +465,13 @@ public class InputDemandService {
   ) {
     Map<UUID, InputQuantity> quantitiesByInput = new LinkedHashMap<>();
     for (CropInputRuleEntity rule : rules) {
-      BigDecimal estimatedQuantity = plan.getPlannedAreaAcres()
+      BigDecimal totalDemandQuantity = plan.getPlannedAreaAcres()
           .multiply(rule.getQuantityPerAcre())
           .setScale(QUANTITY_SCALE, RoundingMode.HALF_UP);
       quantitiesByInput.merge(
           rule.getInput().getId(),
-          new InputQuantity(rule.getInput(), estimatedQuantity),
-          (current, next) -> current.add(next.quantity())
+          InputQuantity.fromRule(rule.getInput(), rule.getQuantityPerAcre(), totalDemandQuantity),
+          InputQuantity::add
       );
     }
     return quantitiesByInput;
@@ -495,12 +495,22 @@ public class InputDemandService {
             plan,
             quantity.input(),
             BigDecimal.ZERO,
+            BigDecimal.ZERO,
+            BigDecimal.ZERO,
+            PHASE1_BUFFER_PERCENT,
+            BigDecimal.ZERO,
+            BigDecimal.ZERO,
             quantity.input().getUnit(),
             InputDemandEstimateStatus.ESTIMATED,
             now
         ));
     estimate.updateEstimate(
-        quantity.quantity(),
+        quantity.finalDemandQuantity(),
+        quantity.recommendedQuantityPerAcre(),
+        quantity.totalDemandQuantity(),
+        quantity.bufferPercent(),
+        quantity.bufferQuantity(),
+        quantity.finalDemandQuantity(),
         quantity.input().getUnit(),
         InputDemandEstimateStatus.ESTIMATED,
         now
@@ -528,12 +538,24 @@ public class InputDemandService {
           BigDecimal quantity = group.stream()
               .map(InputDemandEstimateEntity::getEstimatedQuantity)
               .reduce(BigDecimal.ZERO, BigDecimal::add);
+          BigDecimal totalDemandQuantity = group.stream()
+              .map(InputDemandEstimateEntity::getTotalDemandQuantity)
+              .reduce(BigDecimal.ZERO, BigDecimal::add);
+          BigDecimal bufferQuantity = group.stream()
+              .map(InputDemandEstimateEntity::getBufferQuantity)
+              .reduce(BigDecimal.ZERO, BigDecimal::add);
+          BigDecimal finalDemandQuantity = group.stream()
+              .map(InputDemandEstimateEntity::getFinalDemandQuantity)
+              .reduce(BigDecimal.ZERO, BigDecimal::add);
           return new InputDemandByInputResponse(
               input.getId(),
               input.getCode(),
               input.getName(),
               input.getUnit(),
               quantity,
+              totalDemandQuantity,
+              bufferQuantity,
+              finalDemandQuantity,
               planCount
           );
         })
@@ -630,6 +652,16 @@ public class InputDemandService {
     }
   }
 
+  private CropPlanStatus requireConfirmedPlanStatus(CropPlanStatus requestedStatus) {
+    CropPlanStatus planStatus = requestedStatus == null
+        ? CropPlanStatus.CONFIRMED
+        : requestedStatus;
+    if (planStatus != CropPlanStatus.CONFIRMED) {
+      throw validation("Input demand can be calculated only from confirmed crop plans.");
+    }
+    return planStatus;
+  }
+
   private void auditInput(CurrentUser currentUser, InputCatalogEntity input, AuditAction action) {
     auditEventService.record(
         input.getTenant(),
@@ -694,11 +726,57 @@ public class InputDemandService {
     return new ApplicationException(ErrorCode.RESOURCE_NOT_FOUND, message, HttpStatus.NOT_FOUND);
   }
 
-  private record InputQuantity(InputCatalogEntity input, BigDecimal quantity) {
-    InputQuantity add(BigDecimal nextQuantity) {
+  private record InputQuantity(
+      InputCatalogEntity input,
+      BigDecimal recommendedQuantityPerAcre,
+      BigDecimal totalDemandQuantity,
+      BigDecimal bufferPercent,
+      BigDecimal bufferQuantity,
+      BigDecimal finalDemandQuantity
+  ) {
+    private static InputQuantity fromRule(
+        InputCatalogEntity input,
+        BigDecimal recommendedQuantityPerAcre,
+        BigDecimal totalDemandQuantity
+    ) {
+      BigDecimal bufferQuantity = totalDemandQuantity
+          .multiply(PHASE1_BUFFER_PERCENT)
+          .divide(ONE_HUNDRED, QUANTITY_SCALE, RoundingMode.HALF_UP);
+      BigDecimal finalDemandQuantity = totalDemandQuantity
+          .add(bufferQuantity)
+          .setScale(0, RoundingMode.CEILING)
+          .setScale(QUANTITY_SCALE, RoundingMode.UNNECESSARY);
       return new InputQuantity(
           input,
-          quantity.add(nextQuantity).setScale(QUANTITY_SCALE, RoundingMode.HALF_UP)
+          recommendedQuantityPerAcre.setScale(QUANTITY_SCALE, RoundingMode.HALF_UP),
+          totalDemandQuantity,
+          PHASE1_BUFFER_PERCENT,
+          bufferQuantity,
+          finalDemandQuantity
+      );
+    }
+
+    InputQuantity add(InputQuantity next) {
+      BigDecimal totalDemand = totalDemandQuantity
+          .add(next.totalDemandQuantity())
+          .setScale(QUANTITY_SCALE, RoundingMode.HALF_UP);
+      BigDecimal buffer = totalDemand
+          .multiply(PHASE1_BUFFER_PERCENT)
+          .divide(ONE_HUNDRED, QUANTITY_SCALE, RoundingMode.HALF_UP);
+      BigDecimal finalDemand = totalDemand
+          .add(buffer)
+          .setScale(0, RoundingMode.CEILING)
+          .setScale(QUANTITY_SCALE, RoundingMode.UNNECESSARY);
+
+      return new InputQuantity(
+          input,
+          recommendedQuantityPerAcre
+              .add(next.recommendedQuantityPerAcre())
+              .setScale(QUANTITY_SCALE, RoundingMode.HALF_UP),
+          totalDemand,
+          PHASE1_BUFFER_PERCENT,
+          buffer,
+          finalDemand
       );
     }
   }

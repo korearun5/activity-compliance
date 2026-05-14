@@ -277,7 +277,12 @@ class InputDemandControllerIT {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.data.plansConsidered").value(1))
         .andExpect(jsonPath("$.data.estimatesGenerated").value(1))
-        .andExpect(jsonPath("$.data.estimates[0].estimatedQuantity").value(11.0));
+        .andExpect(jsonPath("$.data.estimates[0].recommendedQuantityPerAcre").value(5.5))
+        .andExpect(jsonPath("$.data.estimates[0].totalDemandQuantity").value(11.0))
+        .andExpect(jsonPath("$.data.estimates[0].bufferPercent").value(5.0))
+        .andExpect(jsonPath("$.data.estimates[0].bufferQuantity").value(0.55))
+        .andExpect(jsonPath("$.data.estimates[0].finalDemandQuantity").value(12.0))
+        .andExpect(jsonPath("$.data.estimates[0].estimatedQuantity").value(12.0));
 
     mockMvc.perform(get("/api/v1/fpo/demand-estimates/summary")
             .header("Authorization", "Bearer " + adminToken)
@@ -287,7 +292,10 @@ class InputDemandControllerIT {
         .andExpect(jsonPath("$.data.memberCount").value(1))
         .andExpect(jsonPath("$.data.estimateCount").value(1))
         .andExpect(jsonPath("$.data.byInput[0].inputId").value(input.getId().toString()))
-        .andExpect(jsonPath("$.data.byInput[0].estimatedQuantity").value(11.0))
+        .andExpect(jsonPath("$.data.byInput[0].totalDemandQuantity").value(11.0))
+        .andExpect(jsonPath("$.data.byInput[0].bufferQuantity").value(0.55))
+        .andExpect(jsonPath("$.data.byInput[0].finalDemandQuantity").value(12.0))
+        .andExpect(jsonPath("$.data.byInput[0].estimatedQuantity").value(12.0))
         .andExpect(jsonPath("$.data.byCrop[0].cropName").value("Onion"))
         .andExpect(jsonPath("$.data.byVillage[0].village").value("Village"));
 

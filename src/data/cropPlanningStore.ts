@@ -166,9 +166,7 @@ export async function getCropCatalog(): Promise<CropCatalog[]> {
   return getLocalCropCatalog();
 }
 
-export async function createCropCatalog(
-  input: CropCatalogInput
-): Promise<CropCatalog> {
+export async function createCropCatalog(input: CropCatalogInput): Promise<CropCatalog> {
   const request = toCropCatalogRequest(input);
   const accessToken = await getAccessToken();
 
@@ -206,10 +204,7 @@ export async function createCropCatalog(
   });
 }
 
-export async function updateCropStatus(
-  crop: CropCatalog,
-  status: FarmRecordStatus
-) {
+export async function updateCropStatus(crop: CropCatalog, status: FarmRecordStatus) {
   const accessToken = await getAccessToken();
 
   if (accessToken) {
@@ -424,9 +419,7 @@ export async function createCropHistory(
   });
 }
 
-export async function getCropPlans(
-  filters: CropPlanFilters = {}
-): Promise<CropPlan[]> {
+export async function getCropPlans(filters: CropPlanFilters = {}): Promise<CropPlan[]> {
   const accessToken = await getAccessToken();
 
   if (accessToken) {
@@ -494,7 +487,9 @@ export async function createCropPlan(
 
   return upsertLocalCropPlan({
     confirmedAt:
-      (request.status ?? "DRAFT") === "CONFIRMED" ? new Date().toISOString() : undefined,
+      (request.status ?? "DRAFT") === "CONFIRMED"
+        ? new Date().toISOString()
+        : undefined,
     createdAt: new Date().toISOString(),
     cropCode: crop.code,
     cropId: crop.id,
@@ -519,10 +514,7 @@ export async function createCropPlan(
   });
 }
 
-export async function updateCropPlanStatus(
-  plan: CropPlan,
-  status: CropPlanStatus
-) {
+export async function updateCropPlanStatus(plan: CropPlan, status: CropPlanStatus) {
   const accessToken = await getAccessToken();
 
   if (accessToken) {
@@ -668,13 +660,20 @@ function toCropSeasonRequest(input: CropSeasonInput): CropSeasonRequest {
 
   if (
     startMonth !== undefined &&
-    (startMonth < 1 || startMonth > 12 || endMonth === undefined || endMonth < 1 || endMonth > 12)
+    (startMonth < 1 ||
+      startMonth > 12 ||
+      endMonth === undefined ||
+      endMonth < 1 ||
+      endMonth > 12)
   ) {
     throw new AppError("VALIDATION_FAILED", "Season months must be between 1 and 12.");
   }
 
   if (seasonYear < 1900 || seasonYear > 2200) {
-    throw new AppError("VALIDATION_FAILED", "Season year must be between 1900 and 2200.");
+    throw new AppError(
+      "VALIDATION_FAILED",
+      "Season year must be between 1900 and 2200."
+    );
   }
 
   return {
@@ -921,9 +920,7 @@ async function ensureLocalCropCodeAvailable(code: string) {
 }
 
 async function getLocalCropSeasons() {
-  const saved = await readJsonArray<Partial<CropSeason>>([
-    storageKeys.fpo.seasons
-  ]);
+  const saved = await readJsonArray<Partial<CropSeason>>([storageKeys.fpo.seasons]);
   return saved
     .map(toStoredCropSeason)
     .filter((season): season is CropSeason => Boolean(season));
@@ -992,12 +989,8 @@ async function upsertLocalCropHistory(history: CropHistory) {
 }
 
 async function getLocalCropPlans() {
-  const saved = await readJsonArray<Partial<CropPlan>>([
-    storageKeys.fpo.cropPlans
-  ]);
-  return saved
-    .map(toStoredCropPlan)
-    .filter((plan): plan is CropPlan => Boolean(plan));
+  const saved = await readJsonArray<Partial<CropPlan>>([storageKeys.fpo.cropPlans]);
+  return saved.map(toStoredCropPlan).filter((plan): plan is CropPlan => Boolean(plan));
 }
 
 async function upsertLocalCropPlan(plan: CropPlan) {
@@ -1016,7 +1009,9 @@ function cropPlanListEndpoint(filters: CropPlanFilters) {
   if (filters.seasonId) params.append("seasonId", filters.seasonId);
   if (filters.status) params.append("status", filters.status);
   const query = params.toString();
-  return query ? `${endpoints.fpo.cropPlans.list}?${query}` : endpoints.fpo.cropPlans.list;
+  return query
+    ? `${endpoints.fpo.cropPlans.list}?${query}`
+    : endpoints.fpo.cropPlans.list;
 }
 
 function matchesCropPlanFilters(plan: CropPlan, filters: CropPlanFilters) {

@@ -1,6 +1,6 @@
 # FPO Phase 1 Data Dictionary
 
-Last updated: 2026-05-14
+Last updated: 2026-05-15
 
 This data dictionary reflects the client-approved Phase 1 scope. It should be
 used with the [Phase 1 Client Decision Register](phase1-client-decision-register.md)
@@ -15,10 +15,10 @@ checks.
 | Farmer profile | Final mandatory fields implemented | Taluka, state, optional Aadhaar, approved gender/category values, Indian mobile normalization, suspended status, and farmer user linkage are aligned. |
 | Soil profile | Required for existing lab reports; blank allowed | Phase 1 backend API, schema, admin entry UI, optional report link/metadata, and tests are implemented without carbon calculation. |
 | Land/GPS | GPS point only, acres, approved ownership/irrigation values | Phase 1 schema, API validation, admin UI controls, and tests are aligned. |
-| Crop planning | Crop list, seasons, crop year, and statuses approved | Foundation exists; crop year/date/status details need alignment. |
-| Input demand | Confirmed plans only, fixed per-acre defaults, 5% buffer | Foundation exists; buffer/rounding/report output need alignment. |
+| Crop planning | Crop list, seasons, crop year, and statuses approved | Phase 1 crop year label, optional expected yield, confirmation timestamp, UI fields, API contracts, and tests are aligned. |
+| Input demand | Confirmed plans only, fixed per-acre defaults, 5% buffer | Calculation now uses confirmed plans only, stores total demand, 5% buffer, and rounded final demand; exact three-sheet report output remains in the report alignment task. |
 | Advisory | Text plus multiple images; all members or crop target | Foundation exists; image attachments and crop targeting need alignment. |
-| Reports | Excel only, three approved sheets, filters, footer/branding | Foundation exists; workbook must be refactored to exact Phase 1 format. |
+| Reports | Excel only, three approved sheets, filters, footer/branding | Workbook now emits the approved three sheets and columns; report filter UI/backend application plus branding/footer polish remain pending. |
 | UAT | Pilot data and sign-off owners approved | UAT guide created; execution pending. |
 
 ## Roles

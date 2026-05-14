@@ -71,13 +71,18 @@ export type InputDemandEstimate = {
   memberName: string;
   memberNumber: string;
   memberVillage: string;
+  bufferPercent: number;
+  bufferQuantity: number;
+  finalDemandQuantity: number;
   plannedAreaAcres?: number;
+  recommendedQuantityPerAcre: number;
   seasonCode: string;
   seasonId: string;
   seasonName: string;
   seasonYear: number;
   status: InputDemandEstimateStatus;
   tenantId?: string;
+  totalDemandQuantity: number;
   unit: string;
   updatedAt: string;
 };
@@ -326,7 +331,12 @@ export async function createCropInputRule(
 
   const crop = crops.find((item) => item.id === request.cropId);
   const inputRecord = inputs.find((item) => item.id === request.inputId);
-  if (!crop || crop.status !== "ACTIVE" || !inputRecord || inputRecord.status !== "ACTIVE") {
+  if (
+    !crop ||
+    crop.status !== "ACTIVE" ||
+    !inputRecord ||
+    inputRecord.status !== "ACTIVE"
+  ) {
     throw new AppError("VALIDATION_FAILED", "Select active crop and input records.");
   }
 
@@ -364,10 +374,11 @@ export async function updateCropInputRule(
 
   if (accessToken) {
     try {
-      const response = await apiClient.put<
-        CropInputRuleRequest,
-        CropInputRuleResponse
-      >(endpoints.fpo.inputRules.byId(rule.id), request, { accessToken });
+      const response = await apiClient.put<CropInputRuleRequest, CropInputRuleResponse>(
+        endpoints.fpo.inputRules.byId(rule.id),
+        request,
+        { accessToken }
+      );
       const updated = toCropInputRule(response);
 
       await upsertLocalRule(updated);
@@ -385,7 +396,12 @@ export async function updateCropInputRule(
 
   const crop = crops.find((item) => item.id === request.cropId);
   const inputRecord = inputs.find((item) => item.id === request.inputId);
-  if (!crop || crop.status !== "ACTIVE" || !inputRecord || inputRecord.status !== "ACTIVE") {
+  if (
+    !crop ||
+    crop.status !== "ACTIVE" ||
+    !inputRecord ||
+    inputRecord.status !== "ACTIVE"
+  ) {
     throw new AppError("VALIDATION_FAILED", "Select active crop and input records.");
   }
 
@@ -589,18 +605,25 @@ function toInputDemandEstimate(
     memberName: response.memberName,
     memberNumber: response.memberNumber,
     memberVillage: response.memberVillage,
+    bufferPercent: response.bufferPercent,
+    bufferQuantity: response.bufferQuantity,
+    finalDemandQuantity: response.finalDemandQuantity,
+    recommendedQuantityPerAcre: response.recommendedQuantityPerAcre,
     seasonCode: response.seasonCode,
     seasonId: response.seasonId,
     seasonName: response.seasonName,
     seasonYear: response.seasonYear,
     status: response.status,
     tenantId: response.tenantId,
+    totalDemandQuantity: response.totalDemandQuantity,
     unit: response.unit,
     updatedAt: response.updatedAt
   };
 }
 
-function toInputDemandSummary(response: InputDemandSummaryResponse): InputDemandSummary {
+function toInputDemandSummary(
+  response: InputDemandSummaryResponse
+): InputDemandSummary {
   return {
     byCrop: response.byCrop,
     byInput: response.byInput,
@@ -646,7 +669,10 @@ function toCropInputRuleRequest(input: CropInputRuleInput): CropInputRuleRequest
 
 function toInputDemandRunRequest(input: InputDemandRunInput): InputDemandRunRequest {
   if (!input.seasonId) {
-    throw new AppError("VALIDATION_FAILED", "Select a season before calculating demand.");
+    throw new AppError(
+      "VALIDATION_FAILED",
+      "Select a season before calculating demand."
+    );
   }
 
   return {
@@ -670,7 +696,9 @@ async function runLocalInputDemand(
     getLocalInputs()
   ]);
   const activeInputsById = new Map(
-    inputs.filter((input) => input.status === "ACTIVE").map((input) => [input.id, input])
+    inputs
+      .filter((input) => input.status === "ACTIVE")
+      .map((input) => [input.id, input])
   );
   const matchingPlans = plans.filter(
     (plan) =>
@@ -701,38 +729,54 @@ async function runLocalInputDemand(
       }
 
       const current = accumulator.get(rule.inputId);
-      const quantity = roundQuantity(plan.plannedAreaAcres * rule.quantityPerAcre);
+      const totalDemandQuantity = roundQuantity(
+        plan.plannedAreaAcres * rule.quantityPerAcre
+      );
+      const recommendedQuantityPerAcre = roundQuantity(
+        (current?.recommendedQuantityPerAcre ?? 0) + rule.quantityPerAcre
+      );
+      const nextTotalDemandQuantity = roundQuantity(
+        (current?.totalDemandQuantity ?? 0) + totalDemandQuantity
+      );
+      const calculated = calculateDemandQuantities(nextTotalDemandQuantity);
       accumulator.set(rule.inputId, {
+        ...calculated,
         input,
-        quantity: roundQuantity((current?.quantity ?? 0) + quantity)
+        recommendedQuantityPerAcre,
+        totalDemandQuantity: nextTotalDemandQuantity
       });
       return accumulator;
-    }, new Map<string, { input: InputCatalog; quantity: number }>());
+    }, new Map<string, LocalInputQuantity>());
 
-    quantities.forEach(({ input, quantity }) => {
+    quantities.forEach((quantity) => {
       estimates.push({
+        bufferPercent: quantity.bufferPercent,
+        bufferQuantity: quantity.bufferQuantity,
         createdAt: now,
         cropCode: plan.cropCode,
         cropId: plan.cropId,
         cropName: plan.cropName,
         cropPlanId: plan.id,
-        estimatedQuantity: quantity,
-        id: `local-demand-${plan.id}-${input.id}`,
-        inputCategory: input.category,
-        inputCode: input.code,
-        inputId: input.id,
-        inputName: input.name,
+        estimatedQuantity: quantity.finalDemandQuantity,
+        finalDemandQuantity: quantity.finalDemandQuantity,
+        id: `local-demand-${plan.id}-${quantity.input.id}`,
+        inputCategory: quantity.input.category,
+        inputCode: quantity.input.code,
+        inputId: quantity.input.id,
+        inputName: quantity.input.name,
         memberId: plan.memberId,
         memberName: plan.memberName,
         memberNumber: plan.memberNumber,
         memberVillage: plan.memberVillage,
         plannedAreaAcres: plan.plannedAreaAcres,
+        recommendedQuantityPerAcre: quantity.recommendedQuantityPerAcre,
         seasonCode: plan.seasonCode,
         seasonId: plan.seasonId,
         seasonName: plan.seasonName,
         seasonYear: plan.seasonYear,
         status: "ESTIMATED",
-        unit: input.unit,
+        totalDemandQuantity: quantity.totalDemandQuantity,
+        unit: quantity.input.unit,
         updatedAt: now
       });
     });
@@ -786,7 +830,9 @@ async function summarizeLocalDemand(
   return summary;
 }
 
-function toEstimateResponse(estimate: InputDemandEstimate): InputDemandEstimateResponse {
+function toEstimateResponse(
+  estimate: InputDemandEstimate
+): InputDemandEstimateResponse {
   return {
     createdAt: estimate.createdAt,
     cropCode: estimate.cropCode,
@@ -803,12 +849,17 @@ function toEstimateResponse(estimate: InputDemandEstimate): InputDemandEstimateR
     memberName: estimate.memberName,
     memberNumber: estimate.memberNumber,
     memberVillage: estimate.memberVillage,
+    bufferPercent: estimate.bufferPercent,
+    bufferQuantity: estimate.bufferQuantity,
+    finalDemandQuantity: estimate.finalDemandQuantity,
+    recommendedQuantityPerAcre: estimate.recommendedQuantityPerAcre,
     seasonCode: estimate.seasonCode,
     seasonId: estimate.seasonId,
     seasonName: estimate.seasonName,
     seasonYear: estimate.seasonYear,
     status: estimate.status,
     tenantId: estimate.tenantId ?? "",
+    totalDemandQuantity: estimate.totalDemandQuantity,
     unit: estimate.unit,
     updatedAt: estimate.updatedAt
   };
@@ -827,10 +878,19 @@ function inputBreakdowns(estimates: InputDemandEstimate[]): InputDemandByInput[]
         estimatedQuantity: roundQuantity(
           group.reduce((total, estimate) => total + estimate.estimatedQuantity, 0)
         ),
+        bufferQuantity: roundQuantity(
+          group.reduce((total, estimate) => total + estimate.bufferQuantity, 0)
+        ),
+        finalDemandQuantity: roundQuantity(
+          group.reduce((total, estimate) => total + estimate.finalDemandQuantity, 0)
+        ),
         inputCode: first.inputCode,
         inputId: first.inputId,
         inputName: first.inputName,
         planCount: new Set(group.map((estimate) => estimate.cropPlanId)).size,
+        totalDemandQuantity: roundQuantity(
+          group.reduce((total, estimate) => total + estimate.totalDemandQuantity, 0)
+        ),
         unit: first.unit
       };
     })
@@ -977,6 +1037,11 @@ function toStoredEstimate(
     typeof estimate.inputCode !== "string" ||
     typeof estimate.inputName !== "string" ||
     typeof estimate.estimatedQuantity !== "number" ||
+    typeof estimate.bufferPercent !== "number" ||
+    typeof estimate.bufferQuantity !== "number" ||
+    typeof estimate.finalDemandQuantity !== "number" ||
+    typeof estimate.recommendedQuantityPerAcre !== "number" ||
+    typeof estimate.totalDemandQuantity !== "number" ||
     typeof estimate.memberId !== "string" ||
     typeof estimate.memberName !== "string" ||
     typeof estimate.memberNumber !== "string" ||
@@ -1008,13 +1073,18 @@ function toStoredEstimate(
     memberName: estimate.memberName,
     memberNumber: estimate.memberNumber,
     memberVillage: estimate.memberVillage,
+    bufferPercent: estimate.bufferPercent,
+    bufferQuantity: estimate.bufferQuantity,
+    finalDemandQuantity: estimate.finalDemandQuantity,
     plannedAreaAcres: estimate.plannedAreaAcres,
+    recommendedQuantityPerAcre: estimate.recommendedQuantityPerAcre,
     seasonCode: estimate.seasonCode,
     seasonId: estimate.seasonId,
     seasonName: estimate.seasonName,
     seasonYear: estimate.seasonYear,
     status: estimate.status ?? "ESTIMATED",
     tenantId: estimate.tenantId,
+    totalDemandQuantity: estimate.totalDemandQuantity,
     unit: estimate.unit,
     updatedAt: estimate.updatedAt
   };
@@ -1052,9 +1122,7 @@ async function getLocalRules() {
   const saved = await readJsonArray<Partial<CropInputRule>>([
     storageKeys.fpo.inputRules
   ]);
-  return saved
-    .map(toStoredRule)
-    .filter((rule): rule is CropInputRule => Boolean(rule));
+  return saved.map(toStoredRule).filter((rule): rule is CropInputRule => Boolean(rule));
 }
 
 async function upsertLocalRule(rule: CropInputRule) {
@@ -1118,7 +1186,9 @@ function inputRuleListEndpoint(filters: InputRuleFilters) {
   if (filters.inputId) params.append("inputId", filters.inputId);
   if (filters.status) params.append("status", filters.status);
   const query = params.toString();
-  return query ? `${endpoints.fpo.inputRules.list}?${query}` : endpoints.fpo.inputRules.list;
+  return query
+    ? `${endpoints.fpo.inputRules.list}?${query}`
+    : endpoints.fpo.inputRules.list;
 }
 
 function demandEstimateEndpoint(basePath: string, filters: InputDemandFilters) {
@@ -1152,6 +1222,25 @@ function matchesEstimateFilters(
 
 function sumPlannedArea(plans: CropPlan[]) {
   return roundQuantity(plans.reduce((total, plan) => total + plan.plannedAreaAcres, 0));
+}
+
+type LocalInputQuantity = {
+  bufferPercent: number;
+  bufferQuantity: number;
+  finalDemandQuantity: number;
+  input: InputCatalog;
+  recommendedQuantityPerAcre: number;
+  totalDemandQuantity: number;
+};
+
+function calculateDemandQuantities(totalDemandQuantity: number) {
+  const bufferPercent = 5;
+  const bufferQuantity = roundQuantity((totalDemandQuantity * bufferPercent) / 100);
+  return {
+    bufferPercent,
+    bufferQuantity,
+    finalDemandQuantity: Math.ceil(totalDemandQuantity + bufferQuantity)
+  };
 }
 
 function roundQuantity(value: number) {

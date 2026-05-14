@@ -16,13 +16,13 @@ current repository state, not client acceptance or a commercial commitment.
 | Auth, users, and roles       |        93% | High       | JWT, role APIs, local seeds, frontend routing, staff-login creation, farmer-profile login creation, role-aware UI controls, and tests now use `ADMIN`, `FPO_MANAGER`, `FIELD_COORDINATOR`, and `FARMER`. |
 | Workflow and activity engine |        82% | High       | Configurable definitions, activity start, task status, and tests exist; client-specific workflow templates still need UAT. |
 | Evidence and storage         |        80% | Medium     | Local and MinIO adapters exist; MinIO integration test coverage is still missing. |
-| Reporting and exports        |        72% | Medium     | Generic summary/export and FPO Excel export exist; Phase 1 workbook must be refactored to the approved three-sheet format. |
+| Reporting and exports        |        80% | Medium     | Generic summary/export and the FPO approved three-sheet workbook exist with tests; report filter application and branding/footer polish remain. |
 | Module subscription platform |        82% | Medium     | Backend guards, frontend module visibility, and Phase 2 carbon screen hiding behind `SUSTAINABILITY` exist; packaging/handover process remains pending. |
 | FPO member management        |        90% | High       | Approved farmer fields, farmer username/password login, coordinator assignment, tenant/FPO scoping, farmer-profile UI wording, validation, and focused tests are aligned. |
 | FPO land and plot records    |        82% | High       | Survey/khasra, acres, approved ownership/irrigation values, required GPS latitude/longitude, schema checks, API validation, UI controls, and tests are aligned; polygon maps remain Phase 2. |
 | FPO soil profiles            |        82% | High       | Phase 1 SOC, pH, N, P, K, optional report link/metadata, backend API, admin entry UI, JUnit, and Testcontainers coverage are in place; real S3 upload wiring remains grouped with advisory/storage work. |
-| FPO crop planning            |        80% | High       | Catalog, seasons, crop history, seasonal plans, UI, and tests exist; farmer mobile views are Phase 2. |
-| FPO input demand             |        74% | Medium     | Catalog, input rules, calculation, summaries, UI, and tests exist; confirmed-only demand, 5% buffer, round-up, and `confirmed_at` need alignment. |
+| FPO crop planning            |        85% | High       | Catalog, seasons, crop history, seasonal plans, crop year labels, optional expected yield, confirmation timestamp, UI, and tests are aligned; farmer mobile views are Phase 2. |
+| FPO input demand             |        84% | High       | Catalog, input rules, confirmed-only calculation, 5% buffer, round-up, summaries, UI, migration, and tests are aligned; approved workbook output remains in report work. |
 | FPO advisory                 |        62% | Medium     | Advisory backend and admin UI exist; crop targeting and multiple image attachments need alignment. |
 | Carbon app-flow prototype    |        35% | Low        | Frontend dummy screens/data exist but are hidden behind the disabled `SUSTAINABILITY` module for Phase 1; durable schema, methodology, providers, and exports are pending. |
 | QA automation                |        68% | Medium     | JUnit, Spring tests, Testcontainers PostgreSQL, CI, lint, and typecheck exist; UI/E2E tests and coverage gates are missing. |
@@ -32,7 +32,7 @@ Overall readiness:
 
 - Developer/demo environment: about 85%.
 - FPO MVP technical foundation: about 83%.
-- FPO Phase 1 go-live readiness before UAT: about 83-85% after client scope lock; implementation gaps remain.
+- FPO Phase 1 go-live readiness before UAT: about 86-88% after client scope lock; implementation gaps remain.
 - Full client POC vision including OTP, maps, satellite, AI, carbon, marketplace, and payments: about 20-25%.
 
 ## Testing And Quality Audit
@@ -95,8 +95,10 @@ To avoid duplicate or conflicting information:
 | Land/GPS field alignment | Done | Backend/Frontend/QA | Survey/khasra, acres, approved ownership/irrigation values, and required GPS point capture are implemented. |
 | FPO ownership/scoped access alignment | Done | Backend/Frontend/QA | `FARMER` username/password login is restored for Phase 1, member profiles link to farmer users, coordinators are scoped to assigned members, and focused role isolation tests pass. |
 | Soil profile entry | Done | Backend/Frontend/QA | SOC, pH, N, P, K, optional report link/metadata, no carbon calculation, admin UI entry, and focused tests are implemented. |
-| Input demand alignment | Pending | Backend/QA | Add confirmed timestamp, 5% buffer, round-up, and approved report fields. |
-| Report workbook alignment | Pending | Backend/Frontend/QA | Refactor current FPO workbook to exactly `Farmer Register`, `Crop Plan Summary`, and `Input Demand`. |
+| Crop plan Phase 1 alignment | Done | Backend/Frontend/QA | Crop plans now store `crop_year`, optional expected yield, and `confirmed_at`; UI/API contracts and focused unit/integration tests are aligned. |
+| Input demand alignment | Done | Backend/Frontend/QA | Demand now uses `CONFIRMED` crop plans only, stores total demand, 5% buffer, and rounded final demand, and exposes those values in API/UI summaries with focused unit and Testcontainers coverage. |
+| Report workbook alignment | Done | Backend/Frontend/QA | FPO export now emits exactly `Farmer Register`, `Crop Plan Summary`, and `Input Demand` with approved columns and focused workbook/controller tests. |
+| Report filters and branding | Pending | Backend/Frontend/QA | Apply village/crop/season/coordinator/date filters to export and add approved branding/footer presentation. |
 | Advisory image and crop targeting alignment | Pending | Backend/Frontend/QA | Add all-members/crop targeting and multiple image attachments through storage. |
 | Production secrets and hosting | Pending | DevOps/Client | Required for secure deployment outside local/dev. |
 | Backups and restore drill | Pending | DevOps | Production readiness requires verified recovery, not only a backup command. |
@@ -110,8 +112,8 @@ To avoid duplicate or conflicting information:
 
 ## Next Cleanup Tasks
 
-1. Continue with `FPO-ALIGN-006`: add crop plan `confirmed_at`, crop year
-   string, and optional expected yield.
+1. Continue with report export filters/branding, then `FPO-ALIGN-009` advisory
+   crop targeting and multiple image attachments.
 2. Rehearse the clean-start runbook on a fresh machine or clean Windows profile.
 3. Finalize the client-facing operations manual after production hosting is
    chosen.

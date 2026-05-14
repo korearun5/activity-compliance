@@ -254,22 +254,20 @@ class FpoReportControllerIT {
           StandardCharsets.UTF_8
       );
       String demandSheet = new String(
-          workbook.getInputStream(workbook.getEntry("xl/worksheets/sheet7.xml")).readAllBytes(),
+          workbook.getInputStream(workbook.getEntry("xl/worksheets/sheet3.xml")).readAllBytes(),
           StandardCharsets.UTF_8
       );
 
       org.assertj.core.api.Assertions.assertThat(workbookXml)
-          .contains("Farmer Master")
-          .contains("Landholdings")
-          .contains("Farm Plots")
-          .contains("Crop History")
-          .contains("Seasonal Crop Plans")
-          .contains("Input Demand Summary")
-          .contains("Farmer-wise Input Demand");
+          .contains("Farmer Register")
+          .contains("Crop Plan Summary")
+          .contains("Input Demand")
+          .doesNotContain("Landholdings")
+          .doesNotContain("Farm Plots")
+          .doesNotContain("Farmer-wise Input Demand");
       org.assertj.core.api.Assertions.assertThat(demandSheet)
-          .contains("MEM-1")
+          .contains("Input Type (Seed/Fertilizer)")
           .contains("Onion")
-          .contains("NPK 19")
           .contains("15.0000");
     }
   }
@@ -407,6 +405,11 @@ class FpoReportControllerIT {
         tenant,
         plan,
         input,
+        quantity,
+        quantity,
+        quantity,
+        new BigDecimal("5.00"),
+        BigDecimal.ZERO,
         quantity,
         input.getUnit(),
         InputDemandEstimateStatus.ESTIMATED,

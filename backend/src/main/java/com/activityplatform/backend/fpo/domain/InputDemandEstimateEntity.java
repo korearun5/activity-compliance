@@ -35,6 +35,21 @@ public class InputDemandEstimateEntity {
   @Column(name = "estimated_quantity", nullable = false)
   private BigDecimal estimatedQuantity;
 
+  @Column(name = "recommended_quantity_per_acre", nullable = false)
+  private BigDecimal recommendedQuantityPerAcre;
+
+  @Column(name = "total_demand_quantity", nullable = false)
+  private BigDecimal totalDemandQuantity;
+
+  @Column(name = "buffer_percent", nullable = false)
+  private BigDecimal bufferPercent;
+
+  @Column(name = "buffer_quantity", nullable = false)
+  private BigDecimal bufferQuantity;
+
+  @Column(name = "final_demand_quantity", nullable = false)
+  private BigDecimal finalDemandQuantity;
+
   @Column(nullable = false)
   private String unit;
 
@@ -57,6 +72,11 @@ public class InputDemandEstimateEntity {
       SeasonalCropPlanEntity cropPlan,
       InputCatalogEntity input,
       BigDecimal estimatedQuantity,
+      BigDecimal recommendedQuantityPerAcre,
+      BigDecimal totalDemandQuantity,
+      BigDecimal bufferPercent,
+      BigDecimal bufferQuantity,
+      BigDecimal finalDemandQuantity,
       String unit,
       InputDemandEstimateStatus status,
       Instant now
@@ -66,6 +86,11 @@ public class InputDemandEstimateEntity {
     this.cropPlan = cropPlan;
     this.input = input;
     this.estimatedQuantity = estimatedQuantity;
+    this.recommendedQuantityPerAcre = recommendedQuantityPerAcre;
+    this.totalDemandQuantity = totalDemandQuantity;
+    this.bufferPercent = bufferPercent;
+    this.bufferQuantity = bufferQuantity;
+    this.finalDemandQuantity = finalDemandQuantity;
     this.unit = unit;
     this.status = status;
     this.createdAt = now;
@@ -92,6 +117,26 @@ public class InputDemandEstimateEntity {
     return estimatedQuantity;
   }
 
+  public BigDecimal getRecommendedQuantityPerAcre() {
+    return recommendedQuantityPerAcre;
+  }
+
+  public BigDecimal getTotalDemandQuantity() {
+    return totalDemandQuantity;
+  }
+
+  public BigDecimal getBufferPercent() {
+    return bufferPercent;
+  }
+
+  public BigDecimal getBufferQuantity() {
+    return bufferQuantity;
+  }
+
+  public BigDecimal getFinalDemandQuantity() {
+    return finalDemandQuantity;
+  }
+
   public String getUnit() {
     return unit;
   }
@@ -110,11 +155,21 @@ public class InputDemandEstimateEntity {
 
   public void updateEstimate(
       BigDecimal estimatedQuantity,
+      BigDecimal recommendedQuantityPerAcre,
+      BigDecimal totalDemandQuantity,
+      BigDecimal bufferPercent,
+      BigDecimal bufferQuantity,
+      BigDecimal finalDemandQuantity,
       String unit,
       InputDemandEstimateStatus status,
       Instant now
   ) {
     this.estimatedQuantity = estimatedQuantity;
+    this.recommendedQuantityPerAcre = recommendedQuantityPerAcre;
+    this.totalDemandQuantity = totalDemandQuantity;
+    this.bufferPercent = bufferPercent;
+    this.bufferQuantity = bufferQuantity;
+    this.finalDemandQuantity = finalDemandQuantity;
     this.unit = unit;
     this.status = status;
     this.updatedAt = now;

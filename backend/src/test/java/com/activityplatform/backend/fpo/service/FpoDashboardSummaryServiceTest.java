@@ -402,6 +402,11 @@ class FpoDashboardSummaryServiceTest {
         plan,
         input,
         quantity,
+        quantity,
+        quantity,
+        new BigDecimal("5.00"),
+        BigDecimal.ZERO,
+        quantity,
         input.getUnit(),
         InputDemandEstimateStatus.ESTIMATED,
         Instant.now()

@@ -9,6 +9,9 @@ public record InputDemandByInputResponse(
     String inputName,
     String unit,
     BigDecimal estimatedQuantity,
+    BigDecimal totalDemandQuantity,
+    BigDecimal bufferQuantity,
+    BigDecimal finalDemandQuantity,
     int planCount
 ) {
 }

@@ -1,24 +1,21 @@
 package com.activityplatform.backend.fpo.service;
 
+import com.activityplatform.backend.fpo.domain.CropPlanStatus;
 import com.activityplatform.backend.fpo.domain.FarmLandholdingEntity;
-import com.activityplatform.backend.fpo.domain.FarmPlotEntity;
-import com.activityplatform.backend.fpo.domain.FarmerCropHistoryEntity;
 import com.activityplatform.backend.fpo.domain.FpoMemberProfileEntity;
 import com.activityplatform.backend.fpo.domain.InputDemandEstimateEntity;
 import com.activityplatform.backend.fpo.domain.SeasonalCropPlanEntity;
 import com.activityplatform.backend.fpo.repository.FarmLandholdingRepository;
-import com.activityplatform.backend.fpo.repository.FarmPlotRepository;
-import com.activityplatform.backend.fpo.repository.FarmerCropHistoryRepository;
 import com.activityplatform.backend.fpo.repository.FpoMemberProfileRepository;
 import com.activityplatform.backend.fpo.repository.InputDemandEstimateRepository;
 import com.activityplatform.backend.fpo.repository.SeasonalCropPlanRepository;
 import com.activityplatform.backend.reporting.service.SimpleXlsxWorkbookBuilder;
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -29,23 +26,17 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class FpoReportWorkbookService {
   private final FarmLandholdingRepository landholdingRepository;
-  private final FarmPlotRepository plotRepository;
-  private final FarmerCropHistoryRepository cropHistoryRepository;
   private final FpoMemberProfileRepository memberRepository;
   private final InputDemandEstimateRepository demandEstimateRepository;
   private final SeasonalCropPlanRepository cropPlanRepository;
 
   public FpoReportWorkbookService(
       FarmLandholdingRepository landholdingRepository,
-      FarmPlotRepository plotRepository,
-      FarmerCropHistoryRepository cropHistoryRepository,
       FpoMemberProfileRepository memberRepository,
       InputDemandEstimateRepository demandEstimateRepository,
       SeasonalCropPlanRepository cropPlanRepository
   ) {
     this.landholdingRepository = landholdingRepository;
-    this.plotRepository = plotRepository;
-    this.cropHistoryRepository = cropHistoryRepository;
     this.memberRepository = memberRepository;
     this.demandEstimateRepository = demandEstimateRepository;
     this.cropPlanRepository = cropPlanRepository;
@@ -56,8 +47,6 @@ public class FpoReportWorkbookService {
     return buildWorkbook(new FpoReportDataset(
         memberRepository.findByTenantIdOrderByCreatedAtDesc(tenantId),
         landholdingRepository.findByTenantIdOrderByCreatedAtDesc(tenantId),
-        plotRepository.findByTenantIdOrderByCreatedAtDesc(tenantId),
-        cropHistoryRepository.findByTenantIdOrderByCreatedAtDesc(tenantId),
         cropPlanRepository.findByTenantIdOrderByCreatedAtDesc(tenantId),
         demandEstimateRepository.findByTenantIdOrderByCreatedAtDesc(tenantId)
     ));
@@ -65,334 +54,201 @@ public class FpoReportWorkbookService {
 
   byte[] buildWorkbook(FpoReportDataset dataset) {
     return new SimpleXlsxWorkbookBuilder().build(List.of(
-        new SimpleXlsxWorkbookBuilder.Sheet("Farmer Master", farmerMasterRows(dataset.members())),
-        new SimpleXlsxWorkbookBuilder.Sheet("Landholdings", landholdingRows(dataset.landholdings())),
-        new SimpleXlsxWorkbookBuilder.Sheet("Farm Plots", plotRows(dataset.plots())),
         new SimpleXlsxWorkbookBuilder.Sheet(
-            "Crop History",
-            cropHistoryRows(dataset.cropHistory())
+            "Farmer Register",
+            farmerRegisterRows(dataset.members(), dataset.landholdings())
         ),
         new SimpleXlsxWorkbookBuilder.Sheet(
-            "Seasonal Crop Plans",
-            cropPlanRows(dataset.cropPlans())
+            "Crop Plan Summary",
+            cropPlanSummaryRows(dataset.cropPlans())
         ),
         new SimpleXlsxWorkbookBuilder.Sheet(
-            "Input Demand Summary",
-            inputDemandSummaryRows(dataset.demandEstimates())
-        ),
-        new SimpleXlsxWorkbookBuilder.Sheet(
-            "Farmer-wise Input Demand",
-            farmerWiseDemandRows(dataset.demandEstimates())
+            "Input Demand",
+            inputDemandRows(dataset.demandEstimates())
         )
     ));
   }
 
-  private List<List<String>> farmerMasterRows(List<FpoMemberProfileEntity> members) {
-    List<List<String>> rows = new ArrayList<>();
-    rows.add(row(
-        "Member number",
-        "Farmer name",
-        "Mobile number",
-        "Alternate mobile",
-        "Aadhaar number",
-        "Village",
-        "Taluka",
-        "District",
-        "State",
-        "Gender",
-        "Age",
-        "Farmer category",
-        "Coordinator",
-        "Status",
-        "Login username",
-        "Created at",
-        "Updated at"
-    ));
-
-    members.stream()
-        .sorted(Comparator.comparing(FpoMemberProfileEntity::getMemberNumber))
-        .forEach(member -> rows.add(row(
-            member.getMemberNumber(),
-            member.getDisplayName(),
-            member.getMobileNumber(),
-            member.getAlternateMobileNumber(),
-            member.getAadhaarNumber(),
-            member.getVillage(),
-            member.getTaluka(),
-            member.getDistrictName(),
-            member.getStateName(),
-            member.getGender(),
-            member.getAge(),
-            member.getFarmerCategory(),
-            member.getCoordinatorUser() == null
-                ? null
-                : member.getCoordinatorUser().getDisplayName(),
-            member.getStatus(),
-            member.getUser().getUsername(),
-            member.getCreatedAt(),
-            member.getUpdatedAt()
-        )));
-
-    return rows;
-  }
-
-  private List<List<String>> landholdingRows(List<FarmLandholdingEntity> landholdings) {
-    List<List<String>> rows = new ArrayList<>();
-    rows.add(row(
-        "Member number",
-        "Farmer name",
-        "Village",
-        "Survey number",
-        "Total area acres",
-        "Cultivable area acres",
-        "Ownership type",
-        "Irrigation source",
-        "Status",
-        "Created at",
-        "Updated at"
-    ));
-
-    landholdings.stream()
-        .sorted(Comparator
-            .comparing((FarmLandholdingEntity item) -> item.getMemberProfile().getMemberNumber())
-            .thenComparing(FarmLandholdingEntity::getCreatedAt))
-        .forEach(landholding -> rows.add(row(
-            landholding.getMemberProfile().getMemberNumber(),
-            landholding.getMemberProfile().getDisplayName(),
-            landholding.getMemberProfile().getVillage(),
-            landholding.getSurveyNumber(),
-            landholding.getTotalAreaAcres(),
-            landholding.getCultivableAreaAcres(),
-            landholding.getOwnershipType(),
-            landholding.getIrrigationSource(),
-            landholding.getStatus(),
-            landholding.getCreatedAt(),
-            landholding.getUpdatedAt()
-        )));
-
-    return rows;
-  }
-
-  private List<List<String>> plotRows(List<FarmPlotEntity> plots) {
-    List<List<String>> rows = new ArrayList<>();
-    rows.add(row(
-        "Member number",
-        "Farmer name",
-        "Village",
-        "Plot name",
-        "Linked survey number",
-        "Area acres",
-        "Latitude",
-        "Longitude",
-        "Soil type",
-        "Status",
-        "Created at",
-        "Updated at"
-    ));
-
-    plots.stream()
-        .sorted(Comparator
-            .comparing((FarmPlotEntity item) -> item.getMemberProfile().getMemberNumber())
-            .thenComparing(FarmPlotEntity::getPlotName))
-        .forEach(plot -> rows.add(row(
-            plot.getMemberProfile().getMemberNumber(),
-            plot.getMemberProfile().getDisplayName(),
-            plot.getMemberProfile().getVillage(),
-            plot.getPlotName(),
-            plot.getLandholding() == null ? null : plot.getLandholding().getSurveyNumber(),
-            plot.getAreaAcres(),
-            plot.getLatitude(),
-            plot.getLongitude(),
-            plot.getSoilType(),
-            plot.getStatus(),
-            plot.getCreatedAt(),
-            plot.getUpdatedAt()
-        )));
-
-    return rows;
-  }
-
-  private List<List<String>> cropHistoryRows(List<FarmerCropHistoryEntity> historyItems) {
-    List<List<String>> rows = new ArrayList<>();
-    rows.add(row(
-        "Member number",
-        "Farmer name",
-        "Village",
-        "Crop",
-        "Crop code",
-        "Season",
-        "Season year",
-        "Crop year",
-        "Area acres",
-        "Yield quantity",
-        "Yield unit",
-        "Notes",
-        "Created at",
-        "Updated at"
-    ));
-
-    historyItems.stream()
-        .sorted(Comparator
-            .comparing((FarmerCropHistoryEntity item) ->
-                item.getMemberProfile().getMemberNumber())
-            .thenComparing(item -> item.getCrop().getName())
-            .thenComparing(item -> item.getCropYear() == null ? 0 : item.getCropYear()))
-        .forEach(history -> rows.add(row(
-            history.getMemberProfile().getMemberNumber(),
-            history.getMemberProfile().getDisplayName(),
-            history.getMemberProfile().getVillage(),
-            history.getCrop().getName(),
-            history.getCrop().getCode(),
-            history.getSeason() == null ? null : history.getSeason().getName(),
-            history.getSeason() == null ? null : history.getSeason().getSeasonYear(),
-            history.getCropYear(),
-            history.getAreaAcres(),
-            history.getYieldQuantity(),
-            history.getYieldUnit(),
-            history.getNotes(),
-            history.getCreatedAt(),
-            history.getUpdatedAt()
-        )));
-
-    return rows;
-  }
-
-  private List<List<String>> cropPlanRows(List<SeasonalCropPlanEntity> plans) {
-    List<List<String>> rows = new ArrayList<>();
-    rows.add(row(
-        "Member number",
-        "Farmer name",
-        "Village",
-        "Crop",
-        "Crop code",
-        "Season",
-        "Season year",
-        "Plot",
-        "Planned area acres",
-        "Planned sowing date",
-        "Expected harvest date",
-        "Status",
-        "Created at",
-        "Updated at"
-    ));
-
-    plans.stream()
-        .sorted(Comparator
-            .comparing((SeasonalCropPlanEntity item) -> item.getSeason().getSeasonYear())
-            .thenComparing(item -> item.getCrop().getName())
-            .thenComparing(item -> item.getMemberProfile().getMemberNumber()))
-        .forEach(plan -> rows.add(row(
-            plan.getMemberProfile().getMemberNumber(),
-            plan.getMemberProfile().getDisplayName(),
-            plan.getMemberProfile().getVillage(),
-            plan.getCrop().getName(),
-            plan.getCrop().getCode(),
-            plan.getSeason().getName(),
-            plan.getSeason().getSeasonYear(),
-            plan.getPlot() == null ? null : plan.getPlot().getPlotName(),
-            plan.getPlannedAreaAcres(),
-            plan.getPlannedSowingDate(),
-            plan.getExpectedHarvestDate(),
-            plan.getStatus(),
-            plan.getCreatedAt(),
-            plan.getUpdatedAt()
-        )));
-
-    return rows;
-  }
-
-  private List<List<String>> inputDemandSummaryRows(
-      List<InputDemandEstimateEntity> estimates
+  private List<List<String>> farmerRegisterRows(
+      List<FpoMemberProfileEntity> members,
+      List<FarmLandholdingEntity> landholdings
   ) {
     List<List<String>> rows = new ArrayList<>();
     rows.add(row(
-        "Input code",
-        "Input name",
-        "Unit",
-        "Estimated quantity",
-        "Plan count",
-        "Farmer count"
+        "Name",
+        "Mobile",
+        "Village",
+        "Taluka",
+        "District",
+        "Survey No",
+        "Area (acres)",
+        "Category",
+        "Status"
+    ));
+
+    Map<UUID, List<FarmLandholdingEntity>> landholdingsByMember = landholdings.stream()
+        .collect(Collectors.groupingBy(
+            landholding -> landholding.getMemberProfile().getId(),
+            LinkedHashMap::new,
+            Collectors.toList()
+        ));
+
+    members.stream()
+        .sorted(Comparator.comparing(FpoMemberProfileEntity::getDisplayName))
+        .forEach(member -> {
+          List<FarmLandholdingEntity> memberLandholdings =
+              landholdingsByMember.getOrDefault(member.getId(), List.of());
+
+          if (memberLandholdings.isEmpty()) {
+            rows.add(farmerRegisterRow(member, null));
+            return;
+          }
+
+          memberLandholdings.stream()
+              .sorted(Comparator.comparing(FarmLandholdingEntity::getSurveyNumber))
+              .forEach(landholding -> rows.add(farmerRegisterRow(member, landholding)));
+        });
+
+    return rows;
+  }
+
+  private List<String> farmerRegisterRow(
+      FpoMemberProfileEntity member,
+      FarmLandholdingEntity landholding
+  ) {
+    return row(
+        member.getDisplayName(),
+        member.getMobileNumber(),
+        member.getVillage(),
+        member.getTaluka(),
+        member.getDistrictName(),
+        landholding == null ? null : landholding.getSurveyNumber(),
+        landholding == null ? null : landholding.getTotalAreaAcres(),
+        member.getFarmerCategory(),
+        member.getStatus()
+    );
+  }
+
+  private List<List<String>> cropPlanSummaryRows(List<SeasonalCropPlanEntity> plans) {
+    List<List<String>> rows = new ArrayList<>();
+    rows.add(row(
+        "Season",
+        "Year",
+        "Crop",
+        "Village",
+        "No. of Farmers",
+        "Total Area (acres)",
+        "Expected Yield (quintals)"
+    ));
+
+    plans.stream()
+        .filter(this::isReportableCropPlan)
+        .collect(Collectors.groupingBy(
+            CropPlanGroup::from,
+            LinkedHashMap::new,
+            Collectors.toList()
+        ))
+        .entrySet()
+        .stream()
+        .sorted(Map.Entry.comparingByKey())
+        .forEach(entry -> rows.add(cropPlanSummaryRow(entry.getKey(), entry.getValue())));
+
+    return rows;
+  }
+
+  private List<String> cropPlanSummaryRow(
+      CropPlanGroup group,
+      List<SeasonalCropPlanEntity> plans
+  ) {
+    Set<UUID> farmerIds = plans.stream()
+        .map(plan -> plan.getMemberProfile().getId())
+        .collect(Collectors.toSet());
+    return row(
+        group.season(),
+        group.year(),
+        group.crop(),
+        group.village(),
+        farmerIds.size(),
+        plans.stream()
+            .map(SeasonalCropPlanEntity::getPlannedAreaAcres)
+            .filter(Objects::nonNull)
+            .reduce(BigDecimal.ZERO, BigDecimal::add),
+        plans.stream()
+            .map(SeasonalCropPlanEntity::getExpectedYieldQuintals)
+            .filter(Objects::nonNull)
+            .reduce(BigDecimal.ZERO, BigDecimal::add)
+    );
+  }
+
+  private List<List<String>> inputDemandRows(List<InputDemandEstimateEntity> estimates) {
+    List<List<String>> rows = new ArrayList<>();
+    rows.add(row(
+        "Input Type (Seed/Fertilizer)",
+        "Crop",
+        "Season",
+        "Total Area (acres)",
+        "Recommended Qty/acre",
+        "Total Demand",
+        "Buffer 5%",
+        "Final Demand",
+        "Unit"
     ));
 
     estimates.stream()
         .collect(Collectors.groupingBy(
-            estimate -> estimate.getInput().getId(),
+            InputDemandGroup::from,
             LinkedHashMap::new,
             Collectors.toList()
         ))
-        .values()
+        .entrySet()
         .stream()
-        .map(this::inputDemandSummaryRow)
-        .sorted(Comparator.comparing(row -> row.get(1)))
-        .forEach(rows::add);
+        .sorted(Map.Entry.comparingByKey())
+        .forEach(entry -> rows.add(inputDemandRow(entry.getKey(), entry.getValue())));
 
     return rows;
   }
 
-  private List<String> inputDemandSummaryRow(List<InputDemandEstimateEntity> estimates) {
-    InputDemandEstimateEntity first = estimates.getFirst();
-    Set<UUID> planIds = estimates.stream()
-        .map(estimate -> estimate.getCropPlan().getId())
-        .collect(Collectors.toSet());
-    Set<UUID> memberIds = estimates.stream()
-        .map(estimate -> estimate.getCropPlan().getMemberProfile().getId())
-        .collect(Collectors.toSet());
+  private List<String> inputDemandRow(
+      InputDemandGroup group,
+      List<InputDemandEstimateEntity> estimates
+  ) {
+    Map<UUID, SeasonalCropPlanEntity> plansById = estimates.stream()
+        .map(InputDemandEstimateEntity::getCropPlan)
+        .collect(Collectors.toMap(
+            SeasonalCropPlanEntity::getId,
+            plan -> plan,
+            (left, right) -> left,
+            LinkedHashMap::new
+        ));
 
     return row(
-        first.getInput().getCode(),
-        first.getInput().getName(),
-        first.getUnit(),
-        estimates.stream()
-            .map(InputDemandEstimateEntity::getEstimatedQuantity)
+        group.inputType(),
+        group.crop(),
+        group.season(),
+        plansById.values().stream()
+            .map(SeasonalCropPlanEntity::getPlannedAreaAcres)
             .filter(Objects::nonNull)
             .reduce(BigDecimal.ZERO, BigDecimal::add),
-        planIds.size(),
-        memberIds.size()
+        estimates.getFirst().getRecommendedQuantityPerAcre(),
+        estimates.stream()
+            .map(InputDemandEstimateEntity::getTotalDemandQuantity)
+            .filter(Objects::nonNull)
+            .reduce(BigDecimal.ZERO, BigDecimal::add),
+        estimates.stream()
+            .map(InputDemandEstimateEntity::getBufferQuantity)
+            .filter(Objects::nonNull)
+            .reduce(BigDecimal.ZERO, BigDecimal::add),
+        estimates.stream()
+            .map(InputDemandEstimateEntity::getFinalDemandQuantity)
+            .filter(Objects::nonNull)
+            .reduce(BigDecimal.ZERO, BigDecimal::add),
+        group.unit()
     );
   }
 
-  private List<List<String>> farmerWiseDemandRows(
-      List<InputDemandEstimateEntity> estimates
-  ) {
-    List<List<String>> rows = new ArrayList<>();
-    rows.add(row(
-        "Member number",
-        "Farmer name",
-        "Village",
-        "Crop",
-        "Season",
-        "Season year",
-        "Input code",
-        "Input name",
-        "Quantity",
-        "Unit",
-        "Estimate status",
-        "Created at",
-        "Updated at"
-    ));
-
-    estimates.stream()
-        .sorted(Comparator
-            .comparing((InputDemandEstimateEntity item) ->
-                item.getCropPlan().getMemberProfile().getMemberNumber())
-            .thenComparing(item -> item.getInput().getName()))
-        .forEach(estimate -> rows.add(row(
-            estimate.getCropPlan().getMemberProfile().getMemberNumber(),
-            estimate.getCropPlan().getMemberProfile().getDisplayName(),
-            estimate.getCropPlan().getMemberProfile().getVillage(),
-            estimate.getCropPlan().getCrop().getName(),
-            estimate.getCropPlan().getSeason().getName(),
-            estimate.getCropPlan().getSeason().getSeasonYear(),
-            estimate.getInput().getCode(),
-            estimate.getInput().getName(),
-            estimate.getEstimatedQuantity(),
-            estimate.getUnit(),
-            estimate.getStatus(),
-            estimate.getCreatedAt(),
-            estimate.getUpdatedAt()
-        )));
-
-    return rows;
+  private boolean isReportableCropPlan(SeasonalCropPlanEntity plan) {
+    return plan.getStatus() == CropPlanStatus.CONFIRMED
+        || plan.getStatus() == CropPlanStatus.COMPLETED;
   }
 
   private List<String> row(Object... values) {
@@ -407,18 +263,66 @@ public class FpoReportWorkbookService {
   record FpoReportDataset(
       List<FpoMemberProfileEntity> members,
       List<FarmLandholdingEntity> landholdings,
-      List<FarmPlotEntity> plots,
-      List<FarmerCropHistoryEntity> cropHistory,
       List<SeasonalCropPlanEntity> cropPlans,
       List<InputDemandEstimateEntity> demandEstimates
   ) {
     FpoReportDataset {
       members = members == null ? List.of() : List.copyOf(members);
       landholdings = landholdings == null ? List.of() : List.copyOf(landholdings);
-      plots = plots == null ? List.of() : List.copyOf(plots);
-      cropHistory = cropHistory == null ? List.of() : List.copyOf(cropHistory);
       cropPlans = cropPlans == null ? List.of() : List.copyOf(cropPlans);
       demandEstimates = demandEstimates == null ? List.of() : List.copyOf(demandEstimates);
+    }
+  }
+
+  private record CropPlanGroup(
+      String season,
+      String year,
+      String crop,
+      String village
+  ) implements Comparable<CropPlanGroup> {
+    static CropPlanGroup from(SeasonalCropPlanEntity plan) {
+      return new CropPlanGroup(
+          plan.getSeason().getName(),
+          plan.getCropYear(),
+          plan.getCrop().getName(),
+          plan.getMemberProfile().getVillage()
+      );
+    }
+
+    @Override
+    public int compareTo(CropPlanGroup other) {
+      return Comparator
+          .comparing(CropPlanGroup::year)
+          .thenComparing(CropPlanGroup::season)
+          .thenComparing(CropPlanGroup::crop)
+          .thenComparing(CropPlanGroup::village)
+          .compare(this, other);
+    }
+  }
+
+  private record InputDemandGroup(
+      String inputType,
+      String crop,
+      String season,
+      String unit
+  ) implements Comparable<InputDemandGroup> {
+    static InputDemandGroup from(InputDemandEstimateEntity estimate) {
+      return new InputDemandGroup(
+          estimate.getInput().getCategory() == null ? "" : estimate.getInput().getCategory(),
+          estimate.getCropPlan().getCrop().getName(),
+          estimate.getCropPlan().getSeason().getName(),
+          estimate.getUnit()
+      );
+    }
+
+    @Override
+    public int compareTo(InputDemandGroup other) {
+      return Comparator
+          .comparing(InputDemandGroup::crop)
+          .thenComparing(InputDemandGroup::season)
+          .thenComparing(InputDemandGroup::inputType)
+          .thenComparing(InputDemandGroup::unit)
+          .compare(this, other);
     }
   }
 }

@@ -85,6 +85,18 @@ cd backend
 .\mvnw.cmd -Pintegration-test verify
 ```
 
+Windows Docker Desktop note:
+
+If Testcontainers cannot find Docker even though `docker info` works, point the
+test process at the active Docker Desktop Linux engine for that PowerShell
+session:
+
+```powershell
+$env:DOCKER_HOST="npipe:////./pipe/dockerDesktopLinuxEngine"
+$env:TESTCONTAINERS_DOCKER_CLIENT_STRATEGY="org.testcontainers.dockerclient.EnvironmentAndSystemPropertyClientProviderStrategy"
+.\mvnw.cmd -Pintegration-test verify
+```
+
 Expected result:
 
 - All commands exit successfully.

@@ -40,8 +40,6 @@ class FpoReportWorkbookServiceTest {
       null,
       null,
       null,
-      null,
-      null,
       null
   );
 
@@ -53,7 +51,6 @@ class FpoReportWorkbookServiceTest {
     FarmPlotEntity plot = plot(member, landholding);
     CropCatalogEntity crop = crop(UUID.randomUUID(), "ONI", "Onion");
     CropSeasonEntity season = season(UUID.randomUUID(), "KHA", "Kharif");
-    FarmerCropHistoryEntity cropHistory = cropHistory(member, crop, season);
     SeasonalCropPlanEntity plan = plan(member, plot, crop, season);
     InputCatalogEntity input = input(UUID.randomUUID(), "NPK", "NPK 19");
     InputDemandEstimateEntity estimate = estimate(plan, input, new BigDecimal("15.0000"));
@@ -61,8 +58,6 @@ class FpoReportWorkbookServiceTest {
     byte[] workbook = service.buildWorkbook(new FpoReportWorkbookService.FpoReportDataset(
         List.of(member),
         List.of(landholding),
-        List.of(plot),
-        List.of(cropHistory),
         List.of(plan),
         List.of(estimate)
     ));
@@ -70,40 +65,39 @@ class FpoReportWorkbookServiceTest {
 
     try (ZipFile zipFile = new ZipFile(workbookPath.toFile())) {
       String workbookXml = text(zipFile, "xl/workbook.xml");
-      String farmerMaster = text(zipFile, "xl/worksheets/sheet1.xml");
-      String cropHistorySheet = text(zipFile, "xl/worksheets/sheet4.xml");
-      String seasonalCropPlans = text(zipFile, "xl/worksheets/sheet5.xml");
-      String inputDemandSummary = text(zipFile, "xl/worksheets/sheet6.xml");
-      String farmerWiseDemand = text(zipFile, "xl/worksheets/sheet7.xml");
+      String farmerRegister = text(zipFile, "xl/worksheets/sheet1.xml");
+      String cropPlanSummary = text(zipFile, "xl/worksheets/sheet2.xml");
+      String inputDemand = text(zipFile, "xl/worksheets/sheet3.xml");
 
       assertThat(workbookXml)
-          .contains("Farmer Master")
-          .contains("Landholdings")
-          .contains("Farm Plots")
-          .contains("Crop History")
-          .contains("Seasonal Crop Plans")
-          .contains("Input Demand Summary")
-          .contains("Farmer-wise Input Demand");
-      assertThat(farmerMaster)
-          .contains("MEM-001")
+          .contains("Farmer Register")
+          .contains("Crop Plan Summary")
+          .contains("Input Demand")
+          .doesNotContain("Landholdings")
+          .doesNotContain("Farm Plots")
+          .doesNotContain("Farmer-wise Input Demand");
+      assertThat(farmerRegister)
+          .contains("Name")
+          .contains("Survey No")
           .contains("Farmer One")
-          .contains("Rampur");
-      assertThat(cropHistorySheet)
-          .contains("Crop year")
-          .contains("2.0000")
-          .contains("8.5000");
-      assertThat(seasonalCropPlans)
-          .contains("Planned area acres")
-          .contains("CONFIRMED");
-      assertThat(inputDemandSummary)
-          .contains("Input code")
-          .contains("NPK")
-          .contains("15.0000");
-      assertThat(farmerWiseDemand)
-          .contains("Farmer name")
-          .contains("Onion")
+          .contains("Rampur")
+          .contains("SUR-1")
+          .contains("3.0000");
+      assertThat(cropPlanSummary)
+          .contains("No. of Farmers")
+          .contains("Total Area (acres)")
+          .contains("Expected Yield (quintals)")
           .contains("Kharif")
-          .contains("ESTIMATED");
+          .contains("2026-27")
+          .contains("Onion")
+          .contains("1.5000")
+          .contains("24.0000");
+      assertThat(inputDemand)
+          .contains("Input Type (Seed/Fertilizer)")
+          .contains("Recommended Qty/acre")
+          .contains("Buffer 5%")
+          .contains("Fertilizer")
+          .contains("15.0000");
     }
   }
 
@@ -213,26 +207,6 @@ class FpoReportWorkbookServiceTest {
     );
   }
 
-  private FarmerCropHistoryEntity cropHistory(
-      FpoMemberProfileEntity member,
-      CropCatalogEntity crop,
-      CropSeasonEntity season
-  ) {
-    return new FarmerCropHistoryEntity(
-        UUID.randomUUID(),
-        tenant,
-        member,
-        crop,
-        season,
-        2025,
-        new BigDecimal("2.0000"),
-        new BigDecimal("8.5000"),
-        "MT",
-        "Previous season baseline",
-        Instant.now()
-    );
-  }
-
   private SeasonalCropPlanEntity plan(
       FpoMemberProfileEntity member,
       FarmPlotEntity plot,
@@ -250,7 +224,7 @@ class FpoReportWorkbookServiceTest {
         new BigDecimal("1.5000"),
         LocalDate.of(2026, 6, 1),
         LocalDate.of(2026, 9, 30),
-        null,
+        new BigDecimal("24.0000"),
         CropPlanStatus.CONFIRMED,
         Instant.now()
     );
@@ -279,6 +253,11 @@ class FpoReportWorkbookServiceTest {
         tenant,
         plan,
         input,
+        quantity,
+        quantity,
+        quantity,
+        new BigDecimal("5.00"),
+        BigDecimal.ZERO,
         quantity,
         input.getUnit(),
         InputDemandEstimateStatus.ESTIMATED,

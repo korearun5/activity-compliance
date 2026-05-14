@@ -188,7 +188,17 @@ class InputDemandServiceTest {
     assertThat(response.estimatesGenerated()).isEqualTo(1);
     assertThat(response.estimates()).hasSize(1);
     assertThat(response.estimates().getFirst().estimatedQuantity())
+        .isEqualByComparingTo("12.0000");
+    assertThat(response.estimates().getFirst().recommendedQuantityPerAcre())
+        .isEqualByComparingTo("5.5000");
+    assertThat(response.estimates().getFirst().totalDemandQuantity())
         .isEqualByComparingTo("11.0000");
+    assertThat(response.estimates().getFirst().bufferPercent())
+        .isEqualByComparingTo("5.00");
+    assertThat(response.estimates().getFirst().bufferQuantity())
+        .isEqualByComparingTo("0.5500");
+    assertThat(response.estimates().getFirst().finalDemandQuantity())
+        .isEqualByComparingTo("12.0000");
     verify(estimateRepository).save(any(InputDemandEstimateEntity.class));
     verify(auditEventService).record(
         eq(tenant),
@@ -202,6 +212,22 @@ class InputDemandServiceTest {
             "missingRulePlanCount", 0
         ))
     );
+  }
+
+  @Test
+  void runDemandEstimateRejectsDraftPlansBecausePhase1UsesConfirmedOnly() {
+    CurrentUser admin = currentUser(Role.ADMIN);
+    CropSeasonEntity season = season(UUID.randomUUID(), FarmRecordStatus.ACTIVE);
+    when(seasonRepository.findByIdAndTenantId(season.getId(), tenantId))
+        .thenReturn(Optional.of(season));
+
+    assertThatThrownBy(() -> service.runDemandEstimate(
+        admin,
+        new InputDemandRunRequest(season.getId(), null, null, CropPlanStatus.DRAFT)
+    ))
+        .isInstanceOf(ApplicationException.class)
+        .hasMessageContaining("confirmed crop plans");
+    verify(cropPlanRepository, never()).findByTenantIdOrderByCreatedAtDesc(tenantId);
   }
 
   @Test

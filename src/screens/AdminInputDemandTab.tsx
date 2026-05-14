@@ -370,11 +370,7 @@ function DemandRunPanel({
         selectedId={filterCropId}
       />
       <View style={styles.formGrid}>
-        <DemandField
-          label="Village"
-          onChange={onFilterVillage}
-          value={filterVillage}
-        />
+        <DemandField label="Village" onChange={onFilterVillage} value={filterVillage} />
       </View>
       <View style={styles.buttonRow}>
         <Pressable
@@ -431,8 +427,12 @@ function DemandBreakdown({
                 {item.inputName} ({item.inputCode})
               </Text>
               <Text style={styles.rowMeta}>
-                {formatNumber(item.estimatedQuantity)} {item.unit} across{" "}
+                Final {formatNumber(item.finalDemandQuantity)} {item.unit} across{" "}
                 {item.planCount} plan{item.planCount === 1 ? "" : "s"}
+              </Text>
+              <Text style={styles.rowMeta}>
+                Base {formatNumber(item.totalDemandQuantity)} {item.unit} + buffer{" "}
+                {formatNumber(item.bufferQuantity)} {item.unit}
               </Text>
             </View>
           ))}
@@ -476,14 +476,22 @@ function DemandBreakdown({
                 {estimate.memberVillage}
               </Text>
               <Text style={styles.rowMeta}>
-                {formatNumber(estimate.estimatedQuantity)} {estimate.unit}
+                Final {formatNumber(estimate.finalDemandQuantity)} {estimate.unit}
+              </Text>
+              <Text style={styles.rowMeta}>
+                {formatNumber(estimate.recommendedQuantityPerAcre)} {estimate.unit}/acre
+                on {formatArea(estimate.plannedAreaAcres ?? 0)} - base{" "}
+                {formatNumber(estimate.totalDemandQuantity)} + buffer{" "}
+                {formatNumber(estimate.bufferQuantity)}
               </Text>
             </View>
             <StatusBadge label="Estimated" tone="good" />
           </View>
         ))
       ) : (
-        <Text style={styles.emptyText}>No estimate rows match the selected filters.</Text>
+        <Text style={styles.emptyText}>
+          No estimate rows match the selected filters.
+        </Text>
       )}
     </View>
   );
@@ -747,7 +755,9 @@ function ChoiceButtons({
   selectedId: string;
 }) {
   if (!choices.length) {
-    return <Text style={styles.emptyText}>{emptyLabel ?? "No options available."}</Text>;
+    return (
+      <Text style={styles.emptyText}>{emptyLabel ?? "No options available."}</Text>
+    );
   }
 
   return (

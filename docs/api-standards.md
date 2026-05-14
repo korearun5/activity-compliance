@@ -492,9 +492,11 @@ Content-Type: application/json
   "plotId": "<optional-plot-id>",
   "cropId": "<crop-id>",
   "seasonId": "<season-id>",
+  "cropYear": "2026-27",
   "plannedAreaAcres": 1.5,
   "plannedSowingDate": "2026-06-01",
   "expectedHarvestDate": "2026-09-30",
+  "expectedYieldQuintals": 24.5,
   "status": "DRAFT"
 }
 ```
@@ -505,6 +507,11 @@ Rules:
 - Crop and season status values are `ACTIVE`, `INACTIVE`, and `ARCHIVED`.
 - Crop plan status values are `DRAFT`, `CONFIRMED`, `CANCELLED`, and
   `COMPLETED`.
+- Crop plans must carry a crop year label such as `2026-27`, not only the
+  season calendar year.
+- `expectedYieldQuintals` is optional and manually entered when available.
+- `confirmedAt` is set when a plan transitions to `CONFIRMED`; it drives the
+  Phase 1 input demand report date filter.
 - Crop history and crop plans must reference active crop and season records.
 - If a crop plan references a plot, the plot must belong to the selected member
   and be active.
@@ -586,11 +593,14 @@ Rules:
 - Rules require active crop and input records.
 - Duplicate rules are blocked per tenant, crop, input, and application stage.
 - Calculation defaults to confirmed crop plans.
+- Non-confirmed `planStatus` values are rejected in Phase 1.
 - Multiple active stages for the same crop/input are summed into one estimate
   row per crop plan and input.
 - Missing rules are counted in the run response and skipped.
 - Demand estimates include member, village, crop, season, input, unit, status,
-  submitted calculation timestamps, and estimated quantity.
+  submitted calculation timestamps, recommended quantity per acre, total demand,
+  fixed 5% buffer, and rounded final demand.
+- `estimatedQuantity` is retained as the displayed final demand quantity.
 - Changes emit `FPO_INPUT_*`, `FPO_INPUT_RULE_*`, and
   `FPO_INPUT_DEMAND_CALCULATED` audit events.
 
@@ -664,6 +674,35 @@ Rules:
 - Crop plan area breakdowns use confirmed crop plans.
 - Input demand totals use stored demand estimate snapshots.
 - Reads emit `FPO_REPORT_SUMMARY_VIEWED`.
+
+FPO Excel export:
+
+```http
+POST /api/v1/fpo/reports/export
+Authorization: Bearer <admin-or-FPO_MANAGER-token>
+Content-Type: application/json
+```
+
+```json
+{
+  "filters": {
+    "village": "Wagholi",
+    "crop": "Paddy",
+    "season": "Kharif",
+    "coordinator": "Coordinator Name"
+  }
+}
+```
+
+The Phase 1 workbook emits exactly three sheets:
+
+- `Farmer Register`
+- `Crop Plan Summary`
+- `Input Demand`
+
+Current implementation note: the approved sheet structure is implemented;
+filter application and branding/footer presentation remain tracked as go-live
+cleanup.
 
 ## Notification Status Tracking
 
