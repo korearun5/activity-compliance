@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { FarmRecordStatus, CropPlanStatus } from "../core/api/fpoContracts";
 import { getErrorMessage } from "../core/errors/AppError";
-import type { Role } from "../auth/authService";
+import type { StaffRole } from "../auth/roleAccess";
 import {
   createCropCatalog,
   createCropHistory,
@@ -33,14 +33,7 @@ type AdminCropPlanningTabProps = {
   members: FpoMember[];
 };
 
-type StaffRole = Exclude<Role, "farmer">;
-
-const planStatuses: CropPlanStatus[] = [
-  "DRAFT",
-  "CONFIRMED",
-  "COMPLETED",
-  "CANCELLED"
-];
+const planStatuses: CropPlanStatus[] = ["DRAFT", "CONFIRMED", "COMPLETED", "CANCELLED"];
 
 export function AdminCropPlanningTab({
   currentRole,
@@ -57,8 +50,7 @@ export function AdminCropPlanningTab({
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [seasons, setSeasons] = useState<CropSeason[]>([]);
   const [selectedMemberId, setSelectedMemberId] = useState("");
-  const canManageMasterData =
-    currentRole === "admin" || currentRole === "fpoManager";
+  const canManageMasterData = currentRole === "admin" || currentRole === "fpoManager";
 
   const activeCrops = useMemo(
     () => crops.filter((crop) => crop.status === "ACTIVE"),
@@ -653,8 +645,7 @@ function MemberChoice({
             <Text
               style={[
                 styles.choiceButtonText,
-                selectedMemberId === member.memberId &&
-                  styles.choiceButtonTextActive
+                selectedMemberId === member.memberId && styles.choiceButtonTextActive
               ]}
             >
               {member.memberNumber} - {member.name}
@@ -865,7 +856,10 @@ function CropPlanFilters({
       <ChoiceButtons
         choices={[
           { id: "", label: "All statuses" },
-          ...planStatuses.map((status) => ({ id: status, label: planStatusLabel(status) }))
+          ...planStatuses.map((status) => ({
+            id: status,
+            label: planStatusLabel(status)
+          }))
         ]}
         onSelect={(status) => onFilterStatus(status as CropPlanStatus | "")}
         selectedId={filterStatus}
@@ -1108,7 +1102,9 @@ function ChoiceButtons({
   selectedId: string;
 }) {
   if (!choices.length) {
-    return <Text style={styles.emptyText}>{emptyLabel ?? "No options available."}</Text>;
+    return (
+      <Text style={styles.emptyText}>{emptyLabel ?? "No options available."}</Text>
+    );
   }
 
   return (

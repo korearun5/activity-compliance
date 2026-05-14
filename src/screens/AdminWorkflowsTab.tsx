@@ -12,6 +12,7 @@ import { StatusBadge } from "../ui/StatusBadge";
 
 type AdminWorkflowsTabProps = {
   activityStartError: string;
+  canManageDefinitions: boolean;
   canUseBackend: boolean;
   createWorkflowError: string;
   isCreatingWorkflow: boolean;
@@ -37,6 +38,7 @@ type WorkflowTaskDraft = {
 
 export function AdminWorkflowsTab({
   activityStartError,
+  canManageDefinitions,
   canUseBackend,
   createWorkflowError,
   isCreatingWorkflow,
@@ -58,17 +60,19 @@ export function AdminWorkflowsTab({
       {!canUseBackend ? (
         <View style={styles.warningCard}>
           <Text style={styles.warningText}>
-            Backend session is required for workflow definitions and assigned
-            activity timelines.
+            Backend session is required for workflow definitions and assigned activity
+            timelines.
           </Text>
         </View>
       ) : null}
 
-      <CreateWorkflowForm
-        error={createWorkflowError}
-        isSubmitting={isCreatingWorkflow}
-        onSubmit={onCreateWorkflow}
-      />
+      {canManageDefinitions ? (
+        <CreateWorkflowForm
+          error={createWorkflowError}
+          isSubmitting={isCreatingWorkflow}
+          onSubmit={onCreateWorkflow}
+        />
+      ) : null}
 
       <StartActivityForm
         activeWorkflows={activeWorkflows}
@@ -82,6 +86,7 @@ export function AdminWorkflowsTab({
       {workflows.length ? (
         workflows.map((workflow) => (
           <WorkflowDefinitionCard
+            canManageDefinitions={canManageDefinitions}
             key={workflow.id}
             onUpdateWorkflowStatus={onUpdateWorkflowStatus}
             updatingWorkflowId={updatingWorkflowId}
@@ -114,9 +119,7 @@ function CreateWorkflowForm({
   const [localError, setLocalError] = useState("");
   const [name, setName] = useState("");
   const [status, setStatus] = useState<BackendWorkflowStatus>("ACTIVE");
-  const [tasks, setTasks] = useState<WorkflowTaskDraft[]>([
-    emptyTaskDraft("task-1")
-  ]);
+  const [tasks, setTasks] = useState<WorkflowTaskDraft[]>([emptyTaskDraft("task-1")]);
   const [version, setVersion] = useState("1");
 
   async function handleSubmit() {
@@ -212,11 +215,7 @@ function CreateWorkflowForm({
           value={version}
           onChange={setVersion}
         />
-        <WorkflowField
-          label="Domain key"
-          value={domainKey}
-          onChange={setDomainKey}
-        />
+        <WorkflowField label="Domain key" value={domainKey} onChange={setDomainKey} />
       </View>
 
       <SegmentedStatusControl status={status} onChange={setStatus} />
@@ -300,10 +299,7 @@ function CreateWorkflowForm({
         <Pressable
           accessibilityRole="button"
           disabled={isSubmitting}
-          style={[
-            styles.primaryButton,
-            isSubmitting && styles.disabledButton
-          ]}
+          style={[styles.primaryButton, isSubmitting && styles.disabledButton]}
           onPress={handleSubmit}
         >
           <Text style={styles.primaryButtonText}>
@@ -394,8 +390,7 @@ function StartActivityForm({
             <Text
               style={[
                 styles.choiceButtonText,
-                workflowDefinitionId === workflow.id &&
-                  styles.choiceButtonTextActive
+                workflowDefinitionId === workflow.id && styles.choiceButtonTextActive
               ]}
             >
               {workflow.name}
@@ -427,8 +422,7 @@ function StartActivityForm({
               <Text
                 style={[
                   styles.choiceButtonText,
-                  participantUserId === participant.id &&
-                    styles.choiceButtonTextActive
+                  participantUserId === participant.id && styles.choiceButtonTextActive
                 ]}
               >
                 {participant.name}
@@ -447,11 +441,7 @@ function StartActivityForm({
           value={locationName}
           onChange={setLocationName}
         />
-        <WorkflowField
-          label="Start date"
-          value={startedOn}
-          onChange={setStartedOn}
-        />
+        <WorkflowField label="Start date" value={startedOn} onChange={setStartedOn} />
       </View>
 
       {localError || error ? (
@@ -462,10 +452,7 @@ function StartActivityForm({
         <Pressable
           accessibilityRole="button"
           disabled={isSubmitting}
-          style={[
-            styles.primaryButton,
-            isSubmitting && styles.disabledButton
-          ]}
+          style={[styles.primaryButton, isSubmitting && styles.disabledButton]}
           onPress={handleSubmit}
         >
           <Text style={styles.primaryButtonText}>
@@ -478,10 +465,12 @@ function StartActivityForm({
 }
 
 function WorkflowDefinitionCard({
+  canManageDefinitions,
   onUpdateWorkflowStatus,
   updatingWorkflowId,
   workflow
 }: {
+  canManageDefinitions: boolean;
   onUpdateWorkflowStatus: (
     workflowId: string,
     status: BackendWorkflowStatus
@@ -513,47 +502,50 @@ function WorkflowDefinitionCard({
               <View style={styles.timelineText}>
                 <Text style={styles.timelineTitle}>{task.title}</Text>
                 <Text style={styles.timelineMeta}>
-                  Day {task.offsetDays} - {task.evidenceRequired ? "Evidence" : "No evidence"}
+                  Day {task.offsetDays} -{" "}
+                  {task.evidenceRequired ? "Evidence" : "No evidence"}
                 </Text>
               </View>
             </View>
           ))}
       </View>
 
-      <View style={styles.statusActions}>
-        {workflow.status !== "ACTIVE" ? (
-          <Pressable
-            accessibilityRole="button"
-            disabled={isUpdating}
-            style={[styles.secondaryButton, isUpdating && styles.disabledButton]}
-            onPress={() => onUpdateWorkflowStatus(workflow.id, "ACTIVE")}
-          >
-            <Text style={styles.secondaryButtonText}>
-              {isUpdating ? "Saving..." : "Publish"}
-            </Text>
-          </Pressable>
-        ) : null}
-        {workflow.status !== "DRAFT" ? (
-          <Pressable
-            accessibilityRole="button"
-            disabled={isUpdating}
-            style={[styles.secondaryButton, isUpdating && styles.disabledButton]}
-            onPress={() => onUpdateWorkflowStatus(workflow.id, "DRAFT")}
-          >
-            <Text style={styles.secondaryButtonText}>Move to draft</Text>
-          </Pressable>
-        ) : null}
-        {workflow.status !== "ARCHIVED" ? (
-          <Pressable
-            accessibilityRole="button"
-            disabled={isUpdating}
-            style={[styles.archiveButton, isUpdating && styles.disabledButton]}
-            onPress={() => onUpdateWorkflowStatus(workflow.id, "ARCHIVED")}
-          >
-            <Text style={styles.archiveButtonText}>Archive</Text>
-          </Pressable>
-        ) : null}
-      </View>
+      {canManageDefinitions ? (
+        <View style={styles.statusActions}>
+          {workflow.status !== "ACTIVE" ? (
+            <Pressable
+              accessibilityRole="button"
+              disabled={isUpdating}
+              style={[styles.secondaryButton, isUpdating && styles.disabledButton]}
+              onPress={() => onUpdateWorkflowStatus(workflow.id, "ACTIVE")}
+            >
+              <Text style={styles.secondaryButtonText}>
+                {isUpdating ? "Saving..." : "Publish"}
+              </Text>
+            </Pressable>
+          ) : null}
+          {workflow.status !== "DRAFT" ? (
+            <Pressable
+              accessibilityRole="button"
+              disabled={isUpdating}
+              style={[styles.secondaryButton, isUpdating && styles.disabledButton]}
+              onPress={() => onUpdateWorkflowStatus(workflow.id, "DRAFT")}
+            >
+              <Text style={styles.secondaryButtonText}>Move to draft</Text>
+            </Pressable>
+          ) : null}
+          {workflow.status !== "ARCHIVED" ? (
+            <Pressable
+              accessibilityRole="button"
+              disabled={isUpdating}
+              style={[styles.archiveButton, isUpdating && styles.disabledButton]}
+              onPress={() => onUpdateWorkflowStatus(workflow.id, "ARCHIVED")}
+            >
+              <Text style={styles.archiveButtonText}>Archive</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      ) : null}
     </View>
   );
 }

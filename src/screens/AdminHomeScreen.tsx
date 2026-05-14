@@ -25,12 +25,13 @@ import {
 import { getSavedCropCycles } from "../data/cropCycleStore";
 import { CropCycle, ProofSubmission } from "../data/agricultureConfig";
 import { getSavedProofs } from "../data/proofStore";
+import { loadEnabledModules, PlatformModuleCode } from "../data/moduleStore";
 import {
-  isModuleEnabled,
-  loadEnabledModules,
-  PlatformModuleCode
-} from "../data/moduleStore";
-import type { Role } from "../auth/authService";
+  canRolePerform,
+  getVisibleAdminTabs,
+  type AdminTabId,
+  type StaffRole
+} from "../auth/roleAccess";
 import {
   exportBackendReport,
   getBackendReportSummary,
@@ -62,52 +63,12 @@ import { AdminWorkflowsTab } from "./AdminWorkflowsTab";
 import { StatusBadge } from "../ui/StatusBadge";
 
 type AdminHomeScreenProps = {
-  currentRole: StaffDashboardRole;
+  currentRole: StaffRole;
   onLogout: () => void;
 };
 
-type StaffDashboardRole = Exclude<Role, "farmer">;
-
-type AdminTab =
-  | "advisories"
-  | "carbon"
-  | "cropPlanning"
-  | "inputDemand"
-  | "overview"
-  | "participants"
-  | "reports"
-  | "roles"
-  | "workflows";
-
-type AdminTabConfig = {
-  label: string;
-  module?: PlatformModuleCode;
-  roles?: StaffDashboardRole[];
-  tab: AdminTab;
-};
-
-const adminTabs: AdminTabConfig[] = [
-  { label: "Overview", tab: "overview" },
-  { label: "Carbon", tab: "carbon" },
-  { label: "Workflows", module: "ACTIVITY_COMPLIANCE", tab: "workflows" },
-  { label: "Farmers", module: "MEMBER_DATA", tab: "participants" },
-  { label: "Crop Planning", module: "CROP_PLANNING", tab: "cropPlanning" },
-  {
-    label: "Input Demand",
-    module: "INPUT_DEMAND",
-    roles: ["admin", "fpoManager"],
-    tab: "inputDemand"
-  },
-  { label: "Roles", roles: ["admin", "fpoManager"], tab: "roles" },
-  { label: "Advisories", module: "ADVISORY", tab: "advisories" },
-  { label: "Reports", module: "REPORT_EXPORT", tab: "reports" }
-];
-
-export function AdminHomeScreen({
-  currentRole,
-  onLogout
-}: AdminHomeScreenProps) {
-  const [activeTab, setActiveTab] = useState<AdminTab>("overview");
+export function AdminHomeScreen({ currentRole, onLogout }: AdminHomeScreenProps) {
+  const [activeTab, setActiveTab] = useState<AdminTabId>("overview");
   const [members, setMembers] = useState<FpoMember[]>([]);
   const [savedCycles, setSavedCycles] = useState<CropCycle[]>([]);
   const [savedProofs, setSavedProofs] = useState<ProofSubmission[]>([]);
@@ -116,6 +77,7 @@ export function AdminHomeScreen({
   );
   const [workflowDefinitions, setWorkflowDefinitions] = useState<BackendWorkflow[]>([]);
   const [canReviewEvidence, setCanReviewEvidence] = useState(false);
+  const [hasBackendAccess, setHasBackendAccess] = useState(false);
   const [reportSummary, setReportSummary] = useState<ReportSummary | null>(null);
   const [adminDataError, setAdminDataError] = useState("");
   const [memberEditError, setMemberEditError] = useState("");
@@ -157,13 +119,14 @@ export function AdminHomeScreen({
       try {
         const hasToken = await hasBackendSession();
         const [cycles, proofs, summary, workflows] = hasToken
-          ? await loadBackendAdminData()
+          ? await loadBackendAdminData(currentRole)
           : await loadLocalAdminData();
 
         setSavedCycles(cycles);
         setSavedProofs(proofs);
         setWorkflowDefinitions(workflows);
-        setCanReviewEvidence(hasToken);
+        setHasBackendAccess(hasToken);
+        setCanReviewEvidence(hasToken && canRolePerform(currentRole, "reviewEvidence"));
         setReportSummary(summary);
         setAdminDataError(participantLoadError);
         setReviewError("");
@@ -177,6 +140,7 @@ export function AdminHomeScreen({
         setSavedCycles(cycles);
         setSavedProofs(proofs);
         setWorkflowDefinitions([]);
+        setHasBackendAccess(false);
         setCanReviewEvidence(false);
         setReportSummary(null);
         const activityLoadError = getErrorMessage(
@@ -192,7 +156,7 @@ export function AdminHomeScreen({
     }
 
     loadAdminData();
-  }, []);
+  }, [currentRole]);
 
   useEffect(() => {
     async function loadModules() {
@@ -230,9 +194,7 @@ export function AdminHomeScreen({
       setEditingMemberId(null);
       return true;
     } catch (error) {
-      setMemberEditError(
-        getErrorMessage(error, "Unable to update farmer profile.")
-      );
+      setMemberEditError(getErrorMessage(error, "Unable to update farmer profile."));
       return false;
     } finally {
       setUpdatingMemberId(null);
@@ -358,7 +320,9 @@ export function AdminHomeScreen({
       ]);
 
       try {
-        setReportSummary(await getBackendReportSummary());
+        if (canRolePerform(currentRole, "viewReportSummary")) {
+          setReportSummary(await getBackendReportSummary());
+        }
       } catch {
         // The activity is created even if the summary refresh fails.
       }
@@ -388,14 +352,7 @@ export function AdminHomeScreen({
   const crops = [...new Set(allCycles.map((cycle) => cycle.crop))];
   const complianceScore = calculateComplianceScore(allCycles, proofRecords);
   const visibleTabs = useMemo(
-    () =>
-      adminTabs.filter(
-        (item) =>
-          (!item.roles || item.roles.includes(currentRole)) &&
-          (!item.module ||
-            enabledModules === null ||
-            isModuleEnabled(enabledModules, item.module))
-      ),
+    () => getVisibleAdminTabs(currentRole, enabledModules),
     [currentRole, enabledModules]
   );
 
@@ -432,8 +389,8 @@ export function AdminHomeScreen({
               <Text style={styles.eyebrow}>{dashboardEyebrow(currentRole)}</Text>
               <Text style={styles.title}>Carbon Farming Operations</Text>
               <Text style={styles.copy}>
-                Track farmer profiles, regenerative activities, proof records, advisories,
-                and report-ready carbon evidence.
+                Track farmer profiles, regenerative activities, proof records,
+                advisories, and report-ready carbon evidence.
               </Text>
             </View>
             <Pressable
@@ -510,7 +467,11 @@ export function AdminHomeScreen({
           {activeTab === "workflows" ? (
             <AdminWorkflowsTab
               activityStartError={activityStartError}
-              canUseBackend={canReviewEvidence}
+              canManageDefinitions={canRolePerform(
+                currentRole,
+                "manageWorkflowDefinitions"
+              )}
+              canUseBackend={hasBackendAccess}
               createWorkflowError={workflowFormError}
               isCreatingWorkflow={isCreatingWorkflow}
               onCreateWorkflow={handleCreateWorkflow}
@@ -530,15 +491,22 @@ export function AdminHomeScreen({
           {activeTab === "inputDemand" ? <AdminInputDemandTab /> : null}
 
           {activeTab === "roles" ? (
-            <AdminRolesTab canUseBackend={canReviewEvidence} currentRole={currentRole} />
+            <AdminRolesTab canUseBackend={hasBackendAccess} currentRole={currentRole} />
           ) : null}
 
           {activeTab === "advisories" ? (
-            <AdminAdvisoriesTab participants={participants} />
+            <AdminAdvisoriesTab
+              canManageAdvisories={canRolePerform(currentRole, "manageAdvisories")}
+              participants={participants}
+            />
           ) : null}
 
           {activeTab === "reports" ? (
             <ReportsTab
+              canExportComplianceReport={canRolePerform(
+                currentRole,
+                "exportComplianceReport"
+              )}
               complianceScore={complianceScore}
               crops={crops}
               exportingReportFormat={exportingReportFormat}
@@ -556,13 +524,15 @@ export function AdminHomeScreen({
   );
 }
 
-async function loadBackendAdminData(): Promise<
-  [CropCycle[], ProofSubmission[], ReportSummary, BackendWorkflow[]]
-> {
-  const [cycles, summary, workflows] = await Promise.all([
+async function loadBackendAdminData(
+  currentRole: StaffRole
+): Promise<[CropCycle[], ProofSubmission[], ReportSummary | null, BackendWorkflow[]]> {
+  const [cycles, workflows, summary] = await Promise.all([
     getBackendActivities(),
-    getBackendReportSummary(),
-    getBackendWorkflowDefinitions()
+    getBackendWorkflowDefinitions(),
+    canRolePerform(currentRole, "viewReportSummary")
+      ? getBackendReportSummary()
+      : Promise.resolve(null)
   ]);
   const proofs = await getBackendProofs(cycles);
   return [cycles, proofs, summary, workflows];
@@ -701,7 +671,9 @@ function OverviewTab({
         ))
       ) : (
         <View style={styles.emptyCard}>
-          <Text style={styles.cardDescription}>No farmer profiles are registered yet.</Text>
+          <Text style={styles.cardDescription}>
+            No farmer profiles are registered yet.
+          </Text>
         </View>
       )}
     </View>
@@ -1097,7 +1069,7 @@ function CreateMemberForm({
           onPress={handleSubmit}
         >
           <Text style={styles.createButtonText}>
-          {isSubmitting ? "Creating..." : "Create farmer login"}
+            {isSubmitting ? "Creating..." : "Create farmer login"}
           </Text>
         </Pressable>
       </View>
@@ -1288,6 +1260,7 @@ function AdminField({
 }
 
 function ReportsTab({
+  canExportComplianceReport,
   complianceScore,
   crops,
   exportingReportFormat,
@@ -1298,6 +1271,7 @@ function ReportsTab({
   reportSummary,
   regions
 }: {
+  canExportComplianceReport: boolean;
   complianceScore: number;
   crops: string[];
   exportingReportFormat: ReportExport["format"] | null;
@@ -1313,6 +1287,8 @@ function ReportsTab({
   const displayedProofCount = reportSummary?.evidenceRecords ?? proofRecords.length;
   const displayedRegionCount = reportSummary?.byLocation.length ?? regions.length;
   const isExportingReport = exportingReportFormat !== null;
+  const canExportReport =
+    canExportComplianceReport && Boolean(reportSummary) && !isExportingReport;
 
   return (
     <View style={styles.section}>
@@ -1350,11 +1326,10 @@ function ReportsTab({
           <View style={styles.reportButtonRow}>
             <Pressable
               accessibilityRole="button"
-              disabled={!reportSummary || isExportingReport}
+              disabled={!canExportReport}
               style={({ pressed }) => [
                 styles.createButton,
-                (!reportSummary || pressed || isExportingReport) &&
-                  styles.createButtonPressed
+                (!canExportReport || pressed) && styles.createButtonPressed
               ]}
               onPress={() => onExportReport("PDF")}
             >
@@ -1364,11 +1339,10 @@ function ReportsTab({
             </Pressable>
             <Pressable
               accessibilityRole="button"
-              disabled={!reportSummary || isExportingReport}
+              disabled={!canExportReport}
               style={({ pressed }) => [
                 styles.actionButton,
-                (!reportSummary || pressed || isExportingReport) &&
-                  styles.actionButtonPressed
+                (!canExportReport || pressed) && styles.actionButtonPressed
               ]}
               onPress={() => onExportReport("XLSX")}
             >
@@ -1386,6 +1360,11 @@ function ReportsTab({
           ) : null}
           {reportExportError ? (
             <Text style={styles.formError}>{reportExportError}</Text>
+          ) : null}
+          {!canExportComplianceReport ? (
+            <Text style={styles.cardMeta}>
+              Compliance export is available to Admin and FPO Manager roles.
+            </Text>
           ) : null}
         </View>
       </View>
@@ -1443,7 +1422,7 @@ function calculateComplianceScore(cycles: CropCycle[], proofs: ProofSubmission[]
   return Math.round((acceptedProofCount / totalSteps) * 100);
 }
 
-function dashboardEyebrow(role: StaffDashboardRole) {
+function dashboardEyebrow(role: StaffRole) {
   switch (role) {
     case "admin":
       return "Platform admin dashboard";

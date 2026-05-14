@@ -68,7 +68,7 @@ them in this order unless a production defect interrupts the work.
 | Priority | Task ID | Title | Owner Area | Status |
 | -------: | ------- | ----- | ---------- | ------ |
 | 1 | FPO-ALIGN-001 | Replace legacy FPO role assumptions with `ADMIN`, `FPO_MANAGER`, and `FIELD_COORDINATOR` | Backend/Frontend/QA | Done |
-| 2 | FPO-ALIGN-002 | Add FPO ownership, scoped access, farmer login, and role isolation tests | Backend/Frontend/QA | Done |
+| 2 | FPO-ALIGN-002 | Add FPO ownership, scoped access, farmer login, centralized frontend role visibility, and role isolation tests | Backend/Frontend/QA | Done |
 | 3 | FPO-ALIGN-003 | Align farmer profile fields: taluka/state, Aadhaar optional, status `Suspended`, category labels | Backend/Frontend/QA | Done |
 | 4 | FPO-ALIGN-004 | Add soil profile entry and optional report attachment without carbon calculation | Backend/Frontend/QA | Done |
 | 5 | FPO-ALIGN-005 | Align land/GPS labels and approved ownership/irrigation options | Backend/Frontend/QA | Done |

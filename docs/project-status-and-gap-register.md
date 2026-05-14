@@ -1,6 +1,6 @@
 # Project Status And Gap Register
 
-Last audited: 2026-05-14
+Last audited: 2026-05-15
 
 This is the single source for current completion estimates, go-live confidence,
 and known gaps. Percentages are engineering confidence estimates based on the
@@ -12,19 +12,19 @@ current repository state, not client acceptance or a commercial commitment.
 | ---------------------------- | ---------: | ---------- | ----- |
 | Local developer setup        |        90% | High       | Clean-start path, Docker stack, env examples, CI commands, and default ports are documented. |
 | Core backend platform        |        88% | High       | Auth, tenant-aware data, workflows, activity, evidence, audit, reports, storage, and common API envelope exist. |
-| Frontend platform shell      |        80% | Medium     | Backend-first admin/FPO/coordinator shell and farmer workflow routing exist; frontend still lacks automated UI tests. |
-| Auth, users, and roles       |        91% | High       | JWT, role APIs, local seeds, frontend routing, staff-login creation, farmer-profile login creation, and tests now use `ADMIN`, `FPO_MANAGER`, `FIELD_COORDINATOR`, and `FARMER`. |
+| Frontend platform shell      |        82% | Medium     | Backend-first admin/FPO/coordinator shell, farmer workflow routing, module-driven carbon hiding, and centralized role-to-tab/action visibility exist; frontend still lacks automated UI tests. |
+| Auth, users, and roles       |        93% | High       | JWT, role APIs, local seeds, frontend routing, staff-login creation, farmer-profile login creation, role-aware UI controls, and tests now use `ADMIN`, `FPO_MANAGER`, `FIELD_COORDINATOR`, and `FARMER`. |
 | Workflow and activity engine |        82% | High       | Configurable definitions, activity start, task status, and tests exist; client-specific workflow templates still need UAT. |
 | Evidence and storage         |        80% | Medium     | Local and MinIO adapters exist; MinIO integration test coverage is still missing. |
 | Reporting and exports        |        72% | Medium     | Generic summary/export and FPO Excel export exist; Phase 1 workbook must be refactored to the approved three-sheet format. |
-| Module subscription platform |        80% | Medium     | Backend guards and frontend module visibility exist; packaging/handover process remains pending. |
+| Module subscription platform |        82% | Medium     | Backend guards, frontend module visibility, and Phase 2 carbon screen hiding behind `SUSTAINABILITY` exist; packaging/handover process remains pending. |
 | FPO member management        |        90% | High       | Approved farmer fields, farmer username/password login, coordinator assignment, tenant/FPO scoping, farmer-profile UI wording, validation, and focused tests are aligned. |
 | FPO land and plot records    |        82% | High       | Survey/khasra, acres, approved ownership/irrigation values, required GPS latitude/longitude, schema checks, API validation, UI controls, and tests are aligned; polygon maps remain Phase 2. |
 | FPO soil profiles            |        82% | High       | Phase 1 SOC, pH, N, P, K, optional report link/metadata, backend API, admin entry UI, JUnit, and Testcontainers coverage are in place; real S3 upload wiring remains grouped with advisory/storage work. |
 | FPO crop planning            |        80% | High       | Catalog, seasons, crop history, seasonal plans, UI, and tests exist; farmer mobile views are Phase 2. |
 | FPO input demand             |        74% | Medium     | Catalog, input rules, calculation, summaries, UI, and tests exist; confirmed-only demand, 5% buffer, round-up, and `confirmed_at` need alignment. |
 | FPO advisory                 |        62% | Medium     | Advisory backend and admin UI exist; crop targeting and multiple image attachments need alignment. |
-| Carbon app-flow prototype    |        35% | Low        | Frontend dummy screens/data exist; durable schema, methodology, providers, and exports are pending. |
+| Carbon app-flow prototype    |        35% | Low        | Frontend dummy screens/data exist but are hidden behind the disabled `SUSTAINABILITY` module for Phase 1; durable schema, methodology, providers, and exports are pending. |
 | QA automation                |        68% | Medium     | JUnit, Spring tests, Testcontainers PostgreSQL, CI, lint, and typecheck exist; UI/E2E tests and coverage gates are missing. |
 | Production operations        |        60% | Medium     | Production config validation, security scan, env template, and deployment docs exist; backups, monitoring, alerting, and runbooks need target-environment details. |
 
@@ -32,7 +32,7 @@ Overall readiness:
 
 - Developer/demo environment: about 85%.
 - FPO MVP technical foundation: about 83%.
-- FPO Phase 1 go-live readiness before UAT: about 82-84% after client scope lock; implementation gaps remain.
+- FPO Phase 1 go-live readiness before UAT: about 83-85% after client scope lock; implementation gaps remain.
 - Full client POC vision including OTP, maps, satellite, AI, carbon, marketplace, and payments: about 20-25%.
 
 ## Testing And Quality Audit
@@ -90,7 +90,7 @@ To avoid duplicate or conflicting information:
 | Approved input formulas | Done | Product/Tech Lead | Fixed per-acre values, confirmed plans only, 5% buffer, and round-up are approved. |
 | Approved report templates | Done | Product/Tech Lead | Excel-only, three sheets, approved columns, filters, branding text, and footer are documented. |
 | UAT scenario catalog | Done | QA/Product | [FPO Phase 1 UAT Guide](fpo-phase1-uat-guide.md) contains pilot data and acceptance scenarios. |
-| Role foundation alignment | Done | Backend/Frontend/QA | Active app code now uses `ADMIN`, `FPO_MANAGER`, `FIELD_COORDINATOR`, and `FARMER`; staff creation is separate from farmer profile/login creation; focused role/user/member tests pass. |
+| Role foundation alignment | Done | Backend/Frontend/QA | Active app code now uses `ADMIN`, `FPO_MANAGER`, `FIELD_COORDINATOR`, and `FARMER`; staff creation is separate from farmer profile/login creation; frontend page/action visibility is centralized in `roleAccess.ts`; focused role/user/member tests pass. |
 | Farmer profile field alignment | Done | Backend/Frontend/QA | Taluka/state, optional Aadhaar, approved gender/category values, Indian mobile normalization, and suspended status are implemented. |
 | Land/GPS field alignment | Done | Backend/Frontend/QA | Survey/khasra, acres, approved ownership/irrigation values, and required GPS point capture are implemented. |
 | FPO ownership/scoped access alignment | Done | Backend/Frontend/QA | `FARMER` username/password login is restored for Phase 1, member profiles link to farmer users, coordinators are scoped to assigned members, and focused role isolation tests pass. |

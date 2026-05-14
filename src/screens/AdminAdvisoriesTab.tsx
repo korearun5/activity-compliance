@@ -24,6 +24,7 @@ import { FpoMember } from "../data/fpoMemberStore";
 import { StatusBadge } from "../ui/StatusBadge";
 
 type AdminAdvisoriesTabProps = {
+  canManageAdvisories: boolean;
   participants: FpoMember[];
 };
 
@@ -36,7 +37,10 @@ const statusFilters: Array<AdvisoryStatus | "ALL"> = [
 ];
 const targetOptions: AdvisoryTargetType[] = ["ALL_MEMBERS", "VILLAGE", "MEMBER"];
 
-export function AdminAdvisoriesTab({ participants }: AdminAdvisoriesTabProps) {
+export function AdminAdvisoriesTab({
+  canManageAdvisories,
+  participants
+}: AdminAdvisoriesTabProps) {
   const [advisories, setAdvisories] = useState<AdvisoryRecord[]>([]);
   const [channel, setChannel] = useState<NotificationChannel>("IN_APP");
   const [crops, setCrops] = useState<CropCatalog[]>([]);
@@ -163,243 +167,246 @@ export function AdminAdvisoriesTab({ participants }: AdminAdvisoriesTabProps) {
 
   return (
     <View style={styles.section}>
-      <View style={styles.managementCard}>
-        <Text style={styles.cardTitle}>Create advisory</Text>
-        <View style={styles.formGrid}>
-          <AdvisoryField label="Title" value={title} onChange={setTitle} />
-          <AdvisoryField label="Message" value={message} onChange={setMessage} />
-        </View>
+      {canManageAdvisories ? (
+        <View style={styles.managementCard}>
+          <Text style={styles.cardTitle}>Create advisory</Text>
+          <View style={styles.formGrid}>
+            <AdvisoryField label="Title" value={title} onChange={setTitle} />
+            <AdvisoryField label="Message" value={message} onChange={setMessage} />
+          </View>
 
-        <Text style={styles.formLabel}>Target</Text>
-        <View style={styles.choiceRow}>
-          {targetOptions.map((option) => (
-            <Pressable
-              accessibilityRole="button"
-              key={option}
-              style={[
-                styles.choiceButton,
-                targetType === option && styles.choiceButtonActive
-              ]}
-              onPress={() => setTargetType(option)}
-            >
-              <Text
+          <Text style={styles.formLabel}>Target</Text>
+          <View style={styles.choiceRow}>
+            {targetOptions.map((option) => (
+              <Pressable
+                accessibilityRole="button"
+                key={option}
                 style={[
-                  styles.choiceButtonText,
-                  targetType === option && styles.choiceButtonTextActive
+                  styles.choiceButton,
+                  targetType === option && styles.choiceButtonActive
                 ]}
+                onPress={() => setTargetType(option)}
               >
-                {targetTypeLabel(option)}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-
-        {targetType === "VILLAGE" ? (
-          <>
-            <Text style={styles.formLabel}>Village</Text>
-            <View style={styles.choiceRow}>
-              {villages.map((village) => (
-                <Pressable
-                  accessibilityRole="button"
-                  key={village}
+                <Text
                   style={[
-                    styles.choiceButton,
-                    targetVillage === village && styles.choiceButtonActive
+                    styles.choiceButtonText,
+                    targetType === option && styles.choiceButtonTextActive
                   ]}
-                  onPress={() => setTargetVillage(village)}
                 >
-                  <Text
+                  {targetTypeLabel(option)}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
+          {targetType === "VILLAGE" ? (
+            <>
+              <Text style={styles.formLabel}>Village</Text>
+              <View style={styles.choiceRow}>
+                {villages.map((village) => (
+                  <Pressable
+                    accessibilityRole="button"
+                    key={village}
                     style={[
-                      styles.choiceButtonText,
-                      targetVillage === village && styles.choiceButtonTextActive
+                      styles.choiceButton,
+                      targetVillage === village && styles.choiceButtonActive
                     ]}
+                    onPress={() => setTargetVillage(village)}
                   >
-                    {village}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-            <AdvisoryField
-              label="Custom village"
-              value={targetVillage}
-              onChange={setTargetVillage}
-            />
-          </>
-        ) : null}
+                    <Text
+                      style={[
+                        styles.choiceButtonText,
+                        targetVillage === village && styles.choiceButtonTextActive
+                      ]}
+                    >
+                      {village}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+              <AdvisoryField
+                label="Custom village"
+                value={targetVillage}
+                onChange={setTargetVillage}
+              />
+            </>
+          ) : null}
 
-        {targetType === "MEMBER" ? (
-          <>
-            <Text style={styles.formLabel}>Member</Text>
-            <View style={styles.choiceRow}>
-              {participants.map((participant) => (
-                <Pressable
-                  accessibilityRole="button"
-                  key={participant.memberId}
-                  style={[
-                    styles.choiceButton,
-                    targetMemberId === participant.memberId && styles.choiceButtonActive
-                  ]}
-                  onPress={() => setTargetMemberId(participant.memberId)}
-                >
-                  <Text
+          {targetType === "MEMBER" ? (
+            <>
+              <Text style={styles.formLabel}>Member</Text>
+              <View style={styles.choiceRow}>
+                {participants.map((participant) => (
+                  <Pressable
+                    accessibilityRole="button"
+                    key={participant.memberId}
                     style={[
-                      styles.choiceButtonText,
+                      styles.choiceButton,
                       targetMemberId === participant.memberId &&
-                        styles.choiceButtonTextActive
+                        styles.choiceButtonActive
                     ]}
+                    onPress={() => setTargetMemberId(participant.memberId)}
                   >
-                    {participant.name}
-                  </Text>
-                  <Text style={styles.choiceButtonMeta}>{participant.village}</Text>
-                </Pressable>
-              ))}
-            </View>
-          </>
-        ) : null}
+                    <Text
+                      style={[
+                        styles.choiceButtonText,
+                        targetMemberId === participant.memberId &&
+                          styles.choiceButtonTextActive
+                      ]}
+                    >
+                      {participant.name}
+                    </Text>
+                    <Text style={styles.choiceButtonMeta}>{participant.village}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </>
+          ) : null}
 
-        <Text style={styles.formLabel}>Crop context</Text>
-        <View style={styles.choiceRow}>
-          <Pressable
-            accessibilityRole="button"
-            style={[styles.choiceButton, !cropId && styles.choiceButtonActive]}
-            onPress={() => setCropId("")}
-          >
-            <Text
-              style={[
-                styles.choiceButtonText,
-                !cropId && styles.choiceButtonTextActive
-              ]}
-            >
-              Any crop
-            </Text>
-          </Pressable>
-          {crops.map((crop) => (
+          <Text style={styles.formLabel}>Crop context</Text>
+          <View style={styles.choiceRow}>
             <Pressable
               accessibilityRole="button"
-              key={crop.id}
-              style={[
-                styles.choiceButton,
-                cropId === crop.id && styles.choiceButtonActive
-              ]}
-              onPress={() => setCropId(crop.id)}
+              style={[styles.choiceButton, !cropId && styles.choiceButtonActive]}
+              onPress={() => setCropId("")}
             >
               <Text
                 style={[
                   styles.choiceButtonText,
-                  cropId === crop.id && styles.choiceButtonTextActive
+                  !cropId && styles.choiceButtonTextActive
                 ]}
               >
-                {crop.name}
+                Any crop
               </Text>
             </Pressable>
-          ))}
-        </View>
+            {crops.map((crop) => (
+              <Pressable
+                accessibilityRole="button"
+                key={crop.id}
+                style={[
+                  styles.choiceButton,
+                  cropId === crop.id && styles.choiceButtonActive
+                ]}
+                onPress={() => setCropId(crop.id)}
+              >
+                <Text
+                  style={[
+                    styles.choiceButtonText,
+                    cropId === crop.id && styles.choiceButtonTextActive
+                  ]}
+                >
+                  {crop.name}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
 
-        <Text style={styles.formLabel}>Season context</Text>
-        <View style={styles.choiceRow}>
-          <Pressable
-            accessibilityRole="button"
-            style={[styles.choiceButton, !seasonId && styles.choiceButtonActive]}
-            onPress={() => setSeasonId("")}
-          >
-            <Text
-              style={[
-                styles.choiceButtonText,
-                !seasonId && styles.choiceButtonTextActive
-              ]}
-            >
-              Any season
-            </Text>
-          </Pressable>
-          {seasons.map((season) => (
+          <Text style={styles.formLabel}>Season context</Text>
+          <View style={styles.choiceRow}>
             <Pressable
               accessibilityRole="button"
-              key={season.id}
-              style={[
-                styles.choiceButton,
-                seasonId === season.id && styles.choiceButtonActive
-              ]}
-              onPress={() => setSeasonId(season.id)}
+              style={[styles.choiceButton, !seasonId && styles.choiceButtonActive]}
+              onPress={() => setSeasonId("")}
             >
               <Text
                 style={[
                   styles.choiceButtonText,
-                  seasonId === season.id && styles.choiceButtonTextActive
+                  !seasonId && styles.choiceButtonTextActive
                 ]}
               >
-                {season.name}
+                Any season
               </Text>
-              <Text style={styles.choiceButtonMeta}>{season.seasonYear}</Text>
             </Pressable>
-          ))}
-        </View>
-
-        <View style={styles.formGrid}>
-          <View style={styles.formBlock}>
-            <Text style={styles.formLabel}>Channel</Text>
-            <View style={styles.choiceRow}>
-              {channelOptions.map((option) => (
-                <Pressable
-                  accessibilityRole="button"
-                  key={option}
+            {seasons.map((season) => (
+              <Pressable
+                accessibilityRole="button"
+                key={season.id}
+                style={[
+                  styles.choiceButton,
+                  seasonId === season.id && styles.choiceButtonActive
+                ]}
+                onPress={() => setSeasonId(season.id)}
+              >
+                <Text
                   style={[
-                    styles.choiceButton,
-                    channel === option && styles.choiceButtonActive
+                    styles.choiceButtonText,
+                    seasonId === season.id && styles.choiceButtonTextActive
                   ]}
-                  onPress={() => setChannel(option)}
                 >
-                  <Text
+                  {season.name}
+                </Text>
+                <Text style={styles.choiceButtonMeta}>{season.seasonYear}</Text>
+              </Pressable>
+            ))}
+          </View>
+
+          <View style={styles.formGrid}>
+            <View style={styles.formBlock}>
+              <Text style={styles.formLabel}>Channel</Text>
+              <View style={styles.choiceRow}>
+                {channelOptions.map((option) => (
+                  <Pressable
+                    accessibilityRole="button"
+                    key={option}
                     style={[
-                      styles.choiceButtonText,
-                      channel === option && styles.choiceButtonTextActive
+                      styles.choiceButton,
+                      channel === option && styles.choiceButtonActive
                     ]}
+                    onPress={() => setChannel(option)}
                   >
-                    {channelLabel(option)}
-                  </Text>
-                </Pressable>
-              ))}
+                    <Text
+                      style={[
+                        styles.choiceButtonText,
+                        channel === option && styles.choiceButtonTextActive
+                      ]}
+                    >
+                      {channelLabel(option)}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+            <View style={styles.formBlock}>
+              <Text style={styles.formLabel}>Status</Text>
+              <View style={styles.choiceRow}>
+                {(["DRAFT", "PUBLISHED"] as AdvisoryStatus[]).map((option) => (
+                  <Pressable
+                    accessibilityRole="button"
+                    key={option}
+                    style={[
+                      styles.choiceButton,
+                      status === option && styles.choiceButtonActive
+                    ]}
+                    onPress={() => setStatus(option)}
+                  >
+                    <Text
+                      style={[
+                        styles.choiceButtonText,
+                        status === option && styles.choiceButtonTextActive
+                      ]}
+                    >
+                      {statusLabel(option)}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
             </View>
           </View>
-          <View style={styles.formBlock}>
-            <Text style={styles.formLabel}>Status</Text>
-            <View style={styles.choiceRow}>
-              {(["DRAFT", "PUBLISHED"] as AdvisoryStatus[]).map((option) => (
-                <Pressable
-                  accessibilityRole="button"
-                  key={option}
-                  style={[
-                    styles.choiceButton,
-                    status === option && styles.choiceButtonActive
-                  ]}
-                  onPress={() => setStatus(option)}
-                >
-                  <Text
-                    style={[
-                      styles.choiceButtonText,
-                      status === option && styles.choiceButtonTextActive
-                    ]}
-                  >
-                    {statusLabel(option)}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
+
+          <View style={styles.formActions}>
+            <Pressable
+              accessibilityRole="button"
+              disabled={isCreating}
+              style={[styles.primaryButton, isCreating && styles.disabledButton]}
+              onPress={handleCreateAdvisory}
+            >
+              <Text style={styles.primaryButtonText}>
+                {isCreating ? "Creating..." : "Create advisory"}
+              </Text>
+            </Pressable>
           </View>
         </View>
-
-        <View style={styles.formActions}>
-          <Pressable
-            accessibilityRole="button"
-            disabled={isCreating}
-            style={[styles.primaryButton, isCreating && styles.disabledButton]}
-            onPress={handleCreateAdvisory}
-          >
-            <Text style={styles.primaryButtonText}>
-              {isCreating ? "Creating..." : "Create advisory"}
-            </Text>
-          </Pressable>
-        </View>
-      </View>
+      ) : null}
 
       <View style={styles.headerRow}>
         <Text style={styles.sectionTitle}>Advisory records</Text>
@@ -460,29 +467,31 @@ export function AdminAdvisoriesTab({ participants }: AdminAdvisoriesTabProps) {
                 label={statusLabel(advisory.status)}
                 tone={statusTone(advisory.status)}
               />
-              <View style={styles.actionRow}>
-                {(["PUBLISHED", "ARCHIVED"] as AdvisoryStatus[]).map((nextStatus) => (
-                  <Pressable
-                    accessibilityRole="button"
-                    disabled={
-                      advisory.status === nextStatus ||
-                      updatingAdvisoryId === advisory.id
-                    }
-                    key={nextStatus}
-                    style={[
-                      styles.statusButton,
-                      (advisory.status === nextStatus ||
-                        updatingAdvisoryId === advisory.id) &&
-                        styles.disabledButton
-                    ]}
-                    onPress={() => handleStatusChange(advisory, nextStatus)}
-                  >
-                    <Text style={styles.statusButtonText}>
-                      {statusLabel(nextStatus)}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
+              {canManageAdvisories ? (
+                <View style={styles.actionRow}>
+                  {(["PUBLISHED", "ARCHIVED"] as AdvisoryStatus[]).map((nextStatus) => (
+                    <Pressable
+                      accessibilityRole="button"
+                      disabled={
+                        advisory.status === nextStatus ||
+                        updatingAdvisoryId === advisory.id
+                      }
+                      key={nextStatus}
+                      style={[
+                        styles.statusButton,
+                        (advisory.status === nextStatus ||
+                          updatingAdvisoryId === advisory.id) &&
+                          styles.disabledButton
+                      ]}
+                      onPress={() => handleStatusChange(advisory, nextStatus)}
+                    >
+                      <Text style={styles.statusButtonText}>
+                        {statusLabel(nextStatus)}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : null}
             </View>
           </View>
         ))

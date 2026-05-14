@@ -42,6 +42,8 @@ import {
   uploadBackendProof,
   upsertProofSubmission
 } from "../data/workflowActivityStore";
+import { getCachedEnabledModules, PlatformModuleCode } from "../data/moduleStore";
+import { getVisibleFarmerTabs, type FarmerTabId } from "../auth/roleAccess";
 import { StatusBadge } from "../ui/StatusBadge";
 import { UserCarbonScreen } from "./UserCarbonScreen";
 
@@ -50,7 +52,7 @@ type UserHomeScreenProps = {
   onLogout: () => void;
 };
 
-type ParticipantTab = "carbon" | "cycles" | "dashboard" | "profile" | "history";
+type ParticipantTab = FarmerTabId;
 
 type SelectedProof = {
   cycleId: string;
@@ -78,6 +80,9 @@ export function UserHomeScreen({ username, onLogout }: UserHomeScreenProps) {
   const [startDate, setStartDate] = useState(toInputDate(new Date()));
   const [startCropError, setStartCropError] = useState("");
   const [completedCropName, setCompletedCropName] = useState<string | null>(null);
+  const [enabledModules, setEnabledModules] = useState<PlatformModuleCode[] | null>(
+    null
+  );
 
   useEffect(() => {
     async function loadParticipantData() {
@@ -124,6 +129,14 @@ export function UserHomeScreen({ username, onLogout }: UserHomeScreenProps) {
     loadParticipantData();
   }, [username]);
 
+  useEffect(() => {
+    async function loadModules() {
+      setEnabledModules(await getCachedEnabledModules());
+    }
+
+    loadModules();
+  }, []);
+
   const participantName = getProfileValue(profileFields, "Name", "Participant");
   const participantRegion = getProfileValue(
     profileFields,
@@ -166,6 +179,16 @@ export function UserHomeScreen({ username, onLogout }: UserHomeScreenProps) {
     { label: "Finished cycles", value: String(completedCycles.length) },
     { label: "Proof saved", value: String(savedProofs.length) }
   ];
+  const visibleTabs = useMemo(
+    () => getVisibleFarmerTabs(enabledModules),
+    [enabledModules]
+  );
+
+  useEffect(() => {
+    if (!visibleTabs.some((item) => item.tab === activeTab)) {
+      setActiveTab("cycles");
+    }
+  }, [activeTab, visibleTabs]);
 
   async function handlePickPhoto() {
     setProofError("");
@@ -392,17 +415,11 @@ export function UserHomeScreen({ username, onLogout }: UserHomeScreenProps) {
       </View>
 
       <View style={styles.navRow}>
-        {[
-          ["cycles", "Cycles"],
-          ["dashboard", "Dashboard"],
-          ["carbon", "Carbon"],
-          ["profile", "Profile"],
-          ["history", "History"]
-        ].map(([tab, label]) => (
+        {visibleTabs.map(({ label, tab }) => (
           <Pressable
             key={tab}
             style={[styles.navButton, activeTab === tab && styles.navButtonActive]}
-            onPress={() => setActiveTab(tab as ParticipantTab)}
+            onPress={() => setActiveTab(tab)}
           >
             <Text
               style={[

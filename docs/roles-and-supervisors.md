@@ -1,6 +1,6 @@
 # Roles, FPO Managers, And Field Coordinators
 
-Last updated: 2026-05-14
+Last updated: 2026-05-15
 
 Use this document for Phase 1 role behavior. `SUPERVISOR` is not a Phase 1
 role; use `FIELD_COORDINATOR` for field staff.
@@ -22,7 +22,9 @@ username/password in Phase 1 for their own workflow area.
 | Capability | `ADMIN` | `FPO_MANAGER` | `FIELD_COORDINATOR` | `FARMER` |
 | ---------- | ------- | ------------- | ------------------- | -------- |
 | Create FPO | Yes | No | No | No |
-| Manage users and roles | Yes | Limited to own FPO staff/farmers if implemented | No | No |
+| Create FPO manager login | Yes | No | No | No |
+| Create field coordinator login | Yes | Yes, own FPO | No | No |
+| Change staff roles | Yes | No | No | No |
 | View all FPOs | Yes | No | No | No |
 | View assigned FPO | Yes | Yes | Yes | Own records only |
 | Create/edit farmers | Yes | Yes, own FPO | Yes, assigned scope | No |
@@ -30,11 +32,32 @@ username/password in Phase 1 for their own workflow area.
 | Enter soil profile values | Yes | Yes, own FPO | Yes, assigned scope | View own only |
 | Create/edit crop plans | Yes | Yes, own FPO | Yes, assigned scope | View own only |
 | Confirm crop plans | Yes | Yes, own FPO | Yes, assigned scope unless restricted later | No |
-| Run input demand | Yes | Yes, own FPO | View/assist unless product owner restricts | No |
-| Export reports | Yes | Yes, own FPO | View/export assigned scope if enabled | No |
+| Run input demand | Yes | Yes, own FPO | No Phase 1 UI | No |
+| Export compliance reports | Yes | Yes, own FPO | No | No |
+| View/export FPO report summary | Yes | Yes, own FPO | Assigned scope if backend permits | No |
 | Create advisory | Yes | Yes, own FPO | No by default | No |
 | View advisory | Yes | Yes, own FPO | Yes, assigned scope | Own relevant advisories |
 | Start/update own workflow activity | Yes, for any allowed field coordinator or farmer | Yes, own FPO | Own activity | Own activity |
+
+## Frontend Page And Action Policy
+
+The React app uses [roleAccess.ts](../src/auth/roleAccess.ts) as the frontend
+equivalent of a Mendix role-page map. Keep new Phase 1 pages and buttons wired
+through that policy instead of scattering one-off role checks across screens.
+
+| Dashboard area | `ADMIN` | `FPO_MANAGER` | `FIELD_COORDINATOR` | `FARMER` |
+| -------------- | ------- | ------------- | ------------------- | -------- |
+| Staff dashboard shell | Yes | Yes | Yes | No |
+| Farmer workflow shell | No | No | No | Yes |
+| Farmers tab | Yes | Yes | Yes | Own profile only |
+| Crop Planning tab | Yes | Yes | Yes | No |
+| Crop/season master-data actions | Yes | Yes | Read-only | No |
+| Input Demand tab | Yes | Yes | Hidden | No |
+| Roles tab | Yes | Yes, create coordinators only | Hidden | No |
+| Workflow definition tab | Yes | Yes | Hidden | Farmer workflow screen only |
+| Advisory tab | Yes | Yes | Read-only list | Relevant advisories later |
+| Generic compliance export | Yes | Yes | Disabled | No |
+| Carbon prototype screens | Hidden unless `SUSTAINABILITY` module is enabled | Hidden unless enabled | Hidden | Hidden unless enabled |
 
 ## Account Setup Flow
 
@@ -117,4 +140,7 @@ Current alignment:
   workflow dashboard.
 - Frontend role management locks farmer-role changes and directs farmer login
   management back to farmer profiles.
+- Frontend tab/action visibility is centralized in `src/auth/roleAccess.ts`;
+  Phase 2-only carbon prototype screens are hidden behind the `SUSTAINABILITY`
+  module by default.
 - Focused JUnit and Testcontainers integration tests cover this foundation.

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { getErrorMessage } from "../core/errors/AppError";
-import type { Role } from "../auth/authService";
+import type { StaffRole } from "../auth/roleAccess";
 import {
   BackendRole,
   BackendRoleCode,
@@ -20,7 +20,6 @@ type AdminRolesTabProps = {
   currentRole: StaffRole;
 };
 
-type StaffRole = Exclude<Role, "farmer">;
 type CreateStaffRole = Extract<BackendRoleCode, "FIELD_COORDINATOR" | "FPO_MANAGER">;
 
 const roleOrder: BackendRoleCode[] = [
@@ -29,16 +28,10 @@ const roleOrder: BackendRoleCode[] = [
   "FIELD_COORDINATOR",
   "FARMER"
 ];
-const adminStaffCreationRoles: CreateStaffRole[] = [
-  "FPO_MANAGER",
-  "FIELD_COORDINATOR"
-];
+const adminStaffCreationRoles: CreateStaffRole[] = ["FPO_MANAGER", "FIELD_COORDINATOR"];
 const fpoManagerStaffCreationRoles: CreateStaffRole[] = ["FIELD_COORDINATOR"];
 
-export function AdminRolesTab({
-  canUseBackend,
-  currentRole
-}: AdminRolesTabProps) {
+export function AdminRolesTab({ canUseBackend, currentRole }: AdminRolesTabProps) {
   const [error, setError] = useState("");
   const [createError, setCreateError] = useState("");
   const [isCreatingStaffUser, setIsCreatingStaffUser] = useState(false);
@@ -48,9 +41,7 @@ export function AdminRolesTab({
   const [users, setUsers] = useState<RoleManagedUser[]>([]);
   const canUpdateRoles = currentRole === "admin";
   const allowedStaffRoles =
-    currentRole === "admin"
-      ? adminStaffCreationRoles
-      : fpoManagerStaffCreationRoles;
+    currentRole === "admin" ? adminStaffCreationRoles : fpoManagerStaffCreationRoles;
 
   useEffect(() => {
     if (!canUseBackend) {
@@ -67,8 +58,7 @@ export function AdminRolesTab({
       roles
         .slice()
         .sort(
-          (left, right) =>
-            roleOrder.indexOf(left.code) - roleOrder.indexOf(right.code)
+          (left, right) => roleOrder.indexOf(left.code) - roleOrder.indexOf(right.code)
         ),
     [roles]
   );
@@ -274,9 +264,7 @@ function CreateStaffUserForm({
   const [locationName, setLocationName] = useState("");
   const [password, setPassword] = useState("");
   const [phone, setPhone] = useState("");
-  const [role, setRole] = useState<CreateStaffUserInput["role"]>(
-    allowedRoles[0]
-  );
+  const [role, setRole] = useState<CreateStaffUserInput["role"]>(allowedRoles[0]);
   const [siteName, setSiteName] = useState("");
   const [username, setUsername] = useState("");
 
