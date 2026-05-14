@@ -227,11 +227,13 @@ export type CropHistoryRequest = {
 };
 
 export type CropPlanResponse = {
+  confirmedAt: string | null;
   createdAt: string;
   cropCode: string;
   cropId: Id;
   cropName: string;
   expectedHarvestDate: string | null;
+  expectedYieldQuintals: number | null;
   id: Id;
   memberId: Id;
   memberName: string;
@@ -245,6 +247,7 @@ export type CropPlanResponse = {
   seasonId: Id;
   seasonName: string;
   seasonYear: number;
+  cropYear: string;
   status: CropPlanStatus;
   tenantId: Id;
   updatedAt: string;
@@ -252,7 +255,9 @@ export type CropPlanResponse = {
 
 export type CropPlanRequest = {
   cropId: Id;
+  cropYear: string;
   expectedHarvestDate?: string;
+  expectedYieldQuintals?: number;
   memberId: Id;
   plannedAreaAcres: number;
   plannedSowingDate?: string;

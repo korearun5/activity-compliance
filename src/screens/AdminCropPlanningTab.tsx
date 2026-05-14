@@ -884,7 +884,9 @@ function CropPlanForm({
   seasons: CropSeason[];
 }) {
   const [cropId, setCropId] = useState("");
+  const [cropYear, setCropYear] = useState("");
   const [expectedHarvestDate, setExpectedHarvestDate] = useState("");
+  const [expectedYieldQuintals, setExpectedYieldQuintals] = useState("");
   const [localError, setLocalError] = useState("");
   const [memberId, setMemberId] = useState(selectedMemberId);
   const [plannedAreaAcres, setPlannedAreaAcres] = useState("");
@@ -929,11 +931,19 @@ function CropPlanForm({
     }
   }, [seasonId, seasons]);
 
+  useEffect(() => {
+    const season = seasons.find((item) => item.id === seasonId);
+    if (season && !cropYear.trim()) {
+      setCropYear(formatCropYear(season.seasonYear));
+    }
+  }, [cropYear, seasonId, seasons]);
+
   async function handleSubmit() {
     const missingFields = [
       !memberId ? "farmer" : "",
       !cropId ? "crop" : "",
       !seasonId ? "season" : "",
+      !cropYear.trim() ? "crop year" : "",
       !plannedAreaAcres.trim() ? "planned acreage" : ""
     ].filter(Boolean);
 
@@ -945,7 +955,9 @@ function CropPlanForm({
     setLocalError("");
     const created = await onSubmit({
       cropId,
+      cropYear: cropYear.trim(),
       expectedHarvestDate: expectedHarvestDate.trim(),
+      expectedYieldQuintals: expectedYieldQuintals.trim(),
       memberId,
       plannedAreaAcres: plannedAreaAcres.trim(),
       plannedSowingDate: plannedSowingDate.trim(),
@@ -955,8 +967,17 @@ function CropPlanForm({
 
     if (created) {
       setExpectedHarvestDate("");
+      setExpectedYieldQuintals("");
       setPlannedAreaAcres("");
       setPlannedSowingDate("");
+    }
+  }
+
+  function handleSeasonSelect(nextSeasonId: string) {
+    setSeasonId(nextSeasonId);
+    const season = seasons.find((item) => item.id === nextSeasonId);
+    if (season) {
+      setCropYear(formatCropYear(season.seasonYear));
     }
   }
 
@@ -987,10 +1008,11 @@ function CropPlanForm({
           label: `${season.name} ${season.seasonYear}`
         }))}
         emptyLabel="Add an active season first."
-        onSelect={setSeasonId}
+        onSelect={handleSeasonSelect}
         selectedId={seasonId}
       />
       <View style={styles.formGrid}>
+        <PlanningField label="Crop year" value={cropYear} onChange={setCropYear} />
         <PlanningField
           keyboardType="decimal-pad"
           label="Planned acres"
@@ -1008,6 +1030,12 @@ function CropPlanForm({
           placeholder="YYYY-MM-DD"
           value={expectedHarvestDate}
           onChange={setExpectedHarvestDate}
+        />
+        <PlanningField
+          keyboardType="decimal-pad"
+          label="Expected yield (quintals)"
+          value={expectedYieldQuintals}
+          onChange={setExpectedYieldQuintals}
         />
       </View>
       {localError ? <Text style={styles.formError}>{localError}</Text> : null}
@@ -1045,9 +1073,19 @@ function CropPlanList({
                 {plan.cropName} - {plan.memberName}
               </Text>
               <Text style={styles.rowMeta}>
-                {plan.memberVillage} - {plan.seasonName} {plan.seasonYear} -{" "}
+                {plan.memberVillage} - {plan.seasonName} {plan.cropYear} -{" "}
                 {formatArea(plan.plannedAreaAcres)}
               </Text>
+              {plan.expectedYieldQuintals !== undefined ? (
+                <Text style={styles.rowMeta}>
+                  Expected yield {formatNumber(plan.expectedYieldQuintals)} quintals
+                </Text>
+              ) : null}
+              {plan.confirmedAt ? (
+                <Text style={styles.rowMeta}>
+                  Confirmed {formatDisplayDate(plan.confirmedAt)}
+                </Text>
+              ) : null}
               <Text style={styles.rowMeta}>
                 {[plan.plannedSowingDate, plan.expectedHarvestDate]
                   .filter(Boolean)
@@ -1289,6 +1327,22 @@ function formatArea(value: number) {
 
 function formatNumber(value: number) {
   return Number.isInteger(value) ? String(value) : value.toFixed(2);
+}
+
+function formatCropYear(seasonYear: number) {
+  return `${seasonYear}-${String((seasonYear + 1) % 100).padStart(2, "0")}`;
+}
+
+function formatDisplayDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return date.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric"
+  });
 }
 
 function formatList(values: string[]) {

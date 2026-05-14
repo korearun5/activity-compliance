@@ -408,9 +408,11 @@ class InputDemandControllerIT {
         null,
         crop,
         season,
+        "2026-27",
         areaAcres,
         LocalDate.of(2026, 6, 1),
         LocalDate.of(2026, 9, 30),
+        null,
         CropPlanStatus.CONFIRMED,
         Instant.now()
     );

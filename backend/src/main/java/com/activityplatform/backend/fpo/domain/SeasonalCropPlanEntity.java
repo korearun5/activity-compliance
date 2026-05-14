@@ -44,15 +44,24 @@ public class SeasonalCropPlanEntity {
   @Column(name = "planned_area_acres", nullable = false)
   private BigDecimal plannedAreaAcres;
 
+  @Column(name = "crop_year", nullable = false, length = 20)
+  private String cropYear;
+
   @Column(name = "planned_sowing_date")
   private LocalDate plannedSowingDate;
 
   @Column(name = "expected_harvest_date")
   private LocalDate expectedHarvestDate;
 
+  @Column(name = "expected_yield_quintals")
+  private BigDecimal expectedYieldQuintals;
+
   @Enumerated(EnumType.STRING)
   @Column(nullable = false)
   private CropPlanStatus status;
+
+  @Column(name = "confirmed_at")
+  private Instant confirmedAt;
 
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;
@@ -70,9 +79,11 @@ public class SeasonalCropPlanEntity {
       FarmPlotEntity plot,
       CropCatalogEntity crop,
       CropSeasonEntity season,
+      String cropYear,
       BigDecimal plannedAreaAcres,
       LocalDate plannedSowingDate,
       LocalDate expectedHarvestDate,
+      BigDecimal expectedYieldQuintals,
       CropPlanStatus status,
       Instant now
   ) {
@@ -82,12 +93,13 @@ public class SeasonalCropPlanEntity {
     this.plot = plot;
     this.crop = crop;
     this.season = season;
+    this.cropYear = cropYear;
     this.plannedAreaAcres = plannedAreaAcres;
     this.plannedSowingDate = plannedSowingDate;
     this.expectedHarvestDate = expectedHarvestDate;
-    this.status = status;
     this.createdAt = now;
-    this.updatedAt = now;
+    this.expectedYieldQuintals = expectedYieldQuintals;
+    applyStatus(status, now);
   }
 
   public UUID getId() {
@@ -118,6 +130,10 @@ public class SeasonalCropPlanEntity {
     return plannedAreaAcres;
   }
 
+  public String getCropYear() {
+    return cropYear;
+  }
+
   public LocalDate getPlannedSowingDate() {
     return plannedSowingDate;
   }
@@ -126,8 +142,16 @@ public class SeasonalCropPlanEntity {
     return expectedHarvestDate;
   }
 
+  public BigDecimal getExpectedYieldQuintals() {
+    return expectedYieldQuintals;
+  }
+
   public CropPlanStatus getStatus() {
     return status;
+  }
+
+  public Instant getConfirmedAt() {
+    return confirmedAt;
   }
 
   public Instant getCreatedAt() {
@@ -143,9 +167,11 @@ public class SeasonalCropPlanEntity {
       FarmPlotEntity plot,
       CropCatalogEntity crop,
       CropSeasonEntity season,
+      String cropYear,
       BigDecimal plannedAreaAcres,
       LocalDate plannedSowingDate,
       LocalDate expectedHarvestDate,
+      BigDecimal expectedYieldQuintals,
       CropPlanStatus status,
       Instant now
   ) {
@@ -153,14 +179,22 @@ public class SeasonalCropPlanEntity {
     this.plot = plot;
     this.crop = crop;
     this.season = season;
+    this.cropYear = cropYear;
     this.plannedAreaAcres = plannedAreaAcres;
     this.plannedSowingDate = plannedSowingDate;
     this.expectedHarvestDate = expectedHarvestDate;
-    this.status = status;
-    this.updatedAt = now;
+    this.expectedYieldQuintals = expectedYieldQuintals;
+    applyStatus(status, now);
   }
 
   public void updateStatus(CropPlanStatus status, Instant now) {
+    applyStatus(status, now);
+  }
+
+  private void applyStatus(CropPlanStatus status, Instant now) {
+    if (status == CropPlanStatus.CONFIRMED && this.status != CropPlanStatus.CONFIRMED) {
+      this.confirmedAt = now;
+    }
     this.status = status;
     this.updatedAt = now;
   }

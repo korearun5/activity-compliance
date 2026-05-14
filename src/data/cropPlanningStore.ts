@@ -67,11 +67,13 @@ export type CropHistory = {
 };
 
 export type CropPlan = {
+  confirmedAt?: string;
   createdAt: string;
   cropCode: string;
   cropId: string;
   cropName: string;
   expectedHarvestDate?: string;
+  expectedYieldQuintals?: number;
   id: string;
   memberId: string;
   memberName: string;
@@ -85,6 +87,7 @@ export type CropPlan = {
   seasonId: string;
   seasonName: string;
   seasonYear: number;
+  cropYear: string;
   status: CropPlanStatus;
   tenantId?: string;
   updatedAt: string;
@@ -118,7 +121,9 @@ export type CropHistoryInput = {
 
 export type CropPlanInput = {
   cropId: string;
+  cropYear: string;
   expectedHarvestDate?: string;
+  expectedYieldQuintals?: string;
   memberId: string;
   plannedAreaAcres: string;
   plannedSowingDate?: string;
@@ -488,11 +493,14 @@ export async function createCropPlan(
   }
 
   return upsertLocalCropPlan({
+    confirmedAt:
+      (request.status ?? "DRAFT") === "CONFIRMED" ? new Date().toISOString() : undefined,
     createdAt: new Date().toISOString(),
     cropCode: crop.code,
     cropId: crop.id,
     cropName: crop.name,
     expectedHarvestDate: request.expectedHarvestDate,
+    expectedYieldQuintals: request.expectedYieldQuintals,
     id: `local-crop-plan-${Date.now()}`,
     memberId: request.memberId,
     memberName: member.name,
@@ -505,6 +513,7 @@ export async function createCropPlan(
     seasonId: season.id,
     seasonName: season.name,
     seasonYear: season.seasonYear,
+    cropYear: request.cropYear,
     status: request.status ?? "DRAFT",
     updatedAt: new Date().toISOString()
   });
@@ -539,6 +548,10 @@ export async function updateCropPlanStatus(
 
   return upsertLocalCropPlan({
     ...plan,
+    confirmedAt:
+      status === "CONFIRMED" && plan.status !== "CONFIRMED"
+        ? new Date().toISOString()
+        : plan.confirmedAt,
     status,
     updatedAt: new Date().toISOString()
   });
@@ -597,11 +610,13 @@ function toCropHistory(response: CropHistoryResponse): CropHistory {
 
 function toCropPlan(response: CropPlanResponse): CropPlan {
   return {
+    confirmedAt: response.confirmedAt ?? undefined,
     createdAt: response.createdAt,
     cropCode: response.cropCode,
     cropId: response.cropId,
     cropName: response.cropName,
     expectedHarvestDate: response.expectedHarvestDate ?? undefined,
+    expectedYieldQuintals: response.expectedYieldQuintals ?? undefined,
     id: response.id,
     memberId: response.memberId,
     memberName: response.memberName,
@@ -615,6 +630,7 @@ function toCropPlan(response: CropPlanResponse): CropPlan {
     seasonId: response.seasonId,
     seasonName: response.seasonName,
     seasonYear: response.seasonYear,
+    cropYear: response.cropYear,
     status: response.status,
     tenantId: response.tenantId,
     updatedAt: response.updatedAt
@@ -709,6 +725,11 @@ function toCropPlanRequest(input: CropPlanInput): CropPlanRequest {
     throw new AppError("VALIDATION_FAILED", "Select member, crop, and season.");
   }
 
+  const cropYear = cleanOptional(input.cropYear);
+  if (!cropYear) {
+    throw new AppError("VALIDATION_FAILED", "Enter crop year.");
+  }
+
   const plannedSowingDate = cleanOptional(input.plannedSowingDate);
   const expectedHarvestDate = cleanOptional(input.expectedHarvestDate);
   if (
@@ -724,7 +745,12 @@ function toCropPlanRequest(input: CropPlanInput): CropPlanRequest {
 
   return {
     cropId: input.cropId,
+    cropYear,
     expectedHarvestDate,
+    expectedYieldQuintals: parseOptionalNonNegativeNumber(
+      input.expectedYieldQuintals,
+      "Expected yield"
+    ),
     memberId: input.memberId,
     plannedAreaAcres: parsePositiveNumber(input.plannedAreaAcres, "Planned area"),
     plannedSowingDate,
@@ -835,6 +861,7 @@ function toStoredCropPlan(plan: Partial<CropPlan>): CropPlan | null {
     typeof plan.seasonCode !== "string" ||
     typeof plan.seasonName !== "string" ||
     typeof plan.seasonYear !== "number" ||
+    typeof plan.cropYear !== "string" ||
     typeof plan.plannedAreaAcres !== "number" ||
     typeof plan.createdAt !== "string" ||
     typeof plan.updatedAt !== "string"
@@ -843,11 +870,13 @@ function toStoredCropPlan(plan: Partial<CropPlan>): CropPlan | null {
   }
 
   return {
+    confirmedAt: plan.confirmedAt,
     createdAt: plan.createdAt,
     cropCode: plan.cropCode,
     cropId: plan.cropId,
     cropName: plan.cropName,
     expectedHarvestDate: plan.expectedHarvestDate,
+    expectedYieldQuintals: plan.expectedYieldQuintals,
     id: plan.id,
     memberId: plan.memberId,
     memberName: plan.memberName,
@@ -861,6 +890,7 @@ function toStoredCropPlan(plan: Partial<CropPlan>): CropPlan | null {
     seasonId: plan.seasonId,
     seasonName: plan.seasonName,
     seasonYear: plan.seasonYear,
+    cropYear: plan.cropYear,
     status: plan.status ?? "DRAFT",
     tenantId: plan.tenantId,
     updatedAt: plan.updatedAt

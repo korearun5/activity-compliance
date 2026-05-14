@@ -387,9 +387,11 @@ class FpoReportControllerIT {
         null,
         crop,
         season,
+        "2026-27",
         plannedArea,
         LocalDate.of(2026, 6, 1),
         LocalDate.of(2026, 9, 30),
+        null,
         status,
         Instant.now()
     );

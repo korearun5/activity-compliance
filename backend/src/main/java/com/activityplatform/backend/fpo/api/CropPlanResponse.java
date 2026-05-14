@@ -24,10 +24,13 @@ public record CropPlanResponse(
     String seasonCode,
     String seasonName,
     Integer seasonYear,
+    String cropYear,
     BigDecimal plannedAreaAcres,
     LocalDate plannedSowingDate,
     LocalDate expectedHarvestDate,
+    BigDecimal expectedYieldQuintals,
     CropPlanStatus status,
+    Instant confirmedAt,
     Instant createdAt,
     Instant updatedAt
 ) {
@@ -49,10 +52,13 @@ public record CropPlanResponse(
         plan.getSeason().getCode(),
         plan.getSeason().getName(),
         plan.getSeason().getSeasonYear(),
+        plan.getCropYear(),
         plan.getPlannedAreaAcres(),
         plan.getPlannedSowingDate(),
         plan.getExpectedHarvestDate(),
+        plan.getExpectedYieldQuintals(),
         plan.getStatus(),
+        plan.getConfirmedAt(),
         plan.getCreatedAt(),
         plan.getUpdatedAt()
     );

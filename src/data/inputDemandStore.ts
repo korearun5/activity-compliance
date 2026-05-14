@@ -893,9 +893,14 @@ function planFromEstimate(
     seasonId: estimate.seasonId,
     seasonName: estimate.seasonName,
     seasonYear: estimate.seasonYear,
+    cropYear: formatCropYear(estimate.seasonYear),
     status: "CONFIRMED",
     updatedAt: estimate.updatedAt
   };
+}
+
+function formatCropYear(seasonYear: number) {
+  return `${seasonYear}-${String((seasonYear + 1) % 100).padStart(2, "0")}`;
 }
 
 function toStoredInput(input: Partial<InputCatalog>): InputCatalog | null {

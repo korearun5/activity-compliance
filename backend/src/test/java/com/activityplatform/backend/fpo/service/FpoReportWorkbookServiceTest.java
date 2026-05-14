@@ -246,9 +246,11 @@ class FpoReportWorkbookServiceTest {
         plot,
         crop,
         season,
+        "2026-27",
         new BigDecimal("1.5000"),
         LocalDate.of(2026, 6, 1),
         LocalDate.of(2026, 9, 30),
+        null,
         CropPlanStatus.CONFIRMED,
         Instant.now()
     );

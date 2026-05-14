@@ -296,14 +296,18 @@ class CropPlanningControllerIT {
                 plot.getId(),
                 crop.getId(),
                 season.getId(),
+                "2026-27",
                 new BigDecimal("1.5000"),
                 LocalDate.of(2026, 6, 1),
                 LocalDate.of(2026, 9, 30),
+                new BigDecimal("22.5000"),
                 CropPlanStatus.DRAFT
             ))))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.data.memberId").value(member.getId().toString()))
         .andExpect(jsonPath("$.data.plotId").value(plot.getId().toString()))
+        .andExpect(jsonPath("$.data.cropYear").value("2026-27"))
+        .andExpect(jsonPath("$.data.expectedYieldQuintals").value(22.5000))
         .andExpect(jsonPath("$.data.status").value("DRAFT"))
         .andReturn()
         .getResponse()
@@ -328,7 +332,8 @@ class CropPlanningControllerIT {
                 new UpdateCropPlanStatusRequest(CropPlanStatus.CONFIRMED)
             )))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.data.status").value("CONFIRMED"));
+        .andExpect(jsonPath("$.data.status").value("CONFIRMED"))
+        .andExpect(jsonPath("$.data.confirmedAt").isNotEmpty());
   }
 
   @Test
@@ -345,9 +350,11 @@ class CropPlanningControllerIT {
                 plot.getId(),
                 crop.getId(),
                 season.getId(),
+                "2026-27",
                 new BigDecimal("1.2500"),
                 LocalDate.of(2026, 3, 1),
                 LocalDate.of(2026, 5, 30),
+                null,
                 CropPlanStatus.DRAFT
             ))))
         .andExpect(status().isBadRequest())

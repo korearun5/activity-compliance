@@ -378,6 +378,7 @@ public class CropPlanningService {
     CropCatalogEntity crop = requireActiveCrop(currentUser, request.cropId());
     CropSeasonEntity season = requireActiveSeason(currentUser, request.seasonId());
     validatePlanDates(request);
+    String cropYear = normalizeCropYear(request.cropYear());
     FarmPlotEntity plot = resolveActivePlot(currentUser, member, request);
     Instant now = Instant.now();
     SeasonalCropPlanEntity plan = new SeasonalCropPlanEntity(
@@ -387,9 +388,11 @@ public class CropPlanningService {
         plot,
         crop,
         season,
+        cropYear,
         request.plannedAreaAcres(),
         request.plannedSowingDate(),
         request.expectedHarvestDate(),
+        request.expectedYieldQuintals(),
         request.status() == null ? CropPlanStatus.DRAFT : request.status(),
         now
     );
@@ -422,15 +425,18 @@ public class CropPlanningService {
     CropCatalogEntity crop = requireActiveCrop(currentUser, request.cropId());
     CropSeasonEntity season = requireActiveSeason(currentUser, request.seasonId());
     validatePlanDates(request);
+    String cropYear = normalizeCropYear(request.cropYear());
     FarmPlotEntity plot = resolveActivePlot(currentUser, member, request);
     plan.updateDetails(
         member,
         plot,
         crop,
         season,
+        cropYear,
         request.plannedAreaAcres(),
         request.plannedSowingDate(),
         request.expectedHarvestDate(),
+        request.expectedYieldQuintals(),
         request.status() == null ? plan.getStatus() : request.status(),
         Instant.now()
     );
@@ -693,6 +699,13 @@ public class CropPlanningService {
 
   private String normalizeOptional(String value) {
     return hasText(value) ? value.trim() : null;
+  }
+
+  private String normalizeCropYear(String value) {
+    if (!hasText(value)) {
+      throw validation("Crop year is required.");
+    }
+    return value.trim();
   }
 
   private boolean hasText(String value) {
