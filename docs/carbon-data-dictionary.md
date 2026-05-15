@@ -18,9 +18,9 @@ Use with:
 
 | Area | Status | Notes |
 | --- | --- | --- |
-| Carbon profile identity | API ready | `carbon_profiles` stores the Carbon identity and participant/farmer profile foundation; backend APIs are verified by `CarbonProfileControllerIT`. |
-| Carbon farm/plot | API ready | `carbon_farm_plots` stores GPS point capture and optional boundary JSON for later map work; backend APIs are verified by `CarbonProfileControllerIT`. |
-| Carbon soil profile | API ready | `carbon_soil_profiles` stores SOC, pH, EC, NPK, bulk density, texture, and report metadata; backend APIs are verified by `CarbonProfileControllerIT`. |
+| Carbon profile identity | API/UI ready | `carbon_profiles` stores the Carbon identity and participant/farmer profile foundation; backend APIs are verified by `CarbonProfileControllerIT` and frontend forms are wired. |
+| Carbon farm/plot | API/UI ready | `carbon_farm_plots` stores GPS point capture and optional boundary JSON for later map work; backend APIs are verified by `CarbonProfileControllerIT` and frontend forms are wired. |
+| Carbon soil profile | API/UI metadata ready | `carbon_soil_profiles` stores SOC, pH, EC, NPK, bulk density, texture, and report metadata; backend APIs and frontend metadata/link forms are wired, while direct file upload remains. |
 | Carbon activity categories | Seeded | `carbon_activity_categories` stores App Flow activity categories. |
 | Carbon score/calculation | Not implemented | Methodology, eligibility, buffer, leakage, and verification rules must be approved before implementation. |
 | Provider integrations | Not implemented | OTP, map boundary drawing, AI verification, satellite layers, weather API, and payment integrations remain future/provider-dependent. |

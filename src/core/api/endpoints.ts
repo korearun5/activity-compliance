@@ -13,6 +13,29 @@ export const endpoints = {
     me: `${apiRoot}/auth/me`,
     refresh: `${apiRoot}/auth/refresh`
   },
+  carbon: {
+    profiles: {
+      byId: (profileId: string) => `${apiRoot}/carbon/profiles/${profileId}`,
+      create: `${apiRoot}/carbon/profiles`,
+      list: `${apiRoot}/carbon/profiles`,
+      me: `${apiRoot}/carbon/profiles/me`
+    },
+    plots: {
+      byId: (plotId: string) => `${apiRoot}/carbon/plots/${plotId}`,
+      createForProfile: (profileId: string) =>
+        `${apiRoot}/carbon/profiles/${profileId}/plots`,
+      listByProfile: (profileId: string) =>
+        `${apiRoot}/carbon/profiles/${profileId}/plots`
+    },
+    soilProfiles: {
+      byId: (soilProfileId: string) =>
+        `${apiRoot}/carbon/soil-profiles/${soilProfileId}`,
+      createForProfile: (profileId: string) =>
+        `${apiRoot}/carbon/profiles/${profileId}/soil-profiles`,
+      listByProfile: (profileId: string) =>
+        `${apiRoot}/carbon/profiles/${profileId}/soil-profiles`
+    }
+  },
   evidence: {
     byId: (evidenceId: string) => `${apiRoot}/evidence/${evidenceId}`,
     list: `${apiRoot}/evidence`,

@@ -24,7 +24,7 @@ current repository state, not client acceptance or a commercial commitment.
 | FPO crop planning            |       100% | High       | Catalog, seasons, crop history, seasonal plans, crop year labels, optional expected yield, confirmation timestamp, UI, and tests are aligned; farmer mobile views are Phase 2. |
 | FPO input demand             |       100% | High       | Catalog, input rules, confirmed-only calculation, 5% buffer, round-up, summaries, UI, report output, migration, and tests are aligned. |
 | FPO advisory                 |       100% | High       | Category, all-members/crop targeting, multiple image links/storage metadata, in-app-only channel validation, UI previews, and focused Testcontainers coverage are aligned. |
-| Carbon app-flow prototype    |        62% | Medium     | Carbon screens/data are enabled by default, dashboard widgets match the App Flow shell, data dictionary/UAT docs exist, durable profile/farm/soil/category schema is in place, and backend profile/plot/soil APIs are Testcontainers-verified; frontend forms, methodology, provider integrations, evidence verification, and exports remain. |
+| Carbon app-flow prototype    |        68% | Medium     | Carbon screens/data are enabled by default, dashboard widgets match the App Flow shell, data dictionary/UAT docs exist, durable profile/farm/soil/category schema is in place, backend profile/plot/soil APIs are Testcontainers-verified, and frontend profile/plot/soil metadata forms are wired; direct soil file upload, methodology, provider integrations, evidence verification, and exports remain. |
 | QA automation                |        90% | High       | JUnit, Spring tests, Testcontainers PostgreSQL, Phase 1 UAT backend smoke and role matrix coverage, CI, lint, typecheck, and local integration verification are green; UI/E2E tests and coverage gates remain hardening. |
 | Production operations        |        60% | Medium     | Production config validation, security scan, env template, and deployment docs exist; backups, monitoring, alerting, and runbooks need target-environment details. |
 
@@ -77,6 +77,10 @@ Present now:
   - `docker info --format '{{.ServerVersion}}'` returned `28.3.2`.
   - `.\mvnw.cmd -Dtest=CarbonProfileControllerIT test` passed with 3 tests and
     Flyway migrated through `V9__carbon_profile_access_scope.sql`.
+  - `npm run typecheck` passed after frontend Carbon profile wiring.
+  - `npm run lint` passed after frontend Carbon profile wiring.
+  - `npm run test:module-visibility` passed after frontend Carbon profile
+    wiring.
 
 Gaps to schedule:
 
@@ -141,6 +145,7 @@ To avoid duplicate or conflicting information:
 | Source handover packaging | Pending | Product/Tech Lead | If client receives source, prepare a licensed distribution branch/package; frontend flags alone do not protect unlicensed FPO or future modules. |
 | Carbon package tenant setup | Pending | DevOps/Product | Carbon-first frontend packaging also requires the tenant `SUSTAINABILITY` backend module to be enabled; do not rely on frontend package config alone. |
 | Carbon API implementation | Done | Backend/QA | Backend APIs for Carbon profiles, farm plots, and soil profile metadata are implemented with role/module scoping and focused Testcontainers coverage. |
+| Carbon profile frontend wiring | Done | Frontend/QA | Carbon admin/FPO screens can list/create/update Carbon profiles, plots, and soil metadata; farmer Carbon screen reads the linked backend profile, plots, and soil data. |
 | OTP/SMS provider | Future | Client/Provider | Explicitly excluded from Phase 1. |
 | Map/boundary provider | Future | Client/Provider | GPS point capture only is approved for Phase 1. |
 | Carbon methodology | Future | Client/Product | Carbon calculation is explicitly excluded from Phase 1. |

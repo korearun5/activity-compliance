@@ -3,19 +3,33 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { StatusBadge } from "../../../ui/StatusBadge";
 import { CarbonProgramSnapshot, getCarbonProgramSnapshot } from "../data/carbonStore";
+import { CarbonProfileRecord } from "../data/carbonProfileStore";
+import { CarbonProfileAdminPanel } from "./CarbonProfileAdminPanel";
 
 export function AdminCarbonOverviewTab() {
+  const [liveProfiles, setLiveProfiles] = useState<CarbonProfileRecord[]>([]);
   const [snapshot, setSnapshot] = useState<CarbonProgramSnapshot | null>(null);
 
   useEffect(() => {
     getCarbonProgramSnapshot().then(setSnapshot);
   }, []);
 
+  const totalFarmAreaAcres = useMemo(
+    () =>
+      liveProfiles.length
+        ? round(liveProfiles.reduce(
+            (sum, profile) => sum + (profile.totalLandHoldingAcres ?? 0),
+            0
+          ))
+        : (snapshot?.totalFarmAreaAcres ?? 0),
+    [liveProfiles, snapshot?.totalFarmAreaAcres]
+  );
+
   const summaryCards = useMemo(
     () => [
       {
         label: "Total farm area",
-        value: `${formatNumber(snapshot?.totalFarmAreaAcres ?? 0)} ac`
+        value: `${formatNumber(totalFarmAreaAcres)} ac`
       },
       {
         label: "Soil carbon score",
@@ -40,9 +54,13 @@ export function AdminCarbonOverviewTab() {
       {
         label: "Nearby dealers",
         value: String(snapshot?.nearbyDealerCount ?? 0)
+      },
+      {
+        label: "Carbon profiles",
+        value: String(liveProfiles.length || snapshot?.farmerParticipation || 0)
       }
     ],
-    [snapshot]
+    [liveProfiles.length, snapshot, totalFarmAreaAcres]
   );
 
   if (!snapshot) {
@@ -60,7 +78,7 @@ export function AdminCarbonOverviewTab() {
           <Text style={styles.title}>Carbon program base</Text>
           <Text style={styles.copy}>
             Regenerative agriculture, soil carbon, advisory, dealer, and report
-            readiness using dummy records until client data is finalized.
+            readiness for the Carbon package.
           </Text>
         </View>
 
@@ -89,25 +107,51 @@ export function AdminCarbonOverviewTab() {
 
       <View style={styles.panel}>
         <Text style={styles.subsectionTitle}>Farmer carbon identity</Text>
-        {snapshot.profiles.map((profile) => (
-          <View key={profile.id} style={styles.row}>
-            <View style={styles.rowText}>
-              <Text style={styles.rowTitle}>{profile.farmerName}</Text>
-              <Text style={styles.rowMeta}>
-                {profile.carbonIdentityId} - {profile.village}, {profile.taluka}
-              </Text>
-              <Text style={styles.rowMeta}>
-                {profile.totalLandHoldingAcres} ac - {profile.tillageStatus} -{" "}
-                {profile.bankStatus}
-              </Text>
-            </View>
-            <StatusBadge
-              label={profile.documents.length >= 3 ? "Docs ready" : "Docs partial"}
-              tone={profile.documents.length >= 3 ? "good" : "warning"}
-            />
-          </View>
-        ))}
+        {liveProfiles.length
+          ? liveProfiles.map((profile) => (
+              <View key={profile.id} style={styles.row}>
+                <View style={styles.rowText}>
+                  <Text style={styles.rowTitle}>{profile.displayName}</Text>
+                  <Text style={styles.rowMeta}>
+                    {profile.carbonIdentityId} -{" "}
+                    {[profile.village, profile.taluka].filter(Boolean).join(", ") ||
+                      "Location not set"}
+                  </Text>
+                  <Text style={styles.rowMeta}>
+                    {formatNumber(profile.totalLandHoldingAcres ?? 0)} ac -{" "}
+                    {profile.tillageStatus ?? "Tillage not set"} -{" "}
+                    {profile.bankStatus ?? "Bank not set"}
+                  </Text>
+                </View>
+                <StatusBadge
+                  label={profile.documentStatus ?? profile.status}
+                  tone={profile.documentStatus === "Ready" ? "good" : "warning"}
+                />
+              </View>
+            ))
+          : snapshot.profiles.map((profile) => (
+              <View key={profile.id} style={styles.row}>
+                <View style={styles.rowText}>
+                  <Text style={styles.rowTitle}>{profile.farmerName}</Text>
+                  <Text style={styles.rowMeta}>
+                    {profile.carbonIdentityId} - {profile.village}, {profile.taluka}
+                  </Text>
+                  <Text style={styles.rowMeta}>
+                    {profile.totalLandHoldingAcres} ac - {profile.tillageStatus} -{" "}
+                    {profile.bankStatus}
+                  </Text>
+                </View>
+                <StatusBadge
+                  label={
+                    profile.documents.length >= 3 ? "Docs ready" : "Docs partial"
+                  }
+                  tone={profile.documents.length >= 3 ? "good" : "warning"}
+                />
+              </View>
+            ))}
       </View>
+
+      <CarbonProfileAdminPanel onProfilesLoaded={setLiveProfiles} />
 
       <View style={styles.panel}>
         <Text style={styles.subsectionTitle}>Soil profile pipeline</Text>
@@ -179,6 +223,10 @@ export function AdminCarbonOverviewTab() {
 
 function formatNumber(value: number) {
   return Number.isInteger(value) ? String(value) : value.toFixed(2);
+}
+
+function round(value: number) {
+  return Math.round(value * 100) / 100;
 }
 
 const styles = StyleSheet.create({

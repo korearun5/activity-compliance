@@ -94,9 +94,9 @@ support later verification.
 | --- | --- | --- | --- |
 | CARBON-PROFILE-001 | Done | Draft carbon data dictionary | [Carbon Data Dictionary](carbon-data-dictionary.md) defines Carbon identity, participant profile, farm plot, soil profile, and activity-category fields. |
 | CARBON-PROFILE-002 | Done | Add backend carbon identity/profile APIs | Carbon identity, farm plots, and soil profile metadata APIs are implemented with tenant/module/role scoping and verified by `CarbonProfileControllerIT`. |
-| CARBON-PROFILE-003 | Pending | Add frontend carbon profile forms | Farmer/FPO/admin can view and maintain carbon profile fields based on role. |
+| CARBON-PROFILE-003 | Done | Add frontend carbon profile forms | Admin/FPO Carbon screen can list/create/update Carbon profiles, plots, and soil metadata through backend APIs; farmer Carbon screen reads linked backend profile, plot, and soil records. |
 | CARBON-SOIL-001 | Done | Add durable soil profile schema | `carbon_soil_profiles` stores SOC, pH, EC, NPK, bulk density, texture, optional biological fields, and report metadata without calculating credits. |
-| CARBON-SOIL-002 | Pending | Add soil report upload support | PDF/image report links are stored through the storage adapter with metadata. |
+| CARBON-SOIL-002 | In review | Add soil report upload support | Soil report metadata, storage key, and URL fields are wired in the Carbon UI/API path; direct PDF/image upload through the storage adapter remains. |
 | CARBON-GEO-001 | Pending | Add Carbon farm GPS capture | Point capture works now; boundary drawing remains blocked on map provider. |
 
 ## Phase C3: Farm Activity Tracking And Evidence
@@ -173,15 +173,15 @@ Completed in this sprint:
 | ID | Outcome |
 | --- | --- |
 | `CARBON-PROFILE-002` | Backend APIs for Carbon profiles, farm plots, and soil profile metadata are implemented and Testcontainers-verified. |
+| `CARBON-PROFILE-003` | Frontend Carbon admin/farmer views are wired to backend Carbon profile, plot, and soil metadata APIs. |
 
 Committed sprint tasks remaining:
 
 | Order | ID | Target outcome |
 | --- | --- | --- |
-| 1 | `CARBON-PROFILE-003` | Frontend Carbon profile forms that create/edit profile and farm plot data through the backend. |
-| 2 | `CARBON-SOIL-002` | Optional soil report image/PDF upload or stored document link, with SOC, pH, N, P, and K manual entry. |
-| 3 | `CARBON-ACT-002` | Carbon activity entry flow for the App Flow activity categories already seeded in the database. |
-| 4 | `CARBON-MOD-006` | Carbon source distribution package definition so client handover is Carbon-only by contract and structure. |
+| 1 | `CARBON-SOIL-002` | Complete direct PDF/image upload through the storage adapter; stored link/metadata is already wired. |
+| 2 | `CARBON-ACT-002` | Carbon activity entry flow for the App Flow activity categories already seeded in the database. |
+| 3 | `CARBON-MOD-006` | Carbon source distribution package definition so client handover is Carbon-only by contract and structure. |
 
 Stretch tasks, only after committed tasks are green:
 

@@ -1,0 +1,130 @@
+import { Id } from "../../../core/api/contracts";
+
+export type CarbonParticipantType = "AGRONOMIST" | "FARMER" | "FPO_FPC";
+export type CarbonRecordStatus = "ACTIVE" | "ARCHIVED" | "INACTIVE" | "SUSPENDED";
+
+export type CarbonProfileResponse = {
+  aadhaarStatus: string | null;
+  bankStatus: string | null;
+  carbonIdentityId: string;
+  coordinatorUserId: Id | null;
+  createdAt: string;
+  croppingPattern: string | null;
+  displayName: string;
+  districtName: string | null;
+  documentStatus: string | null;
+  fpoMemberProfileId: Id | null;
+  gpsLatitude: number | null;
+  gpsLongitude: number | null;
+  id: Id;
+  languagePreference: string | null;
+  livestockCount: number | null;
+  mobileNumber: string | null;
+  participantType: CarbonParticipantType;
+  stateName: string | null;
+  status: CarbonRecordStatus;
+  taluka: string | null;
+  tenantId: Id;
+  tillageStatus: string | null;
+  totalLandHoldingAcres: number | null;
+  updatedAt: string;
+  userId: Id | null;
+  village: string | null;
+};
+
+export type CarbonProfileRequest = {
+  aadhaarStatus?: string;
+  bankStatus?: string;
+  carbonIdentityId?: string;
+  coordinatorUserId?: Id;
+  croppingPattern?: string;
+  displayName?: string;
+  districtName?: string;
+  documentStatus?: string;
+  fpoMemberProfileId?: Id;
+  gpsLatitude?: number;
+  gpsLongitude?: number;
+  languagePreference?: string;
+  livestockCount?: number;
+  mobileNumber?: string;
+  participantType?: CarbonParticipantType;
+  stateName?: string;
+  status?: CarbonRecordStatus;
+  taluka?: string;
+  tillageStatus?: string;
+  totalLandHoldingAcres?: number;
+  userId?: Id;
+  village?: string;
+};
+
+export type CarbonFarmPlotResponse = {
+  areaAcres: number;
+  carbonProfileId: Id;
+  createdAt: string;
+  farmName: string;
+  id: Id;
+  irrigationSource: string | null;
+  latitude: number;
+  longitude: number;
+  primaryCrop: string | null;
+  status: CarbonRecordStatus;
+  surveyNumber: string | null;
+  tenantId: Id;
+  tillageStatus: string | null;
+  updatedAt: string;
+};
+
+export type CarbonFarmPlotRequest = {
+  areaAcres: number;
+  farmName: string;
+  irrigationSource?: string;
+  latitude: number;
+  longitude: number;
+  primaryCrop?: string;
+  status?: CarbonRecordStatus;
+  surveyNumber?: string;
+  tillageStatus?: string;
+};
+
+export type CarbonSoilProfileResponse = {
+  bulkDensityGmCm3: number | null;
+  carbonFarmPlotId: Id | null;
+  carbonProfileId: Id;
+  createdAt: string;
+  electricalConductivity: number | null;
+  id: Id;
+  labName: string | null;
+  nitrogenKgHa: number | null;
+  ph: number | null;
+  phosphorusKgHa: number | null;
+  potassiumKgHa: number | null;
+  reportContentType: string | null;
+  reportFileName: string | null;
+  reportStorageKey: string | null;
+  reportUrl: string | null;
+  soilOrganicCarbonPercent: number | null;
+  status: CarbonRecordStatus;
+  tenantId: Id;
+  testDate: string | null;
+  texture: string | null;
+  updatedAt: string;
+};
+
+export type CarbonSoilProfileRequest = {
+  bulkDensityGmCm3?: number;
+  carbonFarmPlotId?: Id;
+  electricalConductivity?: number;
+  labName?: string;
+  nitrogenKgHa?: number;
+  ph?: number;
+  phosphorusKgHa?: number;
+  potassiumKgHa?: number;
+  reportContentType?: string;
+  reportFileName?: string;
+  reportStorageKey?: string;
+  reportUrl?: string;
+  soilOrganicCarbonPercent?: number;
+  status?: CarbonRecordStatus;
+  testDate?: string;
+  texture?: string;
+};
