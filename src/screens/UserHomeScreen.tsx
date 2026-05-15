@@ -46,7 +46,7 @@ import { getCachedEnabledModules, PlatformModuleCode } from "../data/moduleStore
 import { getVisibleFarmerTabs, type FarmerTabId } from "../auth/roleAccess";
 import { getEnabledClientModuleIds, isClientModuleEnabled } from "../modules";
 import { StatusBadge } from "../ui/StatusBadge";
-import { UserCarbonScreen } from "./UserCarbonScreen";
+import { UserCarbonScreen } from "../modules/carbon";
 
 type UserHomeScreenProps = {
   username: string | null;

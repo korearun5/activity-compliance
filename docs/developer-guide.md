@@ -479,7 +479,7 @@ Implemented foundation:
 - FPO dashboard summary and Excel export foundation.
 - FPO advisory backend and admin UI.
 - Carbon app-flow screens backed by dummy frontend data and Carbon/FPO package
-  toggles.
+  toggles, with Carbon screens/data exported from `src/modules/carbon`.
 
 Current production-readiness coverage:
 
@@ -491,7 +491,8 @@ Current production-readiness coverage:
 - Docker Compose starts PostgreSQL, MinIO, backend, and Expo web.
 - CI covers frontend typecheck/lint, backend unit tests, backend integration
   tests, Docker Compose config validation, npm audit, and OWASP Dependency
-  Check.
+  Check. Run `npm run test:module-visibility` locally when touching module
+  packaging or role-to-tab visibility.
 
 Remaining before a client production handoff:
 

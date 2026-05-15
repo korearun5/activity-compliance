@@ -8,6 +8,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
+    "test:module-visibility": "node scripts/module-visibility-smoke.mjs",
     "typecheck": "tsc --noEmit",
     "web": "expo start --web",
     "android": "expo start --android",

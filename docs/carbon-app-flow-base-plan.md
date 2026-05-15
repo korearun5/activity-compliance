@@ -45,11 +45,12 @@ The following areas can be built with dummy data now:
 
 Implemented in the codebase now:
 
-- Added a typed dummy carbon data layer in `src/data/carbonStore.ts`.
+- Added a typed dummy carbon data layer in
+  `src/modules/carbon/data/carbonStore.ts`.
 - Added a generic client package switch with Carbon enabled by default and FPO
   operations hidden by default.
-- Added a `src/modules` registry so future Carbon and FPO work can move behind
-  explicit module entry points.
+- Added a `src/modules` registry and moved Carbon screens/data behind the
+  `src/modules/carbon` module entry point.
 - Added an admin `Carbon` tab showing:
   - farm area,
   - carbon credit potential,

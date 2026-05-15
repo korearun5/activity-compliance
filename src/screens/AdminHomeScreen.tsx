@@ -54,7 +54,7 @@ import {
   createBackendWorkflowDefinition
 } from "../data/workflowActivityStore";
 import { AdminAdvisoriesTab } from "./AdminAdvisoriesTab";
-import { AdminCarbonOverviewTab } from "./AdminCarbonOverviewTab";
+import { AdminCarbonOverviewTab } from "../modules/carbon";
 import { AdminCropPlanningTab } from "./AdminCropPlanningTab";
 import { AdminFarmAssetsPanel } from "./AdminFarmAssetsPanel";
 import { AdminFpoReportsPanel } from "./AdminFpoReportsPanel";

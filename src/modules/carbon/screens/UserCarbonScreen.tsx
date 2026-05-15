@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-import { AdvisoryRecord, getAdvisories } from "../data/advisoryStore";
+import { AdvisoryRecord, getAdvisories } from "../../../data/advisoryStore";
+import { StatusBadge } from "../../../ui/StatusBadge";
 import { CarbonAdvisory, getFarmerCarbonSnapshot } from "../data/carbonStore";
-import { StatusBadge } from "../ui/StatusBadge";
 
 type UserCarbonScreenProps = {
   username: string | null;

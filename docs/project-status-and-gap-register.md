@@ -17,7 +17,7 @@ current repository state, not client acceptance or a commercial commitment.
 | Workflow and activity engine |        82% | High       | Configurable definitions, activity start, task status, and tests exist; client-specific workflow templates still need UAT. |
 | Evidence and storage         |        80% | Medium     | Local and MinIO adapters exist; MinIO integration test coverage is still missing. |
 | Reporting and exports        |       100% | High       | Phase 1 workbook emits approved sheets/columns with filters, header/footer branding, and focused tests. |
-| Module subscription platform |        87% | Medium     | Backend guards, frontend module visibility, Carbon/FPO client package toggles, and the `src/modules` registry exist; physical module extraction and handover packaging remain pending. |
+| Module subscription platform |        90% | Medium     | Backend guards, frontend module visibility, Carbon/FPO client package toggles, Carbon module extraction, and module visibility smoke coverage exist; handover packaging remains pending. |
 | FPO member management        |       100% | High       | Approved farmer fields, farmer username/password login, coordinator assignment, tenant/FPO scoping, farmer-profile UI wording, validation, and focused tests are aligned. |
 | FPO land and plot records    |       100% | High       | Survey/khasra, acres, approved ownership/irrigation values, required GPS latitude/longitude, schema checks, API validation, UI controls, and tests are aligned; polygon maps remain Phase 2. |
 | FPO soil profiles            |       100% | High       | Phase 1 SOC, pH, N, P, K, optional report link/metadata, backend API, admin entry UI, JUnit, and Testcontainers coverage are in place without carbon calculation. |
@@ -48,7 +48,8 @@ Present now:
   `testcontainers-junit-jupiter`, and `testcontainers-postgresql`.
 - Testcontainers PostgreSQL image pinned to `postgres:17-alpine`.
 - Maven integration profile: `.\mvnw.cmd -Pintegration-test verify`.
-- Frontend checks: `npm run typecheck` and `npm run lint`.
+- Frontend checks: `npm run typecheck`, `npm run lint`, and
+  `npm run test:module-visibility`.
 - CI jobs for frontend lint/typecheck, backend unit tests, backend integration
   tests, Docker Compose config, npm audit, and OWASP Dependency Check.
 - Local verification on 2026-05-15:

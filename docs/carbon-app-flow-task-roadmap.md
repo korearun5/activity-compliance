@@ -66,9 +66,9 @@ Goal: Make the app safe to package as Carbon-only, FPO-only, or full platform.
 | ID | Status | Task | Acceptance |
 | --- | --- | --- | --- |
 | CARBON-MOD-001 | Done | Add generic frontend client-module package switch | `EXPO_PUBLIC_ENABLED_CLIENT_MODULES=carbon`, `fpo`, or `carbon,fpo` controls visible app areas and can grow for future apps. |
-| CARBON-MOD-002 | Next | Move Carbon-owned store/API/screen code into `src/modules/carbon` | Carbon exports are owned from one module entry point; existing imports still work during transition. |
+| CARBON-MOD-002 | Done | Move Carbon-owned store/API/screen code into `src/modules/carbon` | Carbon screens and dummy data are exported from the Carbon module entry point. |
 | CARBON-MOD-003 | Pending | Move FPO-owned screen/data/API boundaries into `src/modules/fpo` when next touched | FPO remains independently loadable without blocking current Carbon work. |
-| CARBON-MOD-004 | Next | Add module visibility smoke tests | Tests prove FPO tabs are hidden in Carbon-first mode and Carbon tabs hide cleanly when disabled. |
+| CARBON-MOD-004 | Done | Add module visibility smoke tests | `npm run test:module-visibility` proves FPO tabs are hidden in Carbon-first mode and Carbon requires the backend `SUSTAINABILITY` module. |
 | CARBON-MOD-005 | Pending | Add tenant/module fallback UX states | Disabled modules show upgrade or unavailable states instead of runtime errors. |
 | CARBON-MOD-006 | Pending | Define Carbon source distribution package | Carbon-only handover includes shared core plus Carbon, excludes unlicensed FPO implementation, and documents license boundaries. |
 
@@ -168,13 +168,11 @@ Goal: Replace placeholders with production providers and operational controls.
 
 Work in this order unless a client demo date changes priority:
 
-1. `CARBON-MOD-002`: move Carbon-owned code into `src/modules/carbon`.
-2. `CARBON-MOD-004`: add module visibility smoke tests.
-3. `CARBON-SHELL-003`: complete the dashboard widgets from `App Flow.docx`.
-4. `CARBON-PROFILE-001`: draft the durable carbon data dictionary.
-5. `CARBON-SOIL-001`: add durable soil profile schema for Carbon.
-6. `CARBON-ACT-001`: seed carbon activity categories.
-7. `CARBON-UAT-001`: create Carbon UAT scenarios before client review.
+1. `CARBON-SHELL-003`: complete the dashboard widgets from `App Flow.docx`.
+2. `CARBON-PROFILE-001`: draft the durable carbon data dictionary.
+3. `CARBON-SOIL-001`: add durable soil profile schema for Carbon.
+4. `CARBON-ACT-001`: seed carbon activity categories.
+5. `CARBON-UAT-001`: create Carbon UAT scenarios before client review.
 
 ## Demo-Ready Definition
 

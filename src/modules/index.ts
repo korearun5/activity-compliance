@@ -1,5 +1,5 @@
 import { appConfig } from "../core/config/appConfig";
-import { carbonModule } from "./carbon/module";
+import { carbonModule } from "./carbon";
 import { fpoModule } from "./fpo/module";
 import type { ClientModuleDefinition, ClientModuleId } from "./types";
 

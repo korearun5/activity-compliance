@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
+import { StatusBadge } from "../../../ui/StatusBadge";
 import { CarbonProgramSnapshot, getCarbonProgramSnapshot } from "../data/carbonStore";
-import { StatusBadge } from "../ui/StatusBadge";
 
 export function AdminCarbonOverviewTab() {
   const [snapshot, setSnapshot] = useState<CarbonProgramSnapshot | null>(null);
