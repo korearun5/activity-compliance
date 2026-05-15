@@ -75,7 +75,7 @@ public class SeedDataInitializer implements ApplicationRunner {
         .toList();
 
     validSeedUsers.forEach(user -> upsertUser(tenant, user, now));
-    tenantModuleService.enableDefaultFpoModules(tenant);
+    tenantModuleService.enableSeedModules(tenant, seedProperties.getEnabledModules());
 
     log.info(
         "Seed data ensured for tenant={} userCount={}",

@@ -1,6 +1,6 @@
 # Project Status And Gap Register
 
-Last audited: 2026-05-15
+Last audited: 2026-05-16
 
 This is the single source for current completion estimates, go-live confidence,
 and known gaps. Percentages are engineering confidence estimates based on the
@@ -12,19 +12,19 @@ current repository state, not client acceptance or a commercial commitment.
 | ---------------------------- | ---------: | ---------- | ----- |
 | Local developer setup        |        95% | High       | Clean-start path, Docker stack, env examples, CI commands, and default ports are documented and rehearsed locally on 2026-05-15. |
 | Core backend platform        |        88% | High       | Auth, tenant-aware data, workflows, activity, evidence, audit, reports, storage, and common API envelope exist. |
-| Frontend platform shell      |        88% | High       | Backend-first admin/FPO/coordinator shell, farmer workflow routing, module-driven carbon hiding, and centralized role-to-tab/action visibility exist; automated UI tests remain go-live hardening. |
+| Frontend platform shell      |        90% | High       | Carbon-first client shell, FPO/coordinator foundation, farmer workflow routing, FPO UI toggle, and centralized role-to-tab/action visibility exist; automated UI tests remain go-live hardening. |
 | Auth, users, and roles       |        93% | High       | JWT, role APIs, local seeds, frontend routing, staff-login creation, farmer-profile login creation, role-aware UI controls, and tests now use `ADMIN`, `FPO_MANAGER`, `FIELD_COORDINATOR`, and `FARMER`. |
 | Workflow and activity engine |        82% | High       | Configurable definitions, activity start, task status, and tests exist; client-specific workflow templates still need UAT. |
 | Evidence and storage         |        80% | Medium     | Local and MinIO adapters exist; MinIO integration test coverage is still missing. |
 | Reporting and exports        |       100% | High       | Phase 1 workbook emits approved sheets/columns with filters, header/footer branding, and focused tests. |
-| Module subscription platform |        82% | Medium     | Backend guards, frontend module visibility, and Phase 2 carbon screen hiding behind `SUSTAINABILITY` exist; packaging/handover process remains pending. |
+| Module subscription platform |        87% | Medium     | Backend guards, frontend module visibility, Carbon/FPO client package toggles, and the `src/modules` registry exist; physical module extraction and handover packaging remain pending. |
 | FPO member management        |       100% | High       | Approved farmer fields, farmer username/password login, coordinator assignment, tenant/FPO scoping, farmer-profile UI wording, validation, and focused tests are aligned. |
 | FPO land and plot records    |       100% | High       | Survey/khasra, acres, approved ownership/irrigation values, required GPS latitude/longitude, schema checks, API validation, UI controls, and tests are aligned; polygon maps remain Phase 2. |
 | FPO soil profiles            |       100% | High       | Phase 1 SOC, pH, N, P, K, optional report link/metadata, backend API, admin entry UI, JUnit, and Testcontainers coverage are in place without carbon calculation. |
 | FPO crop planning            |       100% | High       | Catalog, seasons, crop history, seasonal plans, crop year labels, optional expected yield, confirmation timestamp, UI, and tests are aligned; farmer mobile views are Phase 2. |
 | FPO input demand             |       100% | High       | Catalog, input rules, confirmed-only calculation, 5% buffer, round-up, summaries, UI, report output, migration, and tests are aligned. |
 | FPO advisory                 |       100% | High       | Category, all-members/crop targeting, multiple image links/storage metadata, in-app-only channel validation, UI previews, and focused Testcontainers coverage are aligned. |
-| Carbon app-flow prototype    |        35% | Low        | Frontend dummy screens/data exist but are hidden behind the disabled `SUSTAINABILITY` module for Phase 1; durable schema, methodology, providers, and exports are pending. |
+| Carbon app-flow prototype    |        45% | Medium     | Carbon screens/data are enabled by default for the carbon-first package; durable schema, methodology, provider integrations, evidence verification, and exports remain Phase 2 work. |
 | QA automation                |        90% | High       | JUnit, Spring tests, Testcontainers PostgreSQL, Phase 1 UAT backend smoke and role matrix coverage, CI, lint, typecheck, and local integration verification are green; UI/E2E tests and coverage gates remain hardening. |
 | Production operations        |        60% | Medium     | Production config validation, security scan, env template, and deployment docs exist; backups, monitoring, alerting, and runbooks need target-environment details. |
 
@@ -103,6 +103,8 @@ To avoid duplicate or conflicting information:
 - Use [Deployment Guide](deployment-guide.md) and
   [Deployment Security](DEPLOYMENT_SECURITY.md) for production planning.
 - Keep roadmap documents focused on product sequencing, not live status tables.
+- Keep Carbon app-flow task sequencing in
+  [Carbon App Flow Task Roadmap](carbon-app-flow-task-roadmap.md).
 
 ## Go-Live Blockers
 
@@ -129,6 +131,8 @@ To avoid duplicate or conflicting information:
 | Frontend automated tests | Recommended | Frontend/QA | Reduces regression risk for admin and farmer screens; not a Phase 1 feature blocker. |
 | MinIO integration tests | Recommended | Backend/QA | Confirms production-like object storage behavior; local storage adapter and validation are already implemented. |
 | Production image pinning | Pending | DevOps | Local MinIO can use an overrideable image; production should pin approved image tags. |
+| Source handover packaging | Pending | Product/Tech Lead | If client receives source, prepare a licensed distribution branch/package; frontend flags alone do not protect unlicensed FPO or future modules. |
+| Carbon package tenant setup | Pending | DevOps/Product | Carbon-first frontend packaging also requires the tenant `SUSTAINABILITY` backend module to be enabled; do not rely on frontend package config alone. |
 | OTP/SMS provider | Future | Client/Provider | Explicitly excluded from Phase 1. |
 | Map/boundary provider | Future | Client/Provider | GPS point capture only is approved for Phase 1. |
 | Carbon methodology | Future | Client/Product | Carbon calculation is explicitly excluded from Phase 1. |

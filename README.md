@@ -4,6 +4,8 @@ Expo React Native frontend and Spring Boot backend for a reusable activity-compl
 
 ## Current Scope
 
+- Carbon-first client package can be shown while FPO operations UI remains
+  hidden through `EXPO_PUBLIC_ENABLED_CLIENT_MODULES=carbon`.
 - Backend-first login for `ADMIN`, `FPO_MANAGER`, `FIELD_COORDINATOR`, and
   `FARMER` roles.
 - Configurable backend workflow definitions for crop/activity task lists.

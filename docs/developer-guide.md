@@ -283,6 +283,7 @@ Frontend:
 | `EXPO_PUBLIC_DEFAULT_TENANT_CODE`   | Default login tenant code for local usage.   |
 | `EXPO_PUBLIC_DEFAULT_LOCALE`        | Locale default, currently `en-IN`.           |
 | `EXPO_PUBLIC_STORAGE_NAMESPACE`     | Frontend storage namespace.                  |
+| `EXPO_PUBLIC_ENABLED_CLIENT_MODULES` | Comma-separated client package modules, for example `carbon`, `fpo`, or `carbon,fpo`. Defaults to `carbon`. |
 
 ## Authentication Flow
 
@@ -477,7 +478,8 @@ Implemented foundation:
   and UI.
 - FPO dashboard summary and Excel export foundation.
 - FPO advisory backend and admin UI.
-- Carbon app-flow prototype screens backed by dummy frontend data.
+- Carbon app-flow screens backed by dummy frontend data and Carbon/FPO package
+  toggles.
 
 Current production-readiness coverage:
 

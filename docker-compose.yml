@@ -69,6 +69,7 @@ services:
       EXPO_PUBLIC_API_VERSION: v1
       EXPO_PUBLIC_DEFAULT_TENANT_CODE: default
       EXPO_PUBLIC_DEFAULT_LOCALE: en-IN
+      EXPO_PUBLIC_ENABLED_CLIENT_MODULES: carbon
     ports:
       - "19006:19006"
       - "8081:8081"

@@ -44,6 +44,7 @@ import {
 } from "../data/workflowActivityStore";
 import { getCachedEnabledModules, PlatformModuleCode } from "../data/moduleStore";
 import { getVisibleFarmerTabs, type FarmerTabId } from "../auth/roleAccess";
+import { getEnabledClientModuleIds, isClientModuleEnabled } from "../modules";
 import { StatusBadge } from "../ui/StatusBadge";
 import { UserCarbonScreen } from "./UserCarbonScreen";
 
@@ -64,7 +65,11 @@ type SelectedProof = {
 };
 
 export function UserHomeScreen({ username, onLogout }: UserHomeScreenProps) {
-  const [activeTab, setActiveTab] = useState<ParticipantTab>("cycles");
+  const [activeTab, setActiveTab] = useState<ParticipantTab>(
+    isClientModuleEnabled("carbon") && !isClientModuleEnabled("fpo")
+      ? "carbon"
+      : "cycles"
+  );
   const [savedProofs, setSavedProofs] = useState<ProofSubmission[]>([]);
   const [savedCycles, setSavedCycles] = useState<CropCycle[]>([]);
   const [workflowTemplates, setWorkflowTemplates] = useState<CropTemplate[]>([]);
@@ -179,14 +184,18 @@ export function UserHomeScreen({ username, onLogout }: UserHomeScreenProps) {
     { label: "Finished cycles", value: String(completedCycles.length) },
     { label: "Proof saved", value: String(savedProofs.length) }
   ];
+  const uiFeatures = useMemo(
+    () => ({ enabledClientModules: getEnabledClientModuleIds() }),
+    []
+  );
   const visibleTabs = useMemo(
-    () => getVisibleFarmerTabs(enabledModules),
-    [enabledModules]
+    () => getVisibleFarmerTabs(enabledModules, uiFeatures),
+    [enabledModules, uiFeatures]
   );
 
   useEffect(() => {
     if (!visibleTabs.some((item) => item.tab === activeTab)) {
-      setActiveTab("cycles");
+      setActiveTab(visibleTabs[0]?.tab ?? "cycles");
     }
   }, [activeTab, visibleTabs]);
 

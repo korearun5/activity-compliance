@@ -958,23 +958,10 @@ Acceptance criteria:
 
 ## Client Carbon App Flow Tasks
 
-These tasks translate the client's carbon accounting app flow into the current
-platform base. Provider-dependent items remain blocked until commercial and
-technical decisions are approved.
-
-| ID             | Status  | Task                                      | Notes                                                                              |
-| -------------- | ------- | ----------------------------------------- | ---------------------------------------------------------------------------------- |
-| CARBON-DOC-001 | Done    | Create carbon app-flow base plan          | See `docs/carbon-app-flow-base-plan.md`.                                           |
-| CARBON-FE-001  | Done    | Add dummy admin carbon operations tab     | Covers identity, soil, activity verification, carbon potential, and dealers.       |
-| CARBON-FE-002  | Done    | Add dummy farmer carbon tab               | Covers identity, soil score, activity scoring, advisories, and nearby dealers.     |
-| CARBON-BE-001  | Pending | Draft carbon schema/data dictionary       | Wait for formula, soil fields, and methodology confirmation before durable schema. |
-| CARBON-BE-002  | Future  | Add carbon-specific soil scoring APIs     | Phase 1 soil lab-value entry exists; carbon scoring and methodology remain Phase 2. |
-| CARBON-BE-003  | Pending | Add provisional carbon calculator service | Formula must remain flagged as provisional until client approval.                  |
-| CARBON-BE-004  | Pending | Add dealer directory APIs                 | Dummy records are enough until dealer onboarding data is supplied.                 |
-| CARBON-INT-001 | Blocked | OTP/SMS login                             | Needs provider, pricing, sender ID, and templates.                                 |
-| CARBON-INT-002 | Blocked | Map boundary drawing                      | Needs map provider and boundary accuracy expectation.                              |
-| CARBON-INT-003 | Blocked | AI verification                           | Needs provider and acceptance rules.                                               |
-| CARBON-INT-004 | Blocked | Satellite layers                          | Needs NDVI/NDRE/NDMI provider and refresh rules.                                   |
+Carbon execution has moved to
+[Carbon App Flow Task Roadmap](carbon-app-flow-task-roadmap.md). Keep this FPO
+task list focused on FPO tasks so the two product lines do not drift or repeat
+conflicting status.
 
 ## Phase 1G: OTP And Mobile Login
 
@@ -1050,7 +1037,7 @@ Acceptance criteria:
 | FPO-QA-004 | Done    | Excel export verification    | Workbook unit checks and controller export checks verify approved sheets, columns, filters, and branding.           |
 | FPO-QA-005 | Done    | Role access matrix tests     | Backend role smoke covers `ADMIN`, `FPO_MANAGER`, `FIELD_COORDINATOR`, and `FARMER`; frontend role visibility is centralized in `roleAccess.ts`. |
 | FPO-QA-006 | Done    | UAT test catalog             | UAT guide contains manual scenarios, pilot data, API smoke checks, and automated coverage notes.                    |
-| FPO-QA-007 | Done    | Seed/demo data cleanup check | Active FPO fallback/demo records now use Phase 1-approved Paddy/Wheat/Wagholi-style data; carbon dummy data remains hidden behind the disabled `SUSTAINABILITY` module. |
+| FPO-QA-007 | Done    | Seed/demo data cleanup check | Active FPO fallback/demo records now use Phase 1-approved Paddy/Wheat/Wagholi-style data; Carbon demo data is controlled by the Carbon/FPO package toggles. |
 | FPO-QA-008 | Done    | Pre-UAT technical rehearsal  | Docker compose config, default ports, PostgreSQL credentials, full Docker stack startup, frontend type/lint/audit, backend unit tests, integration tests, and Phase 1 UAT smoke passed locally on 2026-05-15. |
 
 ## Documentation Tasks

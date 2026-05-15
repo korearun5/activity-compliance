@@ -10,6 +10,7 @@ import {
 } from "react-native";
 
 import { getErrorMessage } from "../core/errors/AppError";
+import { getEnabledClientModuleIds, isClientModuleEnabled } from "../modules";
 import { EvidenceStatus } from "../core/model/types";
 import {
   countMemberActivities,
@@ -68,7 +69,9 @@ type AdminHomeScreenProps = {
 };
 
 export function AdminHomeScreen({ currentRole, onLogout }: AdminHomeScreenProps) {
-  const [activeTab, setActiveTab] = useState<AdminTabId>("overview");
+  const [activeTab, setActiveTab] = useState<AdminTabId>(
+    isClientModuleEnabled("carbon") ? "carbon" : "overview"
+  );
   const [members, setMembers] = useState<FpoMember[]>([]);
   const [savedCycles, setSavedCycles] = useState<CropCycle[]>([]);
   const [savedProofs, setSavedProofs] = useState<ProofSubmission[]>([]);
@@ -87,6 +90,7 @@ export function AdminHomeScreen({ currentRole, onLogout }: AdminHomeScreenProps)
   const [reviewError, setReviewError] = useState("");
   const [workflowFormError, setWorkflowFormError] = useState("");
   const [activityStartError, setActivityStartError] = useState("");
+  const [carbonUpsellMessage, setCarbonUpsellMessage] = useState("");
   const [isCreatingParticipant, setIsCreatingParticipant] = useState(false);
   const [isCreatingWorkflow, setIsCreatingWorkflow] = useState(false);
   const [isStartingActivity, setIsStartingActivity] = useState(false);
@@ -105,15 +109,19 @@ export function AdminHomeScreen({ currentRole, onLogout }: AdminHomeScreenProps)
     async function loadAdminData() {
       let participantLoadError = "";
 
-      try {
-        const fpoMembers = await getFpoMembers();
-        setMembers(fpoMembers);
-      } catch (error) {
-        participantLoadError = getErrorMessage(
-          error,
-          "Unable to load farmer profiles."
-        );
-        setAdminDataError(participantLoadError);
+      if (isClientModuleEnabled("fpo")) {
+        try {
+          const fpoMembers = await getFpoMembers();
+          setMembers(fpoMembers);
+        } catch (error) {
+          participantLoadError = getErrorMessage(
+            error,
+            "Unable to load farmer profiles."
+          );
+          setAdminDataError(participantLoadError);
+        }
+      } else {
+        setMembers([]);
       }
 
       try {
@@ -351,20 +359,41 @@ export function AdminHomeScreen({ currentRole, onLogout }: AdminHomeScreenProps)
   const regions = [...new Set(participants.map((member) => member.region))];
   const crops = [...new Set(allCycles.map((cycle) => cycle.crop))];
   const complianceScore = calculateComplianceScore(allCycles, proofRecords);
+  const carbonUiEnabled = isClientModuleEnabled("carbon");
+  const fpoUiEnabled = isClientModuleEnabled("fpo");
+  const showCarbonUpsell =
+    fpoUiEnabled && !carbonUiEnabled;
+  const uiFeatures = useMemo(
+    () => ({ enabledClientModules: getEnabledClientModuleIds() }),
+    []
+  );
   const visibleTabs = useMemo(
-    () => getVisibleAdminTabs(currentRole, enabledModules),
-    [currentRole, enabledModules]
+    () => getVisibleAdminTabs(currentRole, enabledModules, uiFeatures),
+    [currentRole, enabledModules, uiFeatures]
   );
 
   const summary = useMemo(
-    () => [
-      { label: "Farmers", value: String(participants.length) },
-      { label: "Running cycles", value: String(runningCycles.length) },
-      { label: "Completed", value: String(completedCycles.length) },
-      { label: "Proof records", value: String(proofRecords.length) }
-    ],
+    () =>
+      fpoUiEnabled
+        ? [
+            { label: "Farmers", value: String(participants.length) },
+            { label: "Running cycles", value: String(runningCycles.length) },
+            { label: "Completed", value: String(completedCycles.length) },
+            { label: "Proof records", value: String(proofRecords.length) }
+          ]
+        : [
+            { label: "Running activities", value: String(runningCycles.length) },
+            { label: "Completed", value: String(completedCycles.length) },
+            { label: "Proof records", value: String(proofRecords.length) },
+            {
+              label: "Client package",
+              value: carbonUiEnabled ? "Carbon" : "Core"
+            }
+          ],
     [
       completedCycles.length,
+      carbonUiEnabled,
+      fpoUiEnabled,
       participants.length,
       proofRecords.length,
       runningCycles.length
@@ -373,7 +402,7 @@ export function AdminHomeScreen({ currentRole, onLogout }: AdminHomeScreenProps)
 
   useEffect(() => {
     if (!visibleTabs.some((item) => item.tab === activeTab)) {
-      setActiveTab("overview");
+      setActiveTab(visibleTabs[0]?.tab ?? "overview");
     }
   }, [activeTab, visibleTabs]);
 
@@ -412,6 +441,32 @@ export function AdminHomeScreen({ currentRole, onLogout }: AdminHomeScreenProps)
             ))}
           </View>
 
+          {showCarbonUpsell ? (
+            <View style={styles.upsellCard}>
+              <View style={styles.upsellText}>
+                <Text style={styles.upsellTitle}>Carbon credits are available</Text>
+                <Text style={styles.cardDescription}>
+                  Add soil carbon scoring, carbon-positive activities, and
+                  credit-readiness reports to this FPO package.
+                </Text>
+                {carbonUpsellMessage ? (
+                  <Text style={styles.cardMeta}>{carbonUpsellMessage}</Text>
+                ) : null}
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                style={styles.upsellButton}
+                onPress={() =>
+                  setCarbonUpsellMessage(
+                    "Ask the platform admin to enable the Carbon Accounting module for this tenant."
+                  )
+                }
+              >
+                <Text style={styles.upsellButtonText}>Get Carbon Credits</Text>
+              </Pressable>
+            </View>
+          ) : null}
+
           <View style={styles.tabRow}>
             {visibleTabs.map(({ label, tab }) => (
               <Pressable
@@ -441,6 +496,7 @@ export function AdminHomeScreen({ currentRole, onLogout }: AdminHomeScreenProps)
               reviewError={reviewError}
               reviewingProofId={reviewingProofId}
               runningCycles={runningCycles}
+              showFpoSummary={fpoUiEnabled}
             />
           ) : null}
 
@@ -516,6 +572,7 @@ export function AdminHomeScreen({ currentRole, onLogout }: AdminHomeScreenProps)
               reportExportError={reportExportError}
               reportSummary={reportSummary}
               regions={regions}
+              showFpoReports={fpoUiEnabled}
             />
           ) : null}
         </View>
@@ -553,7 +610,8 @@ function OverviewTab({
   proofRecords,
   reviewError,
   reviewingProofId,
-  runningCycles
+  runningCycles,
+  showFpoSummary
 }: {
   adminDataError: string;
   canReviewEvidence: boolean;
@@ -566,6 +624,7 @@ function OverviewTab({
   reviewError: string;
   reviewingProofId: string | null;
   runningCycles: CropCycle[];
+  showFpoSummary: boolean;
 }) {
   return (
     <View style={styles.section}>
@@ -659,23 +718,27 @@ function OverviewTab({
         </View>
       )}
 
-      <Text style={styles.sectionTitle}>Farmers by village</Text>
-      {participants.length ? (
-        participants.map((participant) => (
-          <View key={participant.username} style={styles.compactRow}>
-            <Text style={styles.compactTitle}>{participant.name}</Text>
-            <Text style={styles.compactMeta}>
-              {participant.region} - {participant.village}
-            </Text>
-          </View>
-        ))
-      ) : (
-        <View style={styles.emptyCard}>
-          <Text style={styles.cardDescription}>
-            No farmer profiles are registered yet.
-          </Text>
-        </View>
-      )}
+      {showFpoSummary ? (
+        <>
+          <Text style={styles.sectionTitle}>Farmers by village</Text>
+          {participants.length ? (
+            participants.map((participant) => (
+              <View key={participant.username} style={styles.compactRow}>
+                <Text style={styles.compactTitle}>{participant.name}</Text>
+                <Text style={styles.compactMeta}>
+                  {participant.region} - {participant.village}
+                </Text>
+              </View>
+            ))
+          ) : (
+            <View style={styles.emptyCard}>
+              <Text style={styles.cardDescription}>
+                No farmer profiles are registered yet.
+              </Text>
+            </View>
+          )}
+        </>
+      ) : null}
     </View>
   );
 }
@@ -1269,7 +1332,8 @@ function ReportsTab({
   reportExport,
   reportExportError,
   reportSummary,
-  regions
+  regions,
+  showFpoReports
 }: {
   canExportComplianceReport: boolean;
   complianceScore: number;
@@ -1281,6 +1345,7 @@ function ReportsTab({
   reportExportError: string;
   reportSummary: ReportSummary | null;
   regions: string[];
+  showFpoReports: boolean;
 }) {
   const displayedComplianceScore =
     reportSummary?.approvedEvidencePercent ?? complianceScore;
@@ -1292,7 +1357,7 @@ function ReportsTab({
 
   return (
     <View style={styles.section}>
-      <AdminFpoReportsPanel />
+      {showFpoReports ? <AdminFpoReportsPanel /> : null}
 
       <View style={styles.reportCard}>
         <Text style={styles.cardTitle}>Government evidence report</Text>
@@ -1571,6 +1636,40 @@ const styles = StyleSheet.create({
     color: "#53666f",
     fontSize: 14,
     fontWeight: "700"
+  },
+  upsellCard: {
+    alignItems: "center",
+    backgroundColor: "#ffffff",
+    borderColor: "#b8d8d0",
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 14,
+    justifyContent: "space-between",
+    marginBottom: 20,
+    padding: 16
+  },
+  upsellText: {
+    flex: 1,
+    gap: 4
+  },
+  upsellTitle: {
+    color: "#172126",
+    fontSize: 16,
+    fontWeight: "800"
+  },
+  upsellButton: {
+    alignItems: "center",
+    backgroundColor: "#1f6f73",
+    borderRadius: 8,
+    justifyContent: "center",
+    minHeight: 42,
+    paddingHorizontal: 14
+  },
+  upsellButtonText: {
+    color: "#ffffff",
+    fontSize: 14,
+    fontWeight: "800"
   },
   tabRow: {
     backgroundColor: "#e8eef2",

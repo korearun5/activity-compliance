@@ -9,6 +9,7 @@ public class SeedProperties {
   private boolean enabled = false;
   private String tenantCode = "default";
   private String tenantName = "Default Client";
+  private List<String> enabledModules = new ArrayList<>();
   private List<SeedUser> users = new ArrayList<>();
 
   public boolean isEnabled() {
@@ -33,6 +34,14 @@ public class SeedProperties {
 
   public void setTenantName(String tenantName) {
     this.tenantName = tenantName;
+  }
+
+  public List<String> getEnabledModules() {
+    return enabledModules;
+  }
+
+  public void setEnabledModules(List<String> enabledModules) {
+    this.enabledModules = enabledModules == null ? new ArrayList<>() : enabledModules;
   }
 
   public List<SeedUser> getUsers() {

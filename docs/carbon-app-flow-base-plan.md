@@ -46,6 +46,10 @@ The following areas can be built with dummy data now:
 Implemented in the codebase now:
 
 - Added a typed dummy carbon data layer in `src/data/carbonStore.ts`.
+- Added a generic client package switch with Carbon enabled by default and FPO
+  operations hidden by default.
+- Added a `src/modules` registry so future Carbon and FPO work can move behind
+  explicit module entry points.
 - Added an admin `Carbon` tab showing:
   - farm area,
   - carbon credit potential,
@@ -68,8 +72,8 @@ Implemented in the codebase now:
   - attach crop/season context,
   - publish/archive advisory.
 
-Testing was intentionally skipped per current instruction. A TypeScript compile
-check was run only to catch wiring errors.
+Current verification includes frontend typecheck, lint, npm audit, Docker
+Compose config validation, and local Docker stack startup checks.
 
 ## Working Dummy Assumptions
 
@@ -104,18 +108,12 @@ These should not be hardcoded yet:
 - Bank payout and carbon credit payment flow.
 - AWS vs Azure production hosting preference.
 
-## Recommended Next Build Order
+## Detailed Task Roadmap
 
-1. Add carbon data dictionary and backend schema draft.
-2. Add soil profile APIs and admin/farmer UI forms.
-3. Add carbon activity category templates using the existing workflow engine.
-4. Add carbon calculator service with a clearly marked provisional formula.
-5. Add query-sharing workflow for farmer text/image/video questions.
-6. Add dealer directory CRUD with dummy records.
-7. Add carbon report summary and Excel export.
-8. Add OTP/mobile login only after provider approval.
-9. Add map boundary drawing only after map provider approval.
-10. Add AI/satellite integrations only after methodology and provider approval.
+Task IDs, phase sequencing, and next sprint order now live in
+[Carbon App Flow Task Roadmap](carbon-app-flow-task-roadmap.md). Keep execution
+status there so this base plan remains focused on assumptions and build
+direction.
 
 ## Phase 1 Definition Of Done For Carbon Base
 

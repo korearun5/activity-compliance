@@ -46,6 +46,9 @@ activity-compliance platform.
 - [Carbon Accounting App Flow Base Plan](carbon-app-flow-base-plan.md): client
   app-flow translation, dummy-data assumptions, non-blocked build scope, and
   provider/client decisions for the regenerative agriculture carbon platform.
+- [Carbon App Flow Task Roadmap](carbon-app-flow-task-roadmap.md): phase-wise
+  Carbon execution plan, task IDs, module-toggle rules, and demo/production
+  readiness definitions.
 - [API Standards](api-standards.md): REST shape, response envelope, errors, and
   current endpoint conventions.
 - [Database Notes](database.md): schema and database design notes.
@@ -70,8 +73,10 @@ To prevent duplicate status drift:
   [Clean Start Runbook](clean-start-runbook.md).
 - Keep client Phase 1 decisions only in
   [Phase 1 Client Decision Register](phase1-client-decision-register.md).
-- Keep roadmap sequencing in [FPO MVP Roadmap](fpo-mvp-roadmap.md) and
+- Keep FPO roadmap sequencing in [FPO MVP Roadmap](fpo-mvp-roadmap.md) and FPO
   execution checklists in [FPO Developer Task List](fpo-developer-task-list.md).
+- Keep Carbon app-flow sequencing and task IDs in
+  [Carbon App Flow Task Roadmap](carbon-app-flow-task-roadmap.md).
 
 Before client production handoff, create a final client-facing documentation set:
 

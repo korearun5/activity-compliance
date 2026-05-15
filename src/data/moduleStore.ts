@@ -34,7 +34,8 @@ const defaultEnabledModules: PlatformModuleCode[] = [
   "INPUT_DEMAND",
   "LAND_RECORDS",
   "MEMBER_DATA",
-  "REPORT_EXPORT"
+  "REPORT_EXPORT",
+  "SUSTAINABILITY"
 ];
 
 export async function loadEnabledModules(accessToken?: string | null) {

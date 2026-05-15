@@ -62,22 +62,48 @@ src/
   auth/
   core/
   modules/
-    fpo-member/
-    land-records/
-    crop-planning/
-    input-demand/
-    advisory/
-    activity-compliance/
-    reports/
+    fpo/
+      screens/
+      data/
+      api/
+      navigation/
+    carbon/
+      screens/
+      data/
+      api/
+      navigation/
     inventory/        future
     procurement/      future
     traceability/     future
-    sustainability/   future
 ```
 
 Current frontend folders can evolve gradually. Do not block feature work on a
 large folder refactor, but every new FPO module should be kept behind clear
 store/API/screen boundaries.
+
+Current transition rule:
+
+- Existing code may still live under `src/screens` and `src/data` while we
+  avoid risky churn.
+- New Phase 2 work should start under `src/modules/<module>/`.
+- FPO and Carbon must be independently loadable through configuration and
+  tenant module subscriptions.
+- `EXPO_PUBLIC_ENABLED_CLIENT_MODULES=carbon` hides FPO operations UI while
+  keeping the backend foundation in the codebase.
+- `EXPO_PUBLIC_ENABLED_CLIENT_MODULES=fpo` hides Carbon UI cleanly; if FPO is
+  enabled without Carbon, the app should show a "Get Carbon Credits" upsell
+  action.
+
+Important licensing rule:
+
+- Frontend flags and tenant module toggles are packaging and runtime controls.
+  They are not source-code license protection.
+- If a client receives full source code that includes FPO implementation, a
+  technical client can enable or modify that module.
+- Therefore, source delivery must use a prepared distribution branch/package
+  that includes only the licensed modules plus shared core code.
+- The internal repository remains the full reusable platform. Client
+  distributions are product packages derived from it.
 
 ## Module Packaging Principle
 
@@ -197,6 +223,18 @@ if (enabledModules.includes("INPUT_DEMAND")) {
 Do not rely on frontend hiding alone. Backend must always enforce module
 availability.
 
+Phase 2 frontend rules:
+
+- Every new screen, navigation tab, store action, and API adapter must be owned
+  by a module.
+- Every tab must check the frontend module flag and the backend
+  `enabledModules` result before appearing.
+- Every store action must handle backend `MODULE_NOT_ENABLED` gracefully.
+- Disabled modules should leave no dead tabs, broken empty states, or confusing
+  call-to-action buttons.
+- When Carbon is disabled for an FPO-only package, show a clear upsell path
+  such as "Get Carbon Credits" instead of showing Carbon screens.
+
 ## Delivery Models
 
 ### Model A: Managed SaaS / Hosted By Us
@@ -244,16 +282,62 @@ Highest commercial risk.
 If source code handover is required:
 
 - Price must be much higher.
-- Deliver only purchased modules.
-- Remove unrelated controllers/screens/services from delivery branch.
-- Do not ship future modules merely disabled by config.
+- Deliver only purchased modules plus shared reusable core code.
+- For a Carbon-only client, include core/auth/tenant/user, workflow, activity,
+  evidence, advisory/report/storage foundation, and the Carbon module.
+- For a Carbon-only client, exclude or stub FPO operations implementation unless
+  FPO is explicitly licensed.
+- Remove unrelated controllers/screens/services from the delivery branch.
+- Do not ship future or unlicensed modules merely disabled by config.
 - Contract must define source license and module ownership clearly.
+- Contract must state that disabled/reserved modules remain platform IP unless
+  separately licensed.
 
 Rule:
 
 ```text
 Do not hand over full platform source code for a single-module price.
 ```
+
+Practical Carbon distribution target:
+
+```text
+internal-platform-repo/
+  core shared foundation
+  fpo module
+  carbon module
+  future modules
+
+client-carbon-distribution/
+  core shared foundation
+  carbon module
+  FPO stubs only where Carbon needs shared types/contracts
+```
+
+The Carbon distribution may keep common table names, shared APIs, and reusable
+base services when Carbon genuinely depends on them, but it must not include
+complete unlicensed FPO business workflows.
+
+## Consequences To Be Aware Of
+
+These are accepted consequences of the modular platform direction:
+
+- The internal repository stays larger than any one client app because it is the
+  reusable platform foundation, not a single-client codebase.
+- `EXPO_PUBLIC_ENABLED_CLIENT_MODULES` is a packaging and UX switch only. It is
+  useful for clean demos and product packages, but it is not IP protection.
+- Tenant module subscriptions are runtime authorization. Backend APIs must still
+  reject unpurchased modules even if a frontend tab is accidentally exposed.
+- Source-code handover is the risky case. If a client receives full platform
+  source, they can modify code and bypass frontend flags; only contract terms
+  and a prepared source distribution protect unlicensed modules.
+- Carbon-first delivery means local/demo tenants must enable the
+  `SUSTAINABILITY` backend module as well as the `carbon` frontend package.
+- Some shared code will remain common across Carbon, FPO, and future apps. That
+  is intentional, but complete paid business workflows should live behind their
+  own module boundaries.
+- Before any client source delivery, create and review a distribution branch or
+  package that removes or stubs unlicensed modules.
 
 ## Coding Implications
 

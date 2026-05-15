@@ -32,7 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class TenantModuleService {
-  private static final Set<ModuleCode> DEFAULT_FPO_MODULES = EnumSet.of(
+  private static final Set<ModuleCode> DEFAULT_SEED_MODULES = EnumSet.of(
       ModuleCode.MEMBER_DATA,
       ModuleCode.LAND_RECORDS,
       ModuleCode.GEO_TAGGING,
@@ -41,7 +41,8 @@ public class TenantModuleService {
       ModuleCode.ADVISORY,
       ModuleCode.ACTIVITY_COMPLIANCE,
       ModuleCode.EVIDENCE_REVIEW,
-      ModuleCode.REPORT_EXPORT
+      ModuleCode.REPORT_EXPORT,
+      ModuleCode.SUSTAINABILITY
   );
 
   private final AuditEventService auditEventService;
@@ -148,14 +149,14 @@ public class TenantModuleService {
   }
 
   @Transactional
-  public void enableDefaultFpoModules(TenantEntity tenant) {
+  public void enableSeedModules(TenantEntity tenant, List<String> requestedModuleCodes) {
     Instant now = Instant.now();
     Map<ModuleCode, PlatformModuleEntity> modulesByCode = platformModuleRepository
         .findAllByOrderByCodeAsc()
         .stream()
         .collect(Collectors.toMap(PlatformModuleEntity::getCode, module -> module));
 
-    for (ModuleCode moduleCode : DEFAULT_FPO_MODULES) {
+    for (ModuleCode moduleCode : seedModuleCodes(requestedModuleCodes)) {
       if (subscriptionRepository.findByTenantIdAndModuleCode(tenant.getId(), moduleCode).isPresent()) {
         continue;
       }
@@ -176,6 +177,23 @@ public class TenantModuleService {
           now
       ));
     }
+  }
+
+  private Set<ModuleCode> seedModuleCodes(List<String> requestedModuleCodes) {
+    if (requestedModuleCodes == null || requestedModuleCodes.isEmpty()) {
+      return DEFAULT_SEED_MODULES;
+    }
+
+    EnumSet<ModuleCode> moduleCodes = EnumSet.noneOf(ModuleCode.class);
+    for (String requestedModuleCode : requestedModuleCodes) {
+      if (requestedModuleCode == null || requestedModuleCode.isBlank()) {
+        continue;
+      }
+
+      moduleCodes.add(ModuleCode.from(requestedModuleCode.trim()));
+    }
+
+    return moduleCodes.isEmpty() ? DEFAULT_SEED_MODULES : moduleCodes;
   }
 
   private void requireAdmin(CurrentUser currentUser) {

@@ -14,6 +14,17 @@ app:
     enabled: ${APP_SEED_ENABLED:true}
     tenant-code: ${APP_SEED_TENANT_CODE:default}
     tenant-name: ${APP_SEED_TENANT_NAME:Local Development Client}
+    enabled-modules:
+      - MEMBER_DATA
+      - LAND_RECORDS
+      - GEO_TAGGING
+      - CROP_PLANNING
+      - INPUT_DEMAND
+      - ADVISORY
+      - ACTIVITY_COMPLIANCE
+      - EVIDENCE_REVIEW
+      - REPORT_EXPORT
+      - SUSTAINABILITY
     users:
       - username: ${APP_SEED_ADMIN_USERNAME:admin}
         password: ${APP_SEED_ADMIN_PASSWORD:arun}

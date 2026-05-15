@@ -57,7 +57,7 @@ through that policy instead of scattering one-off role checks across screens.
 | Workflow definition tab | Yes | Yes | Hidden | Farmer workflow screen only |
 | Advisory tab | Yes | Yes | Read-only list | Relevant advisories later |
 | Generic compliance export | Yes | Yes | Disabled | No |
-| Carbon prototype screens | Hidden unless `SUSTAINABILITY` module is enabled | Hidden unless enabled | Hidden | Hidden unless enabled |
+| Carbon screens | Visible when Carbon client module and `SUSTAINABILITY` backend module are enabled | Visible when enabled | Hidden unless later enabled | Visible when enabled |
 
 ## Account Setup Flow
 
@@ -141,6 +141,6 @@ Current alignment:
 - Frontend role management locks farmer-role changes and directs farmer login
   management back to farmer profiles.
 - Frontend tab/action visibility is centralized in `src/auth/roleAccess.ts`;
-  Phase 2-only carbon prototype screens are hidden behind the `SUSTAINABILITY`
-  module by default.
+  Carbon/FPO package visibility is also controlled by app feature flags and
+  backend enabled modules.
 - Focused JUnit and Testcontainers integration tests cover this foundation.

@@ -1,7 +1,12 @@
 import type { PlatformModuleCode } from "../data/moduleStore";
+import type { ClientModuleId } from "../modules/types";
 import type { UserRole } from "../core/model/types";
 
 export type StaffRole = Exclude<UserRole, "farmer">;
+
+export type UiFeatureFlags = {
+  enabledClientModules: readonly ClientModuleId[];
+};
 
 export type AdminTabId =
   | "advisories"
@@ -29,6 +34,7 @@ export type RoleAction =
   | "viewReportSummary";
 
 type TabAccess<TTab extends string> = {
+  clientModule?: ClientModuleId;
   label: string;
   module?: PlatformModuleCode;
   roles?: StaffRole[];
@@ -46,18 +52,21 @@ export const adminTabAccess: Record<AdminTabId, TabAccess<AdminTabId>> = {
     tab: "advisories"
   },
   carbon: {
+    clientModule: "carbon",
     label: "Carbon",
     module: "SUSTAINABILITY",
     roles: adminAndFpoRoles,
     tab: "carbon"
   },
   cropPlanning: {
+    clientModule: "fpo",
     label: "Crop Planning",
     module: "CROP_PLANNING",
     roles: allStaffRoles,
     tab: "cropPlanning"
   },
   inputDemand: {
+    clientModule: "fpo",
     label: "Input Demand",
     module: "INPUT_DEMAND",
     roles: adminAndFpoRoles,
@@ -69,6 +78,7 @@ export const adminTabAccess: Record<AdminTabId, TabAccess<AdminTabId>> = {
     tab: "overview"
   },
   participants: {
+    clientModule: "fpo",
     label: "Farmers",
     module: "MEMBER_DATA",
     roles: allStaffRoles,
@@ -107,6 +117,7 @@ export const adminTabOrder: AdminTabId[] = [
 
 export const farmerTabAccess: Record<FarmerTabId, TabAccess<FarmerTabId>> = {
   carbon: {
+    clientModule: "carbon",
     label: "Carbon",
     module: "SUSTAINABILITY",
     tab: "carbon"
@@ -156,21 +167,39 @@ export function canRolePerform(role: UserRole, action: RoleAction) {
 
 export function getVisibleAdminTabs(
   role: StaffRole,
-  enabledModules: PlatformModuleCode[] | null
+  enabledModules: PlatformModuleCode[] | null,
+  features: UiFeatureFlags
 ) {
   return adminTabOrder
     .map((tab) => adminTabAccess[tab])
     .filter(
       (item) =>
         (!item.roles || item.roles.includes(role)) &&
+        isTabFeatureAvailable(item, features) &&
         isTabModuleAvailable(item.module, enabledModules)
     );
 }
 
-export function getVisibleFarmerTabs(enabledModules: PlatformModuleCode[] | null) {
+export function getVisibleFarmerTabs(
+  enabledModules: PlatformModuleCode[] | null,
+  features: UiFeatureFlags
+) {
   return farmerTabOrder
     .map((tab) => farmerTabAccess[tab])
-    .filter((item) => isTabModuleAvailable(item.module, enabledModules));
+    .filter(
+      (item) =>
+        isTabFeatureAvailable(item, features) &&
+        isTabModuleAvailable(item.module, enabledModules)
+    );
+}
+
+function isTabFeatureAvailable<TTab extends string>(
+  item: TabAccess<TTab>,
+  features: UiFeatureFlags
+) {
+  return (
+    !item.clientModule || features.enabledClientModules.includes(item.clientModule)
+  );
 }
 
 function isTabModuleAvailable(
