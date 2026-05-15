@@ -16,7 +16,7 @@ current repository state, not client acceptance or a commercial commitment.
 | Auth, users, and roles       |        93% | High       | JWT, role APIs, local seeds, frontend routing, staff-login creation, farmer-profile login creation, role-aware UI controls, and tests now use `ADMIN`, `FPO_MANAGER`, `FIELD_COORDINATOR`, and `FARMER`. |
 | Workflow and activity engine |        82% | High       | Configurable definitions, activity start, task status, and tests exist; client-specific workflow templates still need UAT. |
 | Evidence and storage         |        80% | Medium     | Local and MinIO adapters exist; MinIO integration test coverage is still missing. |
-| Reporting and exports        |        80% | Medium     | Generic summary/export and the FPO approved three-sheet workbook exist with tests; report filter application and branding/footer polish remain. |
+| Reporting and exports        |        84% | High       | Generic summary/export and the FPO approved three-sheet workbook exist; filters, header/footer branding, and focused tests are wired. |
 | Module subscription platform |        82% | Medium     | Backend guards, frontend module visibility, and Phase 2 carbon screen hiding behind `SUSTAINABILITY` exist; packaging/handover process remains pending. |
 | FPO member management        |        90% | High       | Approved farmer fields, farmer username/password login, coordinator assignment, tenant/FPO scoping, farmer-profile UI wording, validation, and focused tests are aligned. |
 | FPO land and plot records    |        82% | High       | Survey/khasra, acres, approved ownership/irrigation values, required GPS latitude/longitude, schema checks, API validation, UI controls, and tests are aligned; polygon maps remain Phase 2. |
@@ -32,7 +32,7 @@ Overall readiness:
 
 - Developer/demo environment: about 85%.
 - FPO MVP technical foundation: about 83%.
-- FPO Phase 1 go-live readiness before UAT: about 86-88% after client scope lock; implementation gaps remain.
+- FPO Phase 1 go-live readiness before UAT: about 87-89% after client scope lock; implementation gaps remain.
 - Full client POC vision including OTP, maps, satellite, AI, carbon, marketplace, and payments: about 20-25%.
 
 ## Testing And Quality Audit
@@ -98,7 +98,7 @@ To avoid duplicate or conflicting information:
 | Crop plan Phase 1 alignment | Done | Backend/Frontend/QA | Crop plans now store `crop_year`, optional expected yield, and `confirmed_at`; UI/API contracts and focused unit/integration tests are aligned. |
 | Input demand alignment | Done | Backend/Frontend/QA | Demand now uses `CONFIRMED` crop plans only, stores total demand, 5% buffer, and rounded final demand, and exposes those values in API/UI summaries with focused unit and Testcontainers coverage. |
 | Report workbook alignment | Done | Backend/Frontend/QA | FPO export now emits exactly `Farmer Register`, `Crop Plan Summary`, and `Input Demand` with approved columns and focused workbook/controller tests. |
-| Report filters and branding | Pending | Backend/Frontend/QA | Apply village/crop/season/coordinator/date filters to export and add approved branding/footer presentation. |
+| Report filters and branding | Done | Backend/Frontend/QA | Village/crop/season/coordinator/date filters are sent from the report UI and applied with sheet-specific date semantics; Excel header/footer branding is emitted. |
 | Advisory image and crop targeting alignment | Pending | Backend/Frontend/QA | Add all-members/crop targeting and multiple image attachments through storage. |
 | Production secrets and hosting | Pending | DevOps/Client | Required for secure deployment outside local/dev. |
 | Backups and restore drill | Pending | DevOps | Production readiness requires verified recovery, not only a backup command. |
@@ -112,8 +112,8 @@ To avoid duplicate or conflicting information:
 
 ## Next Cleanup Tasks
 
-1. Continue with report export filters/branding, then `FPO-ALIGN-009` advisory
-   crop targeting and multiple image attachments.
+1. Continue with `FPO-ALIGN-009`: advisory crop targeting and multiple image
+   attachments.
 2. Rehearse the clean-start runbook on a fresh machine or clean Windows profile.
 3. Finalize the client-facing operations manual after production hosting is
    chosen.

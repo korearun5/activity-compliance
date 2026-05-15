@@ -9,7 +9,6 @@ import com.activityplatform.backend.fpo.domain.CropPlanStatus;
 import com.activityplatform.backend.fpo.domain.CropSeasonEntity;
 import com.activityplatform.backend.fpo.domain.FarmLandholdingEntity;
 import com.activityplatform.backend.fpo.domain.FarmPlotEntity;
-import com.activityplatform.backend.fpo.domain.FarmerCropHistoryEntity;
 import com.activityplatform.backend.fpo.domain.FarmRecordStatus;
 import com.activityplatform.backend.fpo.domain.FpoMemberProfileEntity;
 import com.activityplatform.backend.fpo.domain.FpoMemberStatus;
@@ -24,6 +23,7 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.zip.ZipFile;
 import org.junit.jupiter.api.Test;
@@ -79,6 +79,8 @@ class FpoReportWorkbookServiceTest {
       assertThat(farmerRegister)
           .contains("Name")
           .contains("Survey No")
+          .contains("Carbon Farming Platform - FPO Digitization")
+          .contains("Confidential - For internal FPO use")
           .contains("Farmer One")
           .contains("Rampur")
           .contains("SUR-1")
@@ -98,6 +100,83 @@ class FpoReportWorkbookServiceTest {
           .contains("Buffer 5%")
           .contains("Fertilizer")
           .contains("15.0000");
+    }
+  }
+
+  @Test
+  void buildWorkbookAppliesPhase1FiltersToAllSheets() throws Exception {
+    UserEntity coordinator = user(UUID.randomUUID(), "Coordinator One");
+    FpoMemberProfileEntity matchingMember = member(
+        UUID.randomUUID(),
+        user(UUID.randomUUID(), "Farmer One"),
+        "Rampur",
+        coordinator
+    );
+    FpoMemberProfileEntity otherMember = member(
+        UUID.randomUUID(),
+        user(UUID.randomUUID(), "Farmer Two"),
+        "Other Village",
+        null
+    );
+    FarmLandholdingEntity matchingLand = landholding(matchingMember, "SUR-1");
+    FarmLandholdingEntity otherLand = landholding(otherMember, "SUR-2");
+    CropSeasonEntity kharif = season(UUID.randomUUID(), "KHA", "Kharif");
+    CropSeasonEntity rabi = season(UUID.randomUUID(), "RAB", "Rabi");
+    CropCatalogEntity onion = crop(UUID.randomUUID(), "ONI", "Onion");
+    CropCatalogEntity wheat = crop(UUID.randomUUID(), "WHE", "Wheat");
+    SeasonalCropPlanEntity matchingPlan = plan(
+        matchingMember,
+        plot(matchingMember, matchingLand),
+        onion,
+        kharif
+    );
+    SeasonalCropPlanEntity otherPlan = plan(
+        otherMember,
+        plot(otherMember, otherLand),
+        wheat,
+        rabi
+    );
+    InputCatalogEntity input = input(UUID.randomUUID(), "NPK", "NPK 19");
+
+    byte[] workbook = service.buildWorkbook(
+        new FpoReportWorkbookService.FpoReportDataset(
+            List.of(matchingMember, otherMember),
+            List.of(matchingLand, otherLand),
+            List.of(matchingPlan, otherPlan),
+            List.of(
+                estimate(matchingPlan, input, new BigDecimal("15.0000")),
+                estimate(otherPlan, input, new BigDecimal("7.0000"))
+            )
+        ),
+        FpoReportWorkbookService.FpoReportFilters.from(Map.of(
+            "village", "Rampur",
+            "crop", "Onion",
+            "season", "Kharif 2026",
+            "coordinator", "Coordinator One",
+            "dateFrom", LocalDate.now().minusDays(1).toString(),
+            "dateTo", LocalDate.now().plusDays(1).toString()
+        ))
+    );
+    Path workbookPath = Files.write(Files.createTempFile("fpo-report-filtered-", ".xlsx"), workbook);
+
+    try (ZipFile zipFile = new ZipFile(workbookPath.toFile())) {
+      String farmerRegister = text(zipFile, "xl/worksheets/sheet1.xml");
+      String cropPlanSummary = text(zipFile, "xl/worksheets/sheet2.xml");
+      String inputDemand = text(zipFile, "xl/worksheets/sheet3.xml");
+
+      assertThat(farmerRegister)
+          .contains("Farmer One")
+          .contains("SUR-1")
+          .doesNotContain("Farmer Two")
+          .doesNotContain("SUR-2");
+      assertThat(cropPlanSummary)
+          .contains("Onion")
+          .contains("Kharif")
+          .doesNotContain("Wheat")
+          .doesNotContain("Rabi");
+      assertThat(inputDemand)
+          .contains("15.0000")
+          .doesNotContain("7.0000");
     }
   }
 
@@ -124,6 +203,15 @@ class FpoReportWorkbookServiceTest {
   }
 
   private FpoMemberProfileEntity member(UUID memberId, UserEntity user) {
+    return member(memberId, user, "Rampur", null);
+  }
+
+  private FpoMemberProfileEntity member(
+      UUID memberId,
+      UserEntity user,
+      String village,
+      UserEntity coordinator
+  ) {
     return new FpoMemberProfileEntity(
         memberId,
         tenant,
@@ -133,7 +221,7 @@ class FpoReportWorkbookServiceTest {
         user.getPhone(),
         "+919111111111",
         null,
-        "Rampur",
+        village,
         "North Block",
         "District",
         "Maharashtra",
@@ -141,18 +229,22 @@ class FpoReportWorkbookServiceTest {
         null,
         42,
         "SMALL",
-        null,
+        coordinator,
         FpoMemberStatus.ACTIVE,
         Instant.now()
     );
   }
 
   private FarmLandholdingEntity landholding(FpoMemberProfileEntity member) {
+    return landholding(member, "SUR-1");
+  }
+
+  private FarmLandholdingEntity landholding(FpoMemberProfileEntity member, String surveyNumber) {
     return new FarmLandholdingEntity(
         UUID.randomUUID(),
         tenant,
         member,
-        "SUR-1",
+        surveyNumber,
         new BigDecimal("3.0000"),
         new BigDecimal("2.5000"),
         "Self-owned",

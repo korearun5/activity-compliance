@@ -700,9 +700,10 @@ The Phase 1 workbook emits exactly three sheets:
 - `Crop Plan Summary`
 - `Input Demand`
 
-Current implementation note: the approved sheet structure is implemented;
-filter application and branding/footer presentation remain tracked as go-live
-cleanup.
+Village, crop, season, coordinator, and date filters are applied to the export.
+Date range semantics are sheet-specific: farmer `createdAt`, crop plan
+`createdAt`/`updatedAt`, and crop plan `confirmedAt` for input demand. The
+workbook also emits the approved header and footer text.
 
 ## Notification Status Tracking
 

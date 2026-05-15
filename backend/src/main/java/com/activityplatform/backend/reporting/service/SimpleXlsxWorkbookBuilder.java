@@ -49,7 +49,7 @@ public class SimpleXlsxWorkbookBuilder {
     for (Sheet sheet : sheets) {
       String name = uniqueSheetName(sheet.name(), usedNames);
       List<List<String>> rows = sheet.rows() == null ? List.of() : sheet.rows();
-      normalizedSheets.add(new Sheet(name, rows));
+      normalizedSheets.add(new Sheet(name, rows, sheet.oddHeader(), sheet.oddFooter()));
     }
 
     return normalizedSheets;
@@ -185,8 +185,27 @@ public class SimpleXlsxWorkbookBuilder {
       xml.append("</row>");
     }
 
-    xml.append("</sheetData></worksheet>");
+    xml.append("</sheetData>");
+    if (hasText(sheet.oddHeader()) || hasText(sheet.oddFooter())) {
+      xml.append("<headerFooter>");
+      if (hasText(sheet.oddHeader())) {
+        xml.append("<oddHeader>")
+            .append(escapeXml(sheet.oddHeader()))
+            .append("</oddHeader>");
+      }
+      if (hasText(sheet.oddFooter())) {
+        xml.append("<oddFooter>")
+            .append(escapeXml(sheet.oddFooter()))
+            .append("</oddFooter>");
+      }
+      xml.append("</headerFooter>");
+    }
+    xml.append("</worksheet>");
     return xml.toString();
+  }
+
+  private boolean hasText(String value) {
+    return value != null && !value.isBlank();
   }
 
   private String columnName(int index) {
@@ -247,6 +266,14 @@ public class SimpleXlsxWorkbookBuilder {
     zip.closeEntry();
   }
 
-  public record Sheet(String name, List<List<String>> rows) {
+  public record Sheet(
+      String name,
+      List<List<String>> rows,
+      String oddHeader,
+      String oddFooter
+  ) {
+    public Sheet(String name, List<List<String>> rows) {
+      this(name, rows, null, null);
+    }
   }
 }

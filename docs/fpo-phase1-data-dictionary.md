@@ -18,7 +18,7 @@ checks.
 | Crop planning | Crop list, seasons, crop year, and statuses approved | Phase 1 crop year label, optional expected yield, confirmation timestamp, UI fields, API contracts, and tests are aligned. |
 | Input demand | Confirmed plans only, fixed per-acre defaults, 5% buffer | Calculation now uses confirmed plans only, stores total demand, 5% buffer, and rounded final demand; exact three-sheet report output remains in the report alignment task. |
 | Advisory | Text plus multiple images; all members or crop target | Foundation exists; image attachments and crop targeting need alignment. |
-| Reports | Excel only, three approved sheets, filters, footer/branding | Workbook now emits the approved three sheets and columns; report filter UI/backend application plus branding/footer polish remain pending. |
+| Reports | Excel only, three approved sheets, filters, footer/branding | Workbook emits the approved three sheets and columns; village/crop/season/coordinator/date filters plus header/footer branding are wired. |
 | UAT | Pilot data and sign-off owners approved | UAT guide created; execution pending. |
 
 ## Roles

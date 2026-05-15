@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { getErrorMessage } from "../core/errors/AppError";
 import {
   exportFpoOperationsWorkbook,
   FpoDashboardSummary,
+  FpoReportFilters,
   getFpoDashboardSummary
 } from "../data/fpoReportStore";
 import { ReportExport } from "../data/reportStore";
@@ -14,6 +15,7 @@ export function AdminFpoReportsPanel() {
   const [exportRecord, setExportRecord] = useState<ReportExport | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [filters, setFilters] = useState<FpoReportFilters>({});
   const [summary, setSummary] = useState<FpoDashboardSummary | null>(null);
 
   const summaryCards = useMemo(
@@ -51,7 +53,7 @@ export function AdminFpoReportsPanel() {
     setError("");
 
     try {
-      setExportRecord(await exportFpoOperationsWorkbook());
+      setExportRecord(await exportFpoOperationsWorkbook(filters));
     } catch (exportError) {
       setError(getErrorMessage(exportError, "Unable to export FPO Excel report."));
     } finally {
@@ -102,6 +104,50 @@ export function AdminFpoReportsPanel() {
       </View>
 
       <View style={styles.actions}>
+        <View style={styles.filterGrid}>
+          <ReportFilterField
+            label="Village"
+            onChange={(value) =>
+              setFilters((current) => ({ ...current, village: value }))
+            }
+            value={filters.village ?? ""}
+          />
+          <ReportFilterField
+            label="Crop"
+            onChange={(value) => setFilters((current) => ({ ...current, crop: value }))}
+            value={filters.crop ?? ""}
+          />
+          <ReportFilterField
+            label="Season"
+            onChange={(value) =>
+              setFilters((current) => ({ ...current, season: value }))
+            }
+            value={filters.season ?? ""}
+          />
+          <ReportFilterField
+            label="Coordinator"
+            onChange={(value) =>
+              setFilters((current) => ({ ...current, coordinator: value }))
+            }
+            value={filters.coordinator ?? ""}
+          />
+          <ReportFilterField
+            label="Date from"
+            onChange={(value) =>
+              setFilters((current) => ({ ...current, dateFrom: value }))
+            }
+            placeholder="YYYY-MM-DD"
+            value={filters.dateFrom ?? ""}
+          />
+          <ReportFilterField
+            label="Date to"
+            onChange={(value) =>
+              setFilters((current) => ({ ...current, dateTo: value }))
+            }
+            placeholder="YYYY-MM-DD"
+            value={filters.dateTo ?? ""}
+          />
+        </View>
         <Pressable
           accessibilityRole="button"
           disabled={isExporting}
@@ -130,6 +176,31 @@ export function AdminFpoReportsPanel() {
         title="Village acreage"
       />
       <InputDemandList items={summary?.inputDemandByInput ?? []} />
+    </View>
+  );
+}
+
+function ReportFilterField({
+  label,
+  onChange,
+  placeholder,
+  value
+}: {
+  label: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  value: string;
+}) {
+  return (
+    <View style={styles.filterField}>
+      <Text style={styles.filterLabel}>{label}</Text>
+      <TextInput
+        autoCapitalize="none"
+        onChangeText={onChange}
+        placeholder={placeholder}
+        style={styles.filterInput}
+        value={value}
+      />
     </View>
   );
 }
@@ -312,6 +383,29 @@ const styles = StyleSheet.create({
   actions: {
     alignItems: "flex-start",
     gap: 8
+  },
+  filterGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8
+  },
+  filterField: {
+    flex: 1,
+    minWidth: 150
+  },
+  filterLabel: {
+    color: "#53666f",
+    fontSize: 12,
+    fontWeight: "800",
+    marginBottom: 4
+  },
+  filterInput: {
+    borderColor: "#c9d7de",
+    borderRadius: 8,
+    borderWidth: 1,
+    color: "#172126",
+    minHeight: 38,
+    paddingHorizontal: 10
   },
   primaryButton: {
     alignItems: "center",

@@ -1,5 +1,7 @@
 package com.activityplatform.backend.fpo.service;
 
+import com.activityplatform.backend.common.error.ApplicationException;
+import com.activityplatform.backend.common.error.ErrorCode;
 import com.activityplatform.backend.fpo.domain.CropPlanStatus;
 import com.activityplatform.backend.fpo.domain.FarmLandholdingEntity;
 import com.activityplatform.backend.fpo.domain.FpoMemberProfileEntity;
@@ -11,6 +13,9 @@ import com.activityplatform.backend.fpo.repository.InputDemandEstimateRepository
 import com.activityplatform.backend.fpo.repository.SeasonalCropPlanRepository;
 import com.activityplatform.backend.reporting.service.SimpleXlsxWorkbookBuilder;
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -20,11 +25,15 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class FpoReportWorkbookService {
+  private static final String REPORT_HEADER = "&RCarbon Farming Platform - FPO Digitization";
+  private static final String REPORT_FOOTER = "&CConfidential - For internal FPO use";
+
   private final FarmLandholdingRepository landholdingRepository;
   private final FpoMemberProfileRepository memberRepository;
   private final InputDemandEstimateRepository demandEstimateRepository;
@@ -44,35 +53,45 @@ public class FpoReportWorkbookService {
 
   @Transactional(readOnly = true)
   public byte[] buildWorkbook(UUID tenantId) {
+    return buildWorkbook(tenantId, Map.of());
+  }
+
+  @Transactional(readOnly = true)
+  public byte[] buildWorkbook(UUID tenantId, Map<String, Object> filters) {
     return buildWorkbook(new FpoReportDataset(
         memberRepository.findByTenantIdOrderByCreatedAtDesc(tenantId),
         landholdingRepository.findByTenantIdOrderByCreatedAtDesc(tenantId),
         cropPlanRepository.findByTenantIdOrderByCreatedAtDesc(tenantId),
         demandEstimateRepository.findByTenantIdOrderByCreatedAtDesc(tenantId)
-    ));
+    ), FpoReportFilters.from(filters));
   }
 
   byte[] buildWorkbook(FpoReportDataset dataset) {
+    return buildWorkbook(dataset, FpoReportFilters.empty());
+  }
+
+  byte[] buildWorkbook(FpoReportDataset dataset, FpoReportFilters filters) {
     return new SimpleXlsxWorkbookBuilder().build(List.of(
-        new SimpleXlsxWorkbookBuilder.Sheet(
+        sheet(
             "Farmer Register",
-            farmerRegisterRows(dataset.members(), dataset.landholdings())
+            farmerRegisterRows(dataset, filters)
         ),
-        new SimpleXlsxWorkbookBuilder.Sheet(
+        sheet(
             "Crop Plan Summary",
-            cropPlanSummaryRows(dataset.cropPlans())
+            cropPlanSummaryRows(dataset.cropPlans(), filters)
         ),
-        new SimpleXlsxWorkbookBuilder.Sheet(
+        sheet(
             "Input Demand",
-            inputDemandRows(dataset.demandEstimates())
+            inputDemandRows(dataset.demandEstimates(), filters)
         )
     ));
   }
 
-  private List<List<String>> farmerRegisterRows(
-      List<FpoMemberProfileEntity> members,
-      List<FarmLandholdingEntity> landholdings
-  ) {
+  private SimpleXlsxWorkbookBuilder.Sheet sheet(String name, List<List<String>> rows) {
+    return new SimpleXlsxWorkbookBuilder.Sheet(name, rows, REPORT_HEADER, REPORT_FOOTER);
+  }
+
+  private List<List<String>> farmerRegisterRows(FpoReportDataset dataset, FpoReportFilters filters) {
     List<List<String>> rows = new ArrayList<>();
     rows.add(row(
         "Name",
@@ -86,14 +105,23 @@ public class FpoReportWorkbookService {
         "Status"
     ));
 
-    Map<UUID, List<FarmLandholdingEntity>> landholdingsByMember = landholdings.stream()
+    Set<UUID> matchingCropPlanMemberIds = dataset.cropPlans().stream()
+        .filter(plan -> matchesCropPlanDimensions(plan, filters))
+        .map(plan -> plan.getMemberProfile().getId())
+        .collect(Collectors.toSet());
+
+    Map<UUID, List<FarmLandholdingEntity>> landholdingsByMember = dataset.landholdings().stream()
         .collect(Collectors.groupingBy(
             landholding -> landholding.getMemberProfile().getId(),
             LinkedHashMap::new,
             Collectors.toList()
         ));
 
-    members.stream()
+    dataset.members().stream()
+        .filter(member -> matchesMember(member, filters))
+        .filter(member -> !filters.hasCropOrSeason()
+            || matchingCropPlanMemberIds.contains(member.getId()))
+        .filter(member -> dateMatches(member.getCreatedAt(), filters))
         .sorted(Comparator.comparing(FpoMemberProfileEntity::getDisplayName))
         .forEach(member -> {
           List<FarmLandholdingEntity> memberLandholdings =
@@ -129,7 +157,10 @@ public class FpoReportWorkbookService {
     );
   }
 
-  private List<List<String>> cropPlanSummaryRows(List<SeasonalCropPlanEntity> plans) {
+  private List<List<String>> cropPlanSummaryRows(
+      List<SeasonalCropPlanEntity> plans,
+      FpoReportFilters filters
+  ) {
     List<List<String>> rows = new ArrayList<>();
     rows.add(row(
         "Season",
@@ -143,6 +174,8 @@ public class FpoReportWorkbookService {
 
     plans.stream()
         .filter(this::isReportableCropPlan)
+        .filter(plan -> matchesCropPlanDimensions(plan, filters))
+        .filter(plan -> dateMatchesAny(filters, plan.getCreatedAt(), plan.getUpdatedAt()))
         .collect(Collectors.groupingBy(
             CropPlanGroup::from,
             LinkedHashMap::new,
@@ -180,7 +213,10 @@ public class FpoReportWorkbookService {
     );
   }
 
-  private List<List<String>> inputDemandRows(List<InputDemandEstimateEntity> estimates) {
+  private List<List<String>> inputDemandRows(
+      List<InputDemandEstimateEntity> estimates,
+      FpoReportFilters filters
+  ) {
     List<List<String>> rows = new ArrayList<>();
     rows.add(row(
         "Input Type (Seed/Fertilizer)",
@@ -195,6 +231,8 @@ public class FpoReportWorkbookService {
     ));
 
     estimates.stream()
+        .filter(estimate -> matchesCropPlanDimensions(estimate.getCropPlan(), filters))
+        .filter(estimate -> dateMatchesConfirmedAt(estimate.getCropPlan(), filters))
         .collect(Collectors.groupingBy(
             InputDemandGroup::from,
             LinkedHashMap::new,
@@ -249,6 +287,90 @@ public class FpoReportWorkbookService {
   private boolean isReportableCropPlan(SeasonalCropPlanEntity plan) {
     return plan.getStatus() == CropPlanStatus.CONFIRMED
         || plan.getStatus() == CropPlanStatus.COMPLETED;
+  }
+
+  private boolean matchesCropPlanDimensions(
+      SeasonalCropPlanEntity plan,
+      FpoReportFilters filters
+  ) {
+    return matchesMember(plan.getMemberProfile(), filters)
+        && matchesAny(filters.crop(), List.of(
+            plan.getCrop().getId().toString(),
+            plan.getCrop().getCode(),
+            plan.getCrop().getName()
+        ))
+        && matchesAny(filters.season(), List.of(
+            plan.getSeason().getId().toString(),
+            plan.getSeason().getCode(),
+            plan.getSeason().getName(),
+            plan.getSeason().getName() + " " + plan.getSeason().getSeasonYear(),
+            plan.getSeason().getName() + " " + plan.getCropYear(),
+            plan.getCropYear()
+        ));
+  }
+
+  private boolean matchesMember(FpoMemberProfileEntity member, FpoReportFilters filters) {
+    return matchesAny(filters.village(), List.of(member.getVillage()))
+        && matchesAny(filters.coordinator(), coordinatorLabels(member));
+  }
+
+  private List<String> coordinatorLabels(FpoMemberProfileEntity member) {
+    if (member.getCoordinatorUser() == null) {
+      return List.of();
+    }
+    return List.of(
+        member.getCoordinatorUser().getId().toString(),
+        member.getCoordinatorUser().getUsername(),
+        member.getCoordinatorUser().getDisplayName()
+    );
+  }
+
+  private boolean matchesAny(String filter, List<String> candidates) {
+    if (filter == null || filter.isBlank()) {
+      return true;
+    }
+    String normalizedFilter = normalize(filter);
+    return candidates.stream()
+        .filter(Objects::nonNull)
+        .map(this::normalize)
+        .anyMatch(candidate -> candidate.equals(normalizedFilter)
+            || candidate.contains(normalizedFilter)
+            || normalizedFilter.contains(candidate));
+  }
+
+  private String normalize(String value) {
+    return value == null ? "" : value.trim().toLowerCase();
+  }
+
+  private boolean dateMatchesAny(FpoReportFilters filters, Instant... instants) {
+    if (!filters.hasDateRange()) {
+      return true;
+    }
+    for (Instant instant : instants) {
+      if (dateMatches(instant, filters)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private boolean dateMatchesConfirmedAt(
+      SeasonalCropPlanEntity plan,
+      FpoReportFilters filters
+  ) {
+    return !filters.hasDateRange() || dateMatches(plan.getConfirmedAt(), filters);
+  }
+
+  private boolean dateMatches(Instant instant, FpoReportFilters filters) {
+    if (!filters.hasDateRange()) {
+      return true;
+    }
+    if (instant == null) {
+      return false;
+    }
+    LocalDate date = LocalDate.ofInstant(instant, ZoneOffset.UTC);
+    return (filters.dateFrom() == null || !date.isBefore(filters.dateFrom()))
+        && (filters.dateTo() == null || !date.isAfter(filters.dateTo()));
   }
 
   private List<String> row(Object... values) {
@@ -323,6 +445,72 @@ public class FpoReportWorkbookService {
           .thenComparing(InputDemandGroup::inputType)
           .thenComparing(InputDemandGroup::unit)
           .compare(this, other);
+    }
+  }
+
+  record FpoReportFilters(
+      String village,
+      String crop,
+      String season,
+      String coordinator,
+      LocalDate dateFrom,
+      LocalDate dateTo
+  ) {
+    static FpoReportFilters empty() {
+      return new FpoReportFilters(null, null, null, null, null, null);
+    }
+
+    static FpoReportFilters from(Map<String, Object> values) {
+      if (values == null || values.isEmpty()) {
+        return empty();
+      }
+
+      return new FpoReportFilters(
+          text(values, "village", "memberVillage"),
+          text(values, "crop", "cropId", "cropName"),
+          text(values, "season", "seasonId", "seasonName"),
+          text(values, "coordinator", "coordinatorId", "coordinatorName"),
+          date(values, "dateFrom", "from", "startDate"),
+          date(values, "dateTo", "to", "endDate")
+      );
+    }
+
+    boolean hasCropOrSeason() {
+      return hasText(crop) || hasText(season);
+    }
+
+    boolean hasDateRange() {
+      return dateFrom != null || dateTo != null;
+    }
+
+    private static String text(Map<String, Object> values, String... keys) {
+      for (String key : keys) {
+        Object value = values.get(key);
+        if (value != null && !value.toString().isBlank()) {
+          return value.toString().trim();
+        }
+      }
+      return null;
+    }
+
+    private static LocalDate date(Map<String, Object> values, String... keys) {
+      String value = text(values, keys);
+      if (value == null) {
+        return null;
+      }
+      try {
+        return LocalDate.parse(value);
+      } catch (RuntimeException exception) {
+        throw new ApplicationException(
+            ErrorCode.VALIDATION_FAILED,
+            "Report date filters must use YYYY-MM-DD format.",
+            HttpStatus.BAD_REQUEST
+        );
+      }
+    }
+
+    private static boolean hasText(String value) {
+      return value != null && !value.isBlank();
     }
   }
 }

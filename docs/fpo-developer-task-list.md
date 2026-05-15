@@ -864,8 +864,8 @@ Tests:
   `Input Demand`.
 - Done: Workbook service and controller integration tests assert the old broad
   workbook sheets are not emitted.
-- Pending: Report filter UI/backend application and export branding/footer
-  polish remain separate go-live cleanup.
+- Done: Report filter UI/backend application and export header/footer branding
+  are wired for the Phase 1 workbook.
 
 Acceptance criteria:
 

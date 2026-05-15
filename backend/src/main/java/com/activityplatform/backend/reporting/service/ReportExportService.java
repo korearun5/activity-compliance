@@ -122,7 +122,7 @@ public class ReportExportService {
   ) {
     if (request.format() == ReportFormat.XLSX && isFpoReportType(export.getReportType())) {
       return new ExportDocument(
-          fpoReportWorkbookService.buildWorkbook(currentUser.tenantId()),
+          fpoReportWorkbookService.buildWorkbook(currentUser.tenantId(), request.filters()),
           filename(export),
           XLSX_CONTENT_TYPE
       );
