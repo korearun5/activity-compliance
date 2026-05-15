@@ -81,7 +81,7 @@ Carbon journey end to end with safe dummy/provisional data.
 | --- | --- | --- | --- |
 | CARBON-SHELL-001 | Pending | Add splash and language-selection shell | Logo/tagline area exists with English, Marathi, and Hindi choices stored locally. |
 | CARBON-SHELL-002 | Pending | Align login/entry screen with user types | Farmer, FPO/FPC, and Agronomist paths are visible; OTP remains marked Phase 2/provider-dependent. |
-| CARBON-SHELL-003 | Pending | Carbon dashboard widgets | Shows farm area, soil carbon score, credit potential, pending activities, advisories, weather placeholder, and dealers. |
+| CARBON-SHELL-003 | Done | Carbon dashboard widgets | Admin and farmer Carbon dashboards show farm area, soil carbon score, credit potential, pending activities, advisory alerts, weather snapshot, and nearby dealers. |
 | CARBON-SHELL-004 | Pending | Carbon bottom navigation model | Home, Farm, Activities, Advisory, and Marketplace can be represented without exposing disabled FPO operations. |
 | CARBON-SHELL-005 | Pending | Carbon demo seed dataset | Demo includes at least one farmer, farm, soil profile, advisory, activity, dealer, and carbon summary. |
 
@@ -168,11 +168,10 @@ Goal: Replace placeholders with production providers and operational controls.
 
 Work in this order unless a client demo date changes priority:
 
-1. `CARBON-SHELL-003`: complete the dashboard widgets from `App Flow.docx`.
-2. `CARBON-PROFILE-001`: draft the durable carbon data dictionary.
-3. `CARBON-SOIL-001`: add durable soil profile schema for Carbon.
-4. `CARBON-ACT-001`: seed carbon activity categories.
-5. `CARBON-UAT-001`: create Carbon UAT scenarios before client review.
+1. `CARBON-PROFILE-001`: draft the durable carbon data dictionary.
+2. `CARBON-SOIL-001`: add durable soil profile schema for Carbon.
+3. `CARBON-ACT-001`: seed carbon activity categories.
+4. `CARBON-UAT-001`: create Carbon UAT scenarios before client review.
 
 ## Demo-Ready Definition
 

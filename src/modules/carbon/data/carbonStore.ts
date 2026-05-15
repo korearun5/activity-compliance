@@ -92,16 +92,29 @@ export type CarbonDealer = {
   stockStatus: "Available" | "Call to confirm" | "Low stock";
 };
 
+export type CarbonWeatherSnapshot = {
+  advisory: string;
+  condition: "Clear" | "Cloudy" | "Humid" | "Light rain";
+  humidityPercent: number;
+  rainfallRisk: "Low" | "Medium" | "High";
+  temperatureC: number;
+  updatedAt: string;
+};
+
 export type CarbonProgramSnapshot = {
   activities: CarbonActivity[];
+  advisoryAlertCount: number;
   advisories: CarbonAdvisory[];
   carbonCreditPotentialTco2e: number;
   dealers: CarbonDealer[];
   farmerParticipation: number;
+  nearbyDealerCount: number;
   pendingActivities: number;
   profiles: CarbonProfile[];
+  soilCarbonScore: number;
   soilProfiles: SoilProfile[];
   totalFarmAreaAcres: number;
+  weatherSnapshot: CarbonWeatherSnapshot;
 };
 
 const profiles: CarbonProfile[] = [
@@ -331,23 +344,61 @@ const dealers: CarbonDealer[] = [
   }
 ];
 
+const weatherSnapshots: CarbonWeatherSnapshot[] = [
+  {
+    advisory: "Good window for compost application before evening irrigation.",
+    condition: "Cloudy",
+    humidityPercent: 64,
+    rainfallRisk: "Low",
+    temperatureC: 29,
+    updatedAt: "2026-05-16 08:30"
+  },
+  {
+    advisory: "Avoid biological spray during peak afternoon heat.",
+    condition: "Clear",
+    humidityPercent: 48,
+    rainfallRisk: "Low",
+    temperatureC: 32,
+    updatedAt: "2026-05-16 08:30"
+  },
+  {
+    advisory: "Light rain expected; keep residue cover undisturbed.",
+    condition: "Light rain",
+    humidityPercent: 76,
+    rainfallRisk: "Medium",
+    temperatureC: 27,
+    updatedAt: "2026-05-16 08:30"
+  }
+];
+
 export async function getCarbonProgramSnapshot(): Promise<CarbonProgramSnapshot> {
+  const publishedAdvisories = advisories.filter(
+    (advisory) => advisory.status === "Published"
+  );
+
   return {
     activities,
+    advisoryAlertCount: publishedAdvisories.length,
     advisories,
     carbonCreditPotentialTco2e: round(
       soilProfiles.reduce((sum, profile) => sum + profile.carbonPotentialTco2e, 0)
     ),
     dealers,
     farmerParticipation: profiles.length,
+    nearbyDealerCount: dealers.length,
     pendingActivities: activities.filter(
       (activity) => activity.verificationStatus !== "Verified"
     ).length,
     profiles,
+    soilCarbonScore: Math.round(
+      soilProfiles.reduce((sum, profile) => sum + profile.soilHealthScore, 0) /
+        soilProfiles.length
+    ),
     soilProfiles,
     totalFarmAreaAcres: round(
       profiles.reduce((sum, profile) => sum + profile.totalLandHoldingAcres, 0)
-    )
+    ),
+    weatherSnapshot: weatherSnapshots[0]
   };
 }
 
@@ -355,13 +406,25 @@ export async function getFarmerCarbonSnapshot(username: string | null) {
   const profileIndex = username ? Math.abs(hashString(username)) % profiles.length : 0;
   const profile = profiles[profileIndex];
   const soilProfile = soilProfiles[profileIndex] ?? soilProfiles[0];
+  const farmerActivities = activities.filter(
+    (_, index) => index === profileIndex || index === 0
+  );
+  const farmerAdvisories = advisories.filter(
+    (advisory) => advisory.status === "Published"
+  );
 
   return {
-    activities: activities.filter((_, index) => index === profileIndex || index === 0),
-    advisories: advisories.filter((advisory) => advisory.status === "Published"),
+    activities: farmerActivities,
+    advisoryAlertCount: farmerAdvisories.length,
+    advisories: farmerAdvisories,
     dealers,
+    nearbyDealerCount: dealers.length,
+    pendingActivities: farmerActivities.filter(
+      (activity) => activity.verificationStatus !== "Verified"
+    ).length,
     profile,
-    soilProfile
+    soilProfile,
+    weatherSnapshot: weatherSnapshots[profileIndex] ?? weatherSnapshots[0]
   };
 }
 

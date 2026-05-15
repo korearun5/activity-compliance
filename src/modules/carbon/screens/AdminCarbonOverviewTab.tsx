@@ -14,20 +14,32 @@ export function AdminCarbonOverviewTab() {
   const summaryCards = useMemo(
     () => [
       {
-        label: "Farm area",
+        label: "Total farm area",
         value: `${formatNumber(snapshot?.totalFarmAreaAcres ?? 0)} ac`
       },
       {
-        label: "Carbon potential",
+        label: "Soil carbon score",
+        value: String(snapshot?.soilCarbonScore ?? 0)
+      },
+      {
+        label: "Carbon credit potential",
         value: `${formatNumber(snapshot?.carbonCreditPotentialTco2e ?? 0)} tCO2e`
       },
       {
-        label: "Pending verification",
+        label: "Farm activities pending",
         value: String(snapshot?.pendingActivities ?? 0)
       },
       {
-        label: "Participating farmers",
-        value: String(snapshot?.farmerParticipation ?? 0)
+        label: "Advisory alerts",
+        value: String(snapshot?.advisoryAlertCount ?? 0)
+      },
+      {
+        label: "Weather snapshot",
+        value: `${snapshot?.weatherSnapshot.temperatureC ?? 0} C`
+      },
+      {
+        label: "Nearby dealers",
+        value: String(snapshot?.nearbyDealerCount ?? 0)
       }
     ],
     [snapshot]
@@ -59,6 +71,19 @@ export function AdminCarbonOverviewTab() {
               <Text style={styles.summaryLabel}>{item.label}</Text>
             </View>
           ))}
+        </View>
+
+        <View style={styles.weatherCard}>
+          <View style={styles.rowText}>
+            <Text style={styles.rowTitle}>Weather snapshot</Text>
+            <Text style={styles.rowMeta}>
+              {snapshot.weatherSnapshot.condition} -{" "}
+              {snapshot.weatherSnapshot.humidityPercent}% humidity - rain risk{" "}
+              {snapshot.weatherSnapshot.rainfallRisk}
+            </Text>
+            <Text style={styles.rowMeta}>{snapshot.weatherSnapshot.advisory}</Text>
+          </View>
+          <StatusBadge label={snapshot.weatherSnapshot.updatedAt} tone="neutral" />
         </View>
       </View>
 
@@ -206,6 +231,17 @@ const styles = StyleSheet.create({
     color: "#172126",
     fontSize: 15,
     fontWeight: "800"
+  },
+  weatherCard: {
+    alignItems: "flex-start",
+    backgroundColor: "#f7fafb",
+    borderColor: "#d9e4ea",
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 12,
+    justifyContent: "space-between",
+    padding: 12
   },
   row: {
     alignItems: "flex-start",

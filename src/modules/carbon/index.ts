@@ -8,6 +8,7 @@ export type {
   CarbonLanguage,
   CarbonProfile,
   CarbonProgramSnapshot,
+  CarbonWeatherSnapshot,
   SoilProfile
 } from "./data/carbonStore";
 export {

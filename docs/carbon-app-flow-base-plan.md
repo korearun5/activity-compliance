@@ -55,6 +55,8 @@ Implemented in the codebase now:
   - farm area,
   - carbon credit potential,
   - pending verification,
+  - App Flow dashboard widgets for soil carbon score, advisory alerts, weather
+    snapshot, and nearby dealers,
   - farmer carbon identity,
   - soil profile pipeline,
   - activity verification queue,
@@ -63,6 +65,8 @@ Implemented in the codebase now:
   - carbon identity,
   - soil score and SOC,
   - carbon potential,
+  - pending farm activities,
+  - weather snapshot,
   - activity scoring,
   - advisory alerts,
   - nearby dealers/labs.

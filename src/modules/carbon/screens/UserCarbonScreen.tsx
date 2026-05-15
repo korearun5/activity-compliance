@@ -37,20 +37,32 @@ export function UserCarbonScreen({ username }: UserCarbonScreenProps) {
 
     return [
       {
-        label: "Farm area",
+        label: "Total farm area",
         value: `${snapshot.profile.totalLandHoldingAcres} ac`
       },
       {
-        label: "Soil score",
+        label: "Soil carbon score",
         value: String(snapshot.soilProfile.soilHealthScore)
       },
       {
-        label: "Carbon potential",
+        label: "Carbon credit potential",
         value: `${snapshot.soilProfile.carbonPotentialTco2e} tCO2e`
       },
       {
-        label: "Advisories",
+        label: "Farm activities pending",
+        value: String(snapshot.pendingActivities)
+      },
+      {
+        label: "Advisory alerts",
         value: String(advisories.length)
+      },
+      {
+        label: "Weather snapshot",
+        value: `${snapshot.weatherSnapshot.temperatureC} C`
+      },
+      {
+        label: "Nearby dealers",
+        value: String(snapshot.nearbyDealerCount)
       }
     ];
   }, [advisories.length, snapshot]);
@@ -82,6 +94,21 @@ export function UserCarbonScreen({ username }: UserCarbonScreenProps) {
             <Text style={styles.statLabel}>{item.label}</Text>
           </View>
         ))}
+      </View>
+
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <View style={styles.cardHeaderText}>
+            <Text style={styles.sectionTitle}>Weather snapshot</Text>
+            <Text style={styles.cardDescription}>
+              {snapshot.weatherSnapshot.condition} -{" "}
+              {snapshot.weatherSnapshot.humidityPercent}% humidity - rain risk{" "}
+              {snapshot.weatherSnapshot.rainfallRisk}
+            </Text>
+            <Text style={styles.cardMeta}>{snapshot.weatherSnapshot.advisory}</Text>
+          </View>
+          <StatusBadge label={snapshot.weatherSnapshot.updatedAt} tone="neutral" />
+        </View>
       </View>
 
       <View style={styles.card}>
