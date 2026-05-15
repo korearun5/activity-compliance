@@ -2,6 +2,7 @@
 .github
 .expo
 .vscode
+.codex-doc-review
 node_modules
 backend/target
 backend/backend-run*.log

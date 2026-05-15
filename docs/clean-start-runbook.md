@@ -1,6 +1,6 @@
 # Clean Start Runbook
 
-Last audited: 2026-05-13
+Last audited: 2026-05-15
 
 Use this when the local environment feels stale, ports are confused, Docker
 volumes contain old data, or a developer wants to restart from a known-good
@@ -20,6 +20,32 @@ state.
 
 If a default port is already used by another local service, override only that
 port in a private `.env` file and keep the matching app URL consistent.
+
+## Latest Local Rehearsal
+
+Rehearsed on 2026-05-15 from the repository root on Windows with Docker Desktop:
+
+- `docker --version` returned Docker `28.3.2`.
+- `docker info` reached the Docker Desktop engine.
+- `docker compose config` rendered successfully with default ports.
+- No project default ports were occupied before startup.
+- `docker compose up -d postgres minio` started both dependency services.
+- `docker compose up -d --build backend frontend` built and started the full
+  stack.
+- `http://localhost:8080/actuator/health` returned `UP`.
+- `http://localhost:19006` returned HTTP `200`.
+- Local seed admin login succeeded and `/api/v1/platform/modules/enabled`
+  returned the expected Phase 1 modules.
+- PostgreSQL accepted:
+
+```powershell
+docker compose exec -T postgres psql "postgresql://activity_app:activity_app@localhost:5432/activity_platform" -c "select current_user, current_database();"
+```
+
+Expected output includes `activity_app` and `activity_platform`. This confirms
+the earlier `password authentication failed for user "activity_app"` issue is
+resolved when the local compose PostgreSQL owns port `5432` and uses the
+default volume credentials.
 
 ## Stop Everything
 
@@ -132,6 +158,7 @@ Run before declaring the environment clean:
 ```powershell
 npm run typecheck
 npm run lint
+npm audit --audit-level=moderate
 cd backend
 .\mvnw.cmd test
 .\mvnw.cmd -Pintegration-test verify
@@ -139,6 +166,16 @@ cd backend
 
 The integration profile uses JUnit, Spring MockMvc, Flyway, and PostgreSQL
 Testcontainers. Docker must be available for that command.
+
+Latest local result on 2026-05-15:
+
+- `npm run typecheck`: passed.
+- `npm run lint`: passed.
+- `npm audit --audit-level=moderate`: passed with zero vulnerabilities.
+- `.\mvnw.cmd test`: passed with 40 unit tests.
+- `.\mvnw.cmd -Pintegration-test verify`: passed with 87 integration tests.
+- `.\mvnw.cmd "-Dtest=FpoPhase1UatSmokeIT" test`: passed.
+- Full Docker stack: backend health `UP`, frontend HTTP `200`.
 
 ## When Ports Conflict
 

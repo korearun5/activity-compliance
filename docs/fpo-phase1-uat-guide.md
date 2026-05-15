@@ -1,6 +1,6 @@
 # FPO Phase 1 UAT Guide
 
-Last updated: 2026-05-13
+Last updated: 2026-05-15
 
 This guide defines the acceptance path for the client-approved Phase 1 FPO MVP.
 Run it after backend, frontend, Docker dependencies, and seed data are started
@@ -17,6 +17,19 @@ from a clean local or staging environment.
 - `ADMIN`, `FPO_MANAGER`, and `FIELD_COORDINATOR` users can login.
 - The pilot FPO is created and the FPO module subscriptions are enabled.
 - The clean-start runbook has been rehearsed at least once.
+
+Current technical readiness as of 2026-05-15:
+
+- Frontend typecheck and lint pass.
+- Frontend npm audit passes with zero moderate-or-higher vulnerabilities.
+- Backend unit tests pass with 40 tests.
+- Backend integration profile passes with 87 Testcontainers-backed tests.
+- Phase 1 UAT smoke test passes and verifies pilot data, authentication,
+  role access, farmer self access, and disabled-module rejection.
+- Docker compose default ports and PostgreSQL credentials have been checked.
+- Full Docker stack is running locally: backend health is `UP` and frontend
+  responds on `http://localhost:19006`.
+- Local seed admin login succeeds and returns enabled Phase 1 modules.
 
 ## UAT Owners
 
@@ -108,7 +121,11 @@ Automated coverage:
 - Backend happy-path smoke coverage exists in `FpoPhase1UatSmokeIT`. It seeds
   the approved pilot shape with five Wagholi dummy farmers, Paddy/Wheat,
   Kharif/Rabi, land/GPS, one confirmed crop plan, input demand, advisory, and
-  verifies the core Phase 1 API smoke endpoints plus unauthenticated rejection.
+  verifies the core Phase 1 API smoke endpoints, unauthenticated rejection,
+  `ADMIN`/`FPO_MANAGER`/`FIELD_COORDINATOR`/`FARMER` role access, and disabled
+  module rejection.
+- The 2026-05-15 smoke run passed locally after fixing the fixture to issue the
+  farmer JWT from the concrete seeded user instead of a lazy member relation.
 - Focused Testcontainers coverage also exists for farmer profile validation,
   land/GPS, soil profiles, crop planning, input demand, report export, and
   advisory crop targeting/image links. Manual UAT still needs to be executed

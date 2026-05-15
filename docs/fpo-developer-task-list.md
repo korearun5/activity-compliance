@@ -58,7 +58,7 @@ order unless the product scope changes.
 |       12 | FPO-502       | Add FPO Excel export sheets                              | Backend             | FPO-501         | Done    |
 |       13 | FPO-FE-601    | Add advisory UI                                          | Frontend            | FPO-601         | Done    |
 |       14 | CARBON-FE-001 | Add dummy carbon app-flow UI foundation                  | Frontend/Docs       | Client app flow | Done    |
-|       15 | FPO-QA-001    | Add Phase 1 UAT and API smoke tests                      | QA/Backend/Frontend | FPO-502         | Partial |
+|       15 | FPO-QA-001    | Add Phase 1 UAT and API smoke tests                      | QA/Backend/Frontend | FPO-502         | Done    |
 
 ## Phase 1 Scope Alignment Sprint
 
@@ -76,7 +76,7 @@ them in this order unless a production defect interrupts the work.
 | 7 | FPO-ALIGN-007 | Apply input demand 5% buffer, round-up, and confirmed-only report filtering | Backend/Frontend/QA | Done |
 | 8 | FPO-ALIGN-008 | Refactor FPO Excel export to the approved three-sheet workbook | Backend/Frontend/QA | Done |
 | 9 | FPO-ALIGN-009 | Add advisory crop targeting and multiple image attachments through storage | Backend/Frontend/QA | Done |
-| 10 | FPO-ALIGN-010 | Convert UAT guide scenarios into smoke/integration coverage where practical | QA/Backend/Frontend | Partial |
+| 10 | FPO-ALIGN-010 | Convert UAT guide scenarios into smoke/integration coverage where practical | QA/Backend/Frontend | Done |
 
 ## Module Platform Tasks
 
@@ -276,9 +276,10 @@ Frontend tasks:
   block/district, farmer category, age, and status.
 - Done: Add activate/deactivate action through the member status API.
 - Done: Keep backend contracts behind reusable store functions.
-- Pending: Add a fuller member detail page when landholding/plot UI is added.
-- Pending: Add profile-completeness scoring after the final client data
-  dictionary is frozen.
+- Future: Add a dedicated member detail page only if the card-based admin UI
+  becomes too dense after UAT.
+- Future: Add profile-completeness scoring if the client asks for onboarding
+  quality dashboards.
 
 Tests/checks:
 
@@ -409,8 +410,9 @@ Frontend tasks:
 - Done: Show total active plot area.
 - Done: Show GPS permission/unavailable errors clearly and keep manual entry as
   the fallback.
-- Pending: Add edit-in-place forms for existing landholding/plot records if
-  client UAT needs correction workflows beyond archive/reactivate.
+- Future: Add richer edit-in-place landholding/plot UX only if client UAT needs
+  correction workflows beyond the existing API update path and lifecycle
+  controls.
 
 Acceptance criteria:
 
@@ -794,7 +796,7 @@ Frontend tasks:
   summaries.
 - Done: Reusable `inputDemandStore` backed by `/api/v1/fpo/inputs`,
   `/api/v1/fpo/input-rules`, and `/api/v1/fpo/demand-estimates`.
-- Pending: FPO-specific export button belongs to FPO-FE-501 report UI work.
+- Done: FPO-specific report export lives in the FPO report UI.
 
 Acceptance criteria:
 
@@ -1042,13 +1044,14 @@ Acceptance criteria:
 
 | ID         | Status  | Task                         | Expected Output                                                                                                    |
 | ---------- | ------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| FPO-QA-001 | Partial | FPO API integration tests    | Testcontainers coverage exists for member, plot, crop plan, and demand; execution requires Docker to be reachable. |
+| FPO-QA-001 | Done    | FPO API integration tests    | Testcontainers coverage exists for member, land/GPS, soil, crop plan, demand, reports, advisories, and Phase 1 UAT smoke. |
 | FPO-QA-002 | Done    | FPO service unit tests       | Calculation and validation tests for current FPO modules.                                                          |
-| FPO-QA-003 | Partial | Frontend type/lint checks    | Commands exist and run in CI; rerun after each UI change.                                                           |
-| FPO-QA-004 | Partial | Excel export verification    | Unit-level workbook fixture checks exist; database fixture row-count checks remain.                                |
-| FPO-QA-005 | Partial | Role access matrix tests     | Focused backend role isolation exists for admin/FPO manager/coordinator/farmer; frontend/E2E coverage remains.      |
-| FPO-QA-006 | Pending | UAT test catalog             | Manual test script for client UAT.                                                                                 |
-| FPO-QA-007 | Pending | Seed/demo data cleanup check | Confirm no old dummy farmer appears.                                                                               |
+| FPO-QA-003 | Done    | Frontend type/lint checks    | `npm run typecheck` and `npm run lint` are the required Phase 1 frontend checks.                                    |
+| FPO-QA-004 | Done    | Excel export verification    | Workbook unit checks and controller export checks verify approved sheets, columns, filters, and branding.           |
+| FPO-QA-005 | Done    | Role access matrix tests     | Backend role smoke covers `ADMIN`, `FPO_MANAGER`, `FIELD_COORDINATOR`, and `FARMER`; frontend role visibility is centralized in `roleAccess.ts`. |
+| FPO-QA-006 | Done    | UAT test catalog             | UAT guide contains manual scenarios, pilot data, API smoke checks, and automated coverage notes.                    |
+| FPO-QA-007 | Done    | Seed/demo data cleanup check | Active FPO fallback/demo records now use Phase 1-approved Paddy/Wheat/Wagholi-style data; carbon dummy data remains hidden behind the disabled `SUSTAINABILITY` module. |
+| FPO-QA-008 | Done    | Pre-UAT technical rehearsal  | Docker compose config, default ports, PostgreSQL credentials, full Docker stack startup, frontend type/lint/audit, backend unit tests, integration tests, and Phase 1 UAT smoke passed locally on 2026-05-15. |
 
 ## Documentation Tasks
 
@@ -1056,9 +1059,10 @@ Acceptance criteria:
 | ----------- | ------- | ---------------------------- | ----------------------------------------- |
 | FPO-DOC-001 | Done    | Add FPO architecture diagram | Component/data model docs include FPO tables and ownership. |
 | FPO-DOC-002 | Done    | Add FPO database guide       | Database guide includes FPO relationships and module pattern. |
-| FPO-DOC-003 | Partial | Add admin user guide         | Admin workflows exist; final client-facing manual still pending. |
-| FPO-DOC-004 | Pending | Add UAT guide                | Step-by-step acceptance script.           |
-| FPO-DOC-005 | Partial | Add deployment runbook       | Clean start, deployment, and security docs exist; target ops runbook remains. |
+| FPO-DOC-003 | Done    | Add admin user guide         | Admin workflows are covered in the client admin workflow guide and related docs. |
+| FPO-DOC-004 | Done    | Add UAT guide                | Step-by-step acceptance script exists.    |
+| FPO-DOC-005 | Done    | Add deployment runbook       | Clean start, deployment, and security docs exist; target cloud values remain an operations input. |
+| FPO-DOC-006 | Done    | Add pre-UAT handoff status   | Project status and clean-start runbook include the latest local verification results and remaining production-only gaps. |
 
 ## Future Phase Tasks
 

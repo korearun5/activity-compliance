@@ -116,13 +116,25 @@ class FpoPhase1UatSmokeIT {
   private JwtService jwtService;
 
   private String adminToken;
+  private String fpoManagerToken;
+  private String fieldCoordinatorToken;
+  private String farmerToken;
+  private String disabledTenantAdminToken;
   private TenantEntity tenant;
   private UserEntity adminUser;
+  private UserEntity fieldCoordinatorUser;
+  private UserEntity firstFarmerUser;
 
   @BeforeEach
   void setup() {
     tenant = tenantRepository.save(TestDataFactory.tenant("uat-" + UUID.randomUUID()));
     RoleEntity adminRole = roleRepository.save(TestDataFactory.role(tenant, Role.ADMIN));
+    RoleEntity fpoManagerRole = roleRepository.save(
+        TestDataFactory.role(tenant, Role.FPO_MANAGER)
+    );
+    RoleEntity fieldCoordinatorRole = roleRepository.save(
+        TestDataFactory.role(tenant, Role.FIELD_COORDINATOR)
+    );
     RoleEntity farmerRole = roleRepository.save(TestDataFactory.role(tenant, Role.FARMER));
     adminUser = userRepository.save(TestDataFactory.user(
         tenant,
@@ -131,9 +143,41 @@ class FpoPhase1UatSmokeIT {
         "UAT Admin",
         adminRole
     ));
+    UserEntity fpoManagerUser = userRepository.save(TestDataFactory.user(
+        tenant,
+        "fpo-manager-" + UUID.randomUUID(),
+        passwordEncoder.encode("manager12345"),
+        "UAT FPO Manager",
+        fpoManagerRole
+    ));
+    fieldCoordinatorUser = userRepository.save(TestDataFactory.user(
+        tenant,
+        "field-coordinator-" + UUID.randomUUID(),
+        passwordEncoder.encode("coordinator12345"),
+        "UAT Field Coordinator",
+        fieldCoordinatorRole
+    ));
     enablePhase1Modules();
     seedPilotData(farmerRole);
     adminToken = jwtService.issueTokens(adminUser).accessToken();
+    fpoManagerToken = jwtService.issueTokens(fpoManagerUser).accessToken();
+    fieldCoordinatorToken = jwtService.issueTokens(fieldCoordinatorUser).accessToken();
+    farmerToken = jwtService.issueTokens(firstFarmerUser).accessToken();
+
+    TenantEntity disabledTenant = tenantRepository.save(
+        TestDataFactory.tenant("disabled-uat-" + UUID.randomUUID())
+    );
+    RoleEntity disabledAdminRole = roleRepository.save(
+        TestDataFactory.role(disabledTenant, Role.ADMIN)
+    );
+    UserEntity disabledAdmin = userRepository.save(TestDataFactory.user(
+        disabledTenant,
+        "admin-" + UUID.randomUUID(),
+        passwordEncoder.encode("admin12345"),
+        "Disabled UAT Admin",
+        disabledAdminRole
+    ));
+    disabledTenantAdminToken = jwtService.issueTokens(disabledAdmin).accessToken();
   }
 
   @Test
@@ -168,6 +212,47 @@ class FpoPhase1UatSmokeIT {
   void testPhase1UatSmokeEndpointRequiresAuthentication() throws Exception {
     mockMvc.perform(get("/api/v1/fpo/members"))
         .andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void testPhase1UatSmokeRoleAccessMatrix() throws Exception {
+    assertOkFor(fpoManagerToken, List.of(
+        "/api/v1/fpo/members",
+        "/api/v1/fpo/crops",
+        "/api/v1/fpo/seasons",
+        "/api/v1/fpo/crop-plans",
+        "/api/v1/fpo/demand-estimates/summary",
+        "/api/v1/fpo/advisories",
+        "/api/v1/fpo/reports/summary"
+    ));
+
+    assertOkFor(fieldCoordinatorToken, List.of(
+        "/api/v1/fpo/members",
+        "/api/v1/fpo/crops",
+        "/api/v1/fpo/seasons",
+        "/api/v1/fpo/crop-plans",
+        "/api/v1/fpo/advisories",
+        "/api/v1/fpo/reports/summary"
+    ));
+    assertForbiddenFor(fieldCoordinatorToken, "/api/v1/fpo/demand-estimates/summary");
+
+    assertOkFor(farmerToken, List.of(
+        "/api/v1/fpo/members/me",
+        "/api/v1/fpo/crops",
+        "/api/v1/fpo/seasons",
+        "/api/v1/fpo/crop-plans",
+        "/api/v1/fpo/advisories"
+    ));
+    assertForbiddenFor(farmerToken, "/api/v1/fpo/members");
+    assertForbiddenFor(farmerToken, "/api/v1/fpo/reports/summary");
+  }
+
+  @Test
+  void testPhase1UatSmokeDisabledModuleIsBlocked() throws Exception {
+    mockMvc.perform(get("/api/v1/fpo/members")
+            .header("Authorization", "Bearer " + disabledTenantAdminToken))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.error.code").value("MODULE_NOT_ENABLED"));
   }
 
   private void seedPilotData(RoleEntity farmerRole) {
@@ -206,7 +291,7 @@ class FpoPhase1UatSmokeIT {
         "UAT Farmer " + suffix,
         farmerRole
     ));
-    return memberRepository.save(new FpoMemberProfileEntity(
+    FpoMemberProfileEntity farmer = new FpoMemberProfileEntity(
         UUID.randomUUID(),
         tenant,
         user,
@@ -223,10 +308,14 @@ class FpoPhase1UatSmokeIT {
         null,
         42,
         category.toUpperCase().replace('-', '_'),
-        adminUser,
+        fieldCoordinatorUser,
         FpoMemberStatus.ACTIVE,
         Instant.now()
-    ));
+    );
+    if ("001".equals(suffix)) {
+      firstFarmerUser = user;
+    }
+    return memberRepository.save(farmer);
   }
 
   private CropCatalogEntity crop(String code, String name) {
@@ -391,5 +480,18 @@ class FpoPhase1UatSmokeIT {
           now
       ));
     }
+  }
+
+  private void assertOkFor(String token, List<String> paths) throws Exception {
+    for (String path : paths) {
+      mockMvc.perform(get(path).header("Authorization", "Bearer " + token))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.success").value(true));
+    }
+  }
+
+  private void assertForbiddenFor(String token, String path) throws Exception {
+    mockMvc.perform(get(path).header("Authorization", "Bearer " + token))
+        .andExpect(status().isForbidden());
   }
 }

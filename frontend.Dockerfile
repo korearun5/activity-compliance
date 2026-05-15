@@ -14,4 +14,4 @@ COPY src src
 
 EXPOSE 19006 8081
 
-CMD ["npm", "run", "web", "--", "--host", "0.0.0.0", "--port", "19006"]
+CMD ["npm", "run", "web", "--", "--host", "lan", "--port", "19006"]

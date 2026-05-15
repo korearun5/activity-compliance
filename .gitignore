@@ -51,7 +51,11 @@ Thumbs.db
 *.tmp
 *.swp
 *.swo
+.vscode/
 .idea/
 *.iws
 *.iml
 *.ipr
+
+# Local Codex review artifacts
+.codex-doc-review/

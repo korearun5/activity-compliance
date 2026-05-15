@@ -74,17 +74,17 @@ const dummyAdvisories: AdvisoryRecord[] = [
     category: "AGRONOMY",
     createdAt: "2026-05-09T10:30:00.000Z",
     createdByName: "System demo",
-    cropName: "Soybean",
+    cropName: "Paddy",
     id: "local-advisory-1",
     images: [],
     message:
-      "Retain crop residue after land preparation and add compost before sowing to improve soil organic carbon.",
+      "Keep paddy nursery beds moist and prepare main-field bunds before transplanting.",
     publishedAt: "2026-05-09T11:00:00.000Z",
     seasonName: "Kharif",
     seasonYear: 2026,
     status: "PUBLISHED",
     targetType: "ALL_MEMBERS",
-    title: "Residue retention for carbon build-up",
+    title: "Kharif paddy preparation",
     updatedAt: "2026-05-09T11:00:00.000Z"
   },
   {
@@ -92,22 +92,22 @@ const dummyAdvisories: AdvisoryRecord[] = [
     category: "PEST_DISEASE_MANAGEMENT",
     createdAt: "2026-05-10T08:15:00.000Z",
     createdByName: "System demo",
-    cropName: "Pomegranate",
+    cropName: "Wheat",
     id: "local-advisory-2",
     images: [
       {
-        imageUrl: "https://example.com/advisories/pest-symptom.jpg",
-        originalFilename: "pest-symptom.jpg",
+        imageUrl: "https://example.com/advisories/wheat-rust-symptom.jpg",
+        originalFilename: "wheat-rust-symptom.jpg",
         sortOrder: 0
       }
     ],
     message:
-      "Use Trichoderma with compost around the root zone and avoid excess chemical nitrogen this week.",
-    seasonName: "Annual",
+      "Monitor wheat leaves weekly and report early rust-like symptoms to the field coordinator.",
+    seasonName: "Rabi",
     seasonYear: 2026,
     status: "DRAFT",
     targetType: "CROP",
-    title: "Biological input dosage reminder",
+    title: "Wheat pest watch",
     updatedAt: "2026-05-10T08:15:00.000Z"
   }
 ];

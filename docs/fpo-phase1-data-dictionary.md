@@ -16,10 +16,10 @@ checks.
 | Soil profile | Required for existing lab reports; blank allowed | Phase 1 backend API, schema, admin entry UI, optional report link/metadata, and tests are implemented without carbon calculation. |
 | Land/GPS | GPS point only, acres, approved ownership/irrigation values | Phase 1 schema, API validation, admin UI controls, and tests are aligned. |
 | Crop planning | Crop list, seasons, crop year, and statuses approved | Phase 1 crop year label, optional expected yield, confirmation timestamp, UI fields, API contracts, and tests are aligned. |
-| Input demand | Confirmed plans only, fixed per-acre defaults, 5% buffer | Calculation now uses confirmed plans only, stores total demand, 5% buffer, and rounded final demand; exact three-sheet report output remains in the report alignment task. |
+| Input demand | Confirmed plans only, fixed per-acre defaults, 5% buffer | Calculation uses confirmed plans only, stores total demand, 5% buffer, and rounded final demand; the approved three-sheet report output is aligned. |
 | Advisory | Text plus multiple images; all members or crop target | Category, all-members/crop targeting, multiple image links, in-app-only channel validation, UI previews, and focused Testcontainers coverage are aligned. |
 | Reports | Excel only, three approved sheets, filters, footer/branding | Workbook emits the approved three sheets and columns; village/crop/season/coordinator/date filters plus header/footer branding are wired. |
-| UAT | Pilot data and sign-off owners approved | UAT guide created; backend smoke coverage now seeds pilot-shaped data and checks the core Phase 1 API path; manual/client execution and frontend E2E remain pending. |
+| UAT | Pilot data and sign-off owners approved | UAT guide created; backend smoke coverage seeds pilot-shaped data and checks the core Phase 1 API plus role access path. Local pre-UAT checks passed on 2026-05-15; manual/client execution remains a go-live activity. |
 
 ## Roles
 
