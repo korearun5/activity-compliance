@@ -103,6 +103,17 @@ Expected:
 - Disabled modules receive `MODULE_NOT_ENABLED`.
 - FPO manager and field coordinator requests cannot cross assigned FPO scope.
 
+Automated coverage:
+
+- Backend happy-path smoke coverage exists in `FpoPhase1UatSmokeIT`. It seeds
+  the approved pilot shape with five Wagholi dummy farmers, Paddy/Wheat,
+  Kharif/Rabi, land/GPS, one confirmed crop plan, input demand, advisory, and
+  verifies the core Phase 1 API smoke endpoints plus unauthenticated rejection.
+- Focused Testcontainers coverage also exists for farmer profile validation,
+  land/GPS, soil profiles, crop planning, input demand, report export, and
+  advisory crop targeting/image links. Manual UAT still needs to be executed
+  with the client and nominated FPO manager.
+
 ## Exit Criteria
 
 Phase 1 can move from implementation-ready to UAT-ready when:

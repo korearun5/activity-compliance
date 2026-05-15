@@ -23,16 +23,16 @@ current repository state, not client acceptance or a commercial commitment.
 | FPO soil profiles            |        82% | High       | Phase 1 SOC, pH, N, P, K, optional report link/metadata, backend API, admin entry UI, JUnit, and Testcontainers coverage are in place; real S3 upload wiring remains grouped with advisory/storage work. |
 | FPO crop planning            |        85% | High       | Catalog, seasons, crop history, seasonal plans, crop year labels, optional expected yield, confirmation timestamp, UI, and tests are aligned; farmer mobile views are Phase 2. |
 | FPO input demand             |        84% | High       | Catalog, input rules, confirmed-only calculation, 5% buffer, round-up, summaries, UI, migration, and tests are aligned; approved workbook output remains in report work. |
-| FPO advisory                 |        62% | Medium     | Advisory backend and admin UI exist; crop targeting and multiple image attachments need alignment. |
+| FPO advisory                 |        82% | High       | Category, all-members/crop targeting, multiple image links, in-app-only channel validation, UI previews, and focused Testcontainers coverage are aligned. |
 | Carbon app-flow prototype    |        35% | Low        | Frontend dummy screens/data exist but are hidden behind the disabled `SUSTAINABILITY` module for Phase 1; durable schema, methodology, providers, and exports are pending. |
-| QA automation                |        68% | Medium     | JUnit, Spring tests, Testcontainers PostgreSQL, CI, lint, and typecheck exist; UI/E2E tests and coverage gates are missing. |
+| QA automation                |        71% | Medium     | JUnit, Spring tests, Testcontainers PostgreSQL, Phase 1 UAT backend smoke coverage, CI, lint, and typecheck exist; UI/E2E tests and coverage gates are missing. |
 | Production operations        |        60% | Medium     | Production config validation, security scan, env template, and deployment docs exist; backups, monitoring, alerting, and runbooks need target-environment details. |
 
 Overall readiness:
 
 - Developer/demo environment: about 85%.
 - FPO MVP technical foundation: about 83%.
-- FPO Phase 1 go-live readiness before UAT: about 87-89% after client scope lock; implementation gaps remain.
+- FPO Phase 1 go-live readiness before UAT: about 89-90% after client scope lock; implementation gaps remain.
 - Full client POC vision including OTP, maps, satellite, AI, carbon, marketplace, and payments: about 20-25%.
 
 ## Testing And Quality Audit
@@ -63,7 +63,8 @@ Gaps to schedule:
   dynamic agent loading.
 - Confirm the Spring `open-in-view` runtime warning in integration logs and
   keep it disabled for API deployments.
-- Add automated coverage for the approved UAT scenarios and sample data.
+- Expand automated coverage for the approved UAT scenarios beyond the backend
+  smoke path.
 - Add remaining role matrix tests for `ADMIN`, `FPO_MANAGER`,
   `FIELD_COORDINATOR`, and `FARMER` permissions where UI coverage is still
   manual.
@@ -99,7 +100,7 @@ To avoid duplicate or conflicting information:
 | Input demand alignment | Done | Backend/Frontend/QA | Demand now uses `CONFIRMED` crop plans only, stores total demand, 5% buffer, and rounded final demand, and exposes those values in API/UI summaries with focused unit and Testcontainers coverage. |
 | Report workbook alignment | Done | Backend/Frontend/QA | FPO export now emits exactly `Farmer Register`, `Crop Plan Summary`, and `Input Demand` with approved columns and focused workbook/controller tests. |
 | Report filters and branding | Done | Backend/Frontend/QA | Village/crop/season/coordinator/date filters are sent from the report UI and applied with sheet-specific date semantics; Excel header/footer branding is emitted. |
-| Advisory image and crop targeting alignment | Pending | Backend/Frontend/QA | Add all-members/crop targeting and multiple image attachments through storage. |
+| Advisory image and crop targeting alignment | Done | Backend/Frontend/QA | All-members/crop targeting, advisory categories, in-app-only channel validation, multiple image link storage records, UI previews, and focused API tests are implemented. |
 | Production secrets and hosting | Pending | DevOps/Client | Required for secure deployment outside local/dev. |
 | Backups and restore drill | Pending | DevOps | Production readiness requires verified recovery, not only a backup command. |
 | Monitoring and alerting | Pending | DevOps | Needed for API, DB, storage, and background failure visibility. |
@@ -112,8 +113,8 @@ To avoid duplicate or conflicting information:
 
 ## Next Cleanup Tasks
 
-1. Continue with `FPO-ALIGN-009`: advisory crop targeting and multiple image
-   attachments.
+1. Continue expanding `FPO-ALIGN-010` with frontend smoke/E2E checks and any
+   remaining manual-only UAT scenarios.
 2. Rehearse the clean-start runbook on a fresh machine or clean Windows profile.
 3. Finalize the client-facing operations manual after production hosting is
    chosen.

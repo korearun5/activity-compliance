@@ -3,8 +3,10 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { apiClient, ApiClientError } from "../core/api/client";
 import { endpoints } from "../core/api/endpoints";
 import {
+  AdvisoryCategory,
   AdvisoryStatus,
   AdvisoryTargetType,
+  FpoAdvisoryImageRequest,
   FpoAdvisoryRequest,
   FpoAdvisoryResponse,
   NotificationChannel,
@@ -16,36 +18,46 @@ import { readJsonArray, writeJson } from "../core/storage/jsonStore";
 import { storageKeys } from "../core/storage/storageKeys";
 
 export type AdvisoryRecord = {
+  category: AdvisoryCategory;
   channel: NotificationChannel;
   createdAt: string;
   createdByName?: string;
   cropId?: string;
   cropName?: string;
   id: string;
+  images: AdvisoryImage[];
   message: string;
   publishedAt?: string;
   seasonId?: string;
   seasonName?: string;
   seasonYear?: number;
   status: AdvisoryStatus;
-  targetMemberId?: string;
-  targetMemberName?: string;
   targetType: AdvisoryTargetType;
-  targetVillage?: string;
   tenantId?: string;
   title: string;
   updatedAt: string;
 };
 
+export type AdvisoryImage = {
+  contentType?: string;
+  createdAt?: string;
+  id?: string;
+  imageUrl: string;
+  originalFilename?: string;
+  sortOrder?: number;
+  storageKey?: string;
+};
+
 export type AdvisoryInput = {
+  category: AdvisoryCategory;
   channel?: NotificationChannel;
   cropId?: string;
+  imageUrls?: string[];
+  images?: AdvisoryImage[];
   message: string;
   seasonId?: string;
   status?: AdvisoryStatus;
-  targetMemberId?: string;
   targetType?: AdvisoryTargetType;
-  targetVillage?: string;
   title: string;
 };
 
@@ -53,16 +65,18 @@ export type AdvisoryFilters = {
   cropId?: string;
   seasonId?: string;
   status?: AdvisoryStatus;
-  targetVillage?: string;
+  targetType?: AdvisoryTargetType;
 };
 
 const dummyAdvisories: AdvisoryRecord[] = [
   {
     channel: "IN_APP",
+    category: "AGRONOMY",
     createdAt: "2026-05-09T10:30:00.000Z",
     createdByName: "System demo",
     cropName: "Soybean",
     id: "local-advisory-1",
+    images: [],
     message:
       "Retain crop residue after land preparation and add compost before sowing to improve soil organic carbon.",
     publishedAt: "2026-05-09T11:00:00.000Z",
@@ -75,17 +89,24 @@ const dummyAdvisories: AdvisoryRecord[] = [
   },
   {
     channel: "IN_APP",
+    category: "PEST_DISEASE_MANAGEMENT",
     createdAt: "2026-05-10T08:15:00.000Z",
     createdByName: "System demo",
     cropName: "Pomegranate",
     id: "local-advisory-2",
+    images: [
+      {
+        imageUrl: "https://example.com/advisories/pest-symptom.jpg",
+        originalFilename: "pest-symptom.jpg",
+        sortOrder: 0
+      }
+    ],
     message:
       "Use Trichoderma with compost around the root zone and avoid excess chemical nitrogen this week.",
     seasonName: "Annual",
     seasonYear: 2026,
     status: "DRAFT",
-    targetType: "VILLAGE",
-    targetVillage: "Koregaon",
+    targetType: "CROP",
     title: "Biological input dosage reminder",
     updatedAt: "2026-05-10T08:15:00.000Z"
   }
@@ -148,17 +169,17 @@ export async function createAdvisory(input: AdvisoryInput) {
   }
 
   return upsertLocalAdvisory({
+    category: request.category,
     channel: request.channel ?? "IN_APP",
     createdAt: new Date().toISOString(),
     cropId: request.cropId,
     id: `local-advisory-${Date.now()}`,
+    images: toLocalImages(request.images ?? []),
     message: request.message,
     publishedAt: request.status === "PUBLISHED" ? new Date().toISOString() : undefined,
     seasonId: request.seasonId,
     status: request.status ?? "DRAFT",
-    targetMemberId: request.targetMemberId,
     targetType: request.targetType ?? "ALL_MEMBERS",
-    targetVillage: request.targetVillage,
     title: request.title,
     updatedAt: new Date().toISOString()
   });
@@ -204,22 +225,29 @@ export async function updateAdvisoryStatus(
 
 function toAdvisoryRecord(response: FpoAdvisoryResponse): AdvisoryRecord {
   return {
+    category: response.category,
     channel: response.channel,
     createdAt: response.createdAt,
     createdByName: response.createdByName ?? undefined,
     cropId: response.cropId ?? undefined,
     cropName: response.cropName ?? undefined,
     id: response.id,
+    images: response.images.map((image) => ({
+      contentType: image.contentType ?? undefined,
+      createdAt: image.createdAt,
+      id: image.id,
+      imageUrl: image.imageUrl,
+      originalFilename: image.originalFilename ?? undefined,
+      sortOrder: image.sortOrder,
+      storageKey: image.storageKey ?? undefined
+    })),
     message: response.message,
     publishedAt: response.publishedAt ?? undefined,
     seasonId: response.seasonId ?? undefined,
     seasonName: response.seasonName ?? undefined,
     seasonYear: response.seasonYear ?? undefined,
     status: response.status,
-    targetMemberId: response.targetMemberId ?? undefined,
-    targetMemberName: response.targetMemberName ?? undefined,
     targetType: response.targetType,
-    targetVillage: response.targetVillage ?? undefined,
     tenantId: response.tenantId,
     title: response.title,
     updatedAt: response.updatedAt
@@ -228,32 +256,33 @@ function toAdvisoryRecord(response: FpoAdvisoryResponse): AdvisoryRecord {
 
 function toAdvisoryRequest(input: AdvisoryInput): FpoAdvisoryRequest {
   const targetType = input.targetType ?? "ALL_MEMBERS";
+  const category = input.category;
   const title = input.title.trim();
   const message = input.message.trim();
-  const targetVillage = cleanOptional(input.targetVillage);
-  const targetMemberId = cleanOptional(input.targetMemberId);
+  const cropId = cleanOptional(input.cropId);
+  const images = normalizeImages(input.images, input.imageUrls);
 
   if (!title || !message) {
     throw new AppError("VALIDATION_FAILED", "Enter advisory title and message.");
   }
 
-  if (targetType === "VILLAGE" && !targetVillage) {
-    throw new AppError("VALIDATION_FAILED", "Enter target village.");
+  if (!category) {
+    throw new AppError("VALIDATION_FAILED", "Select advisory category.");
   }
 
-  if (targetType === "MEMBER" && !targetMemberId) {
-    throw new AppError("VALIDATION_FAILED", "Select target member.");
+  if (targetType === "CROP" && !cropId) {
+    throw new AppError("VALIDATION_FAILED", "Select crop for crop targeted advisory.");
   }
 
   return {
+    category,
     channel: input.channel ?? "IN_APP",
-    cropId: cleanOptional(input.cropId),
+    cropId: targetType === "CROP" ? cropId : undefined,
+    images,
     message,
     seasonId: cleanOptional(input.seasonId),
     status: input.status ?? "DRAFT",
-    targetMemberId: targetType === "MEMBER" ? targetMemberId : undefined,
     targetType,
-    targetVillage: targetType === "VILLAGE" ? targetVillage : undefined,
     title
   };
 }
@@ -270,22 +299,21 @@ function toStoredAdvisory(advisory: Partial<AdvisoryRecord>): AdvisoryRecord | n
   }
 
   return {
+    category: advisory.category ?? "AGRONOMY",
     channel: advisory.channel ?? "IN_APP",
     createdAt: advisory.createdAt,
     createdByName: advisory.createdByName,
     cropId: advisory.cropId,
     cropName: advisory.cropName,
     id: advisory.id,
+    images: (advisory.images ?? []).filter(isAdvisoryImage),
     message: advisory.message,
     publishedAt: advisory.publishedAt,
     seasonId: advisory.seasonId,
     seasonName: advisory.seasonName,
     seasonYear: advisory.seasonYear,
     status: advisory.status ?? "DRAFT",
-    targetMemberId: advisory.targetMemberId,
-    targetMemberName: advisory.targetMemberName,
     targetType: advisory.targetType ?? "ALL_MEMBERS",
-    targetVillage: advisory.targetVillage,
     tenantId: advisory.tenantId,
     title: advisory.title,
     updatedAt: advisory.updatedAt
@@ -322,7 +350,7 @@ function advisoryListEndpoint(filters: AdvisoryFilters) {
   if (filters.status) params.append("status", filters.status);
   if (filters.cropId) params.append("cropId", filters.cropId);
   if (filters.seasonId) params.append("seasonId", filters.seasonId);
-  if (filters.targetVillage) params.append("targetVillage", filters.targetVillage);
+  if (filters.targetType) params.append("targetType", filters.targetType);
   const query = params.toString();
   return query
     ? `${endpoints.fpo.advisories.list}?${query}`
@@ -334,9 +362,46 @@ function matchesFilters(advisory: AdvisoryRecord, filters: AdvisoryFilters) {
     (!filters.status || advisory.status === filters.status) &&
     (!filters.cropId || advisory.cropId === filters.cropId) &&
     (!filters.seasonId || advisory.seasonId === filters.seasonId) &&
-    (!filters.targetVillage ||
-      advisory.targetVillage?.toLowerCase() === filters.targetVillage.toLowerCase())
+    (!filters.targetType || advisory.targetType === filters.targetType)
   );
+}
+
+function normalizeImages(
+  images: AdvisoryImage[] | undefined,
+  imageUrls: string[] | undefined
+): FpoAdvisoryImageRequest[] {
+  const source: AdvisoryImage[] =
+    images ?? imageUrls?.map((imageUrl) => ({ imageUrl })) ?? [];
+  const normalized = source
+    .map((image) => ({
+      contentType: cleanOptional(image.contentType),
+      imageUrl: image.imageUrl.trim(),
+      originalFilename: cleanOptional(image.originalFilename),
+      storageKey: cleanOptional(image.storageKey)
+    }))
+    .filter((image) => image.imageUrl.length > 0);
+
+  if (normalized.length > 10) {
+    throw new AppError("VALIDATION_FAILED", "Attach a maximum of 10 advisory images.");
+  }
+
+  return normalized;
+}
+
+function toLocalImages(images: FpoAdvisoryImageRequest[]): AdvisoryImage[] {
+  return images.map((image, index) => ({
+    contentType: image.contentType,
+    createdAt: new Date().toISOString(),
+    id: `local-advisory-image-${Date.now()}-${index}`,
+    imageUrl: image.imageUrl,
+    originalFilename: image.originalFilename,
+    sortOrder: index,
+    storageKey: image.storageKey
+  }));
+}
+
+function isAdvisoryImage(image: Partial<AdvisoryImage>): image is AdvisoryImage {
+  return typeof image.imageUrl === "string" && image.imageUrl.trim().length > 0;
 }
 
 async function getAccessToken() {

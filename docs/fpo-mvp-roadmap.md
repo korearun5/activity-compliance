@@ -142,7 +142,6 @@ decision register:
 - Approved farmer, land, soil, crop, advisory, and report fields.
 - Confirmed-only input demand with 5% buffer, round-up, and `confirmed_at`.
 - Exact three-sheet Excel workbook and optional date-range behavior.
-- Advisory crop targeting and image attachments.
 - Production operations: AWS Mumbai planning, backups, monitoring, and security
   patch ownership.
 

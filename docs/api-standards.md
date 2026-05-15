@@ -607,8 +607,9 @@ Rules:
 ## FPO Advisory APIs
 
 Advisory APIs are guarded by the `ADVISORY` module. Admins and FPO_MANAGERs can
-create and publish advisory records. FIELD_COORDINATORs can read only published
-advisories targeted to all members, their village, or their own member profile.
+create and publish advisory records. FIELD_COORDINATORs can read published
+in-app advisories. FARMER users can read published advisories targeted to all
+members, or to crops where they have a confirmed crop plan.
 
 ```http
 GET /api/v1/fpo/advisories?status=PUBLISHED&cropId=<crop-id>&seasonId=<season-id>
@@ -621,26 +622,37 @@ Content-Type: application/json
 
 ```json
 {
-  "cropId": "<optional-crop-id>",
+  "category": "PEST_DISEASE_MANAGEMENT",
+  "cropId": "<required-when-targetType-is-CROP>",
   "seasonId": "<optional-season-id>",
-  "targetType": "VILLAGE",
-  "targetVillage": "Village",
+  "targetType": "CROP",
   "title": "Irrigation advisory",
   "message": "Irrigate onion plots in the evening this week.",
   "channel": "IN_APP",
-  "status": "PUBLISHED"
+  "status": "PUBLISHED",
+  "images": [
+    {
+      "imageUrl": "https://storage.example.com/advisories/onion-pest.jpg",
+      "originalFilename": "onion-pest.jpg",
+      "contentType": "image/jpeg"
+    }
+  ]
 }
 ```
 
 Rules:
 
-- `targetType` values are `ALL_MEMBERS`, `VILLAGE`, and `MEMBER`.
-- `VILLAGE` advisories require `targetVillage`.
-- `MEMBER` advisories require `targetMemberId`.
-- Optional crop and season context must reference active records.
+- `category` values are `AGRONOMY`, `PEST_DISEASE_MANAGEMENT`,
+  `SOIL_HEALTH`, and `WEATHER_ALERT`.
+- `targetType` values are `ALL_MEMBERS` and `CROP`.
+- `CROP` advisories require `cropId`; `ALL_MEMBERS` advisories must not send
+  `cropId`.
+- Optional season context must reference an active record.
+- `images` accepts up to 10 HTTPS/HTTP image links with optional storage key,
+  original filename, and image content type metadata.
 - Advisory status values are `DRAFT`, `PUBLISHED`, and `ARCHIVED`.
-- Phase 1 stores the channel/status record only; it does not promise SMS,
-  WhatsApp, email, or push delivery.
+- Phase 1 supports `IN_APP` channel only; SMS, WhatsApp, email, and push
+  delivery remain future provider work.
 - Changes emit `FPO_ADVISORY_CREATED` and `FPO_ADVISORY_STATUS_CHANGED` audit
   events.
 

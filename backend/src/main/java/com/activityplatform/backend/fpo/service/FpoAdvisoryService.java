@@ -8,30 +8,38 @@ import com.activityplatform.backend.audit.domain.AuditAction;
 import com.activityplatform.backend.audit.service.AuditEventService;
 import com.activityplatform.backend.common.error.ApplicationException;
 import com.activityplatform.backend.common.error.ErrorCode;
+import com.activityplatform.backend.fpo.api.FpoAdvisoryImageRequest;
 import com.activityplatform.backend.fpo.api.FpoAdvisoryRequest;
 import com.activityplatform.backend.fpo.api.FpoAdvisoryResponse;
+import com.activityplatform.backend.fpo.domain.AdvisoryCategory;
 import com.activityplatform.backend.fpo.domain.AdvisoryStatus;
 import com.activityplatform.backend.fpo.domain.AdvisoryTargetType;
+import com.activityplatform.backend.fpo.domain.CropPlanStatus;
 import com.activityplatform.backend.fpo.domain.CropCatalogEntity;
 import com.activityplatform.backend.fpo.domain.CropSeasonEntity;
 import com.activityplatform.backend.fpo.domain.FarmRecordStatus;
 import com.activityplatform.backend.fpo.domain.FpoAdvisoryEntity;
+import com.activityplatform.backend.fpo.domain.FpoAdvisoryImageEntity;
 import com.activityplatform.backend.fpo.domain.FpoMemberProfileEntity;
-import com.activityplatform.backend.fpo.domain.FpoMemberStatus;
 import com.activityplatform.backend.fpo.repository.CropCatalogRepository;
 import com.activityplatform.backend.fpo.repository.CropSeasonRepository;
 import com.activityplatform.backend.fpo.repository.FpoAdvisoryRepository;
 import com.activityplatform.backend.fpo.repository.FpoMemberProfileRepository;
+import com.activityplatform.backend.fpo.repository.SeasonalCropPlanRepository;
 import com.activityplatform.backend.notification.domain.NotificationChannel;
 import com.activityplatform.backend.platform.domain.ModuleCode;
 import com.activityplatform.backend.platform.service.TenantModuleService;
 import com.activityplatform.backend.security.CurrentUser;
 import com.activityplatform.backend.security.Role;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.IntStream;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,6 +51,7 @@ public class FpoAdvisoryService {
   private final CropSeasonRepository seasonRepository;
   private final FpoAdvisoryRepository advisoryRepository;
   private final FpoMemberProfileRepository memberRepository;
+  private final SeasonalCropPlanRepository cropPlanRepository;
   private final TenantModuleService tenantModuleService;
   private final TenantRepository tenantRepository;
   private final UserRepository userRepository;
@@ -53,6 +62,7 @@ public class FpoAdvisoryService {
       CropSeasonRepository seasonRepository,
       FpoAdvisoryRepository advisoryRepository,
       FpoMemberProfileRepository memberRepository,
+      SeasonalCropPlanRepository cropPlanRepository,
       TenantModuleService tenantModuleService,
       TenantRepository tenantRepository,
       UserRepository userRepository
@@ -62,6 +72,7 @@ public class FpoAdvisoryService {
     this.seasonRepository = seasonRepository;
     this.advisoryRepository = advisoryRepository;
     this.memberRepository = memberRepository;
+    this.cropPlanRepository = cropPlanRepository;
     this.tenantModuleService = tenantModuleService;
     this.tenantRepository = tenantRepository;
     this.userRepository = userRepository;
@@ -71,27 +82,26 @@ public class FpoAdvisoryService {
   public List<FpoAdvisoryResponse> list(
       CurrentUser currentUser,
       AdvisoryStatus status,
+      AdvisoryCategory category,
+      AdvisoryTargetType targetType,
       UUID cropId,
-      UUID seasonId,
-      String targetVillage
+      UUID seasonId
   ) {
     requireAdvisoryModule(currentUser);
-    FpoMemberProfileEntity ownMember = currentUser.hasAnyRole(
-        Role.ADMIN,
-        Role.FPO_MANAGER,
-        Role.FIELD_COORDINATOR
-    )
-        ? null
-        : ownMember(currentUser);
+    boolean canManage = canManageAdvisories(currentUser);
+    FpoMemberProfileEntity ownMember = currentUser.hasAnyRole(Role.FARMER)
+        ? ownMember(currentUser)
+        : null;
 
     return advisoryRepository.findByTenantIdOrderByCreatedAtDesc(currentUser.tenantId()).stream()
+        .filter(advisory -> canManage || advisory.getStatus() == AdvisoryStatus.PUBLISHED)
         .filter(advisory -> status == null || advisory.getStatus() == status)
+        .filter(advisory -> category == null || advisory.getCategory() == category)
+        .filter(advisory -> targetType == null || advisory.getTargetType() == targetType)
         .filter(advisory -> cropId == null
             || (advisory.getCrop() != null && advisory.getCrop().getId().equals(cropId)))
         .filter(advisory -> seasonId == null
             || (advisory.getSeason() != null && advisory.getSeason().getId().equals(seasonId)))
-        .filter(advisory -> !hasText(targetVillage)
-            || equalsIgnoreCase(advisory.getTargetVillage(), targetVillage.trim()))
         .filter(advisory -> ownMember == null || isVisibleToMember(advisory, ownMember))
         .map(FpoAdvisoryResponse::from)
         .toList();
@@ -101,7 +111,10 @@ public class FpoAdvisoryService {
   public FpoAdvisoryResponse get(CurrentUser currentUser, UUID advisoryId) {
     requireAdvisoryModule(currentUser);
     FpoAdvisoryEntity advisory = requireAdvisory(currentUser, advisoryId);
-    if (!currentUser.hasAnyRole(Role.ADMIN, Role.FPO_MANAGER, Role.FIELD_COORDINATOR)
+    if (!canManageAdvisories(currentUser) && advisory.getStatus() != AdvisoryStatus.PUBLISHED) {
+      throw accessDenied("You do not have permission to view this advisory.");
+    }
+    if (currentUser.hasAnyRole(Role.FARMER)
         && !isVisibleToMember(advisory, ownMember(currentUser))) {
       throw accessDenied("You do not have permission to view this advisory.");
     }
@@ -113,27 +126,30 @@ public class FpoAdvisoryService {
   public FpoAdvisoryResponse create(CurrentUser currentUser, FpoAdvisoryRequest request) {
     requireAdvisoryModule(currentUser);
     requireManager(currentUser);
+    TenantEntity tenant = requireTenant(currentUser.tenantId());
     AdvisoryTargetType targetType = request.targetType() == null
         ? AdvisoryTargetType.ALL_MEMBERS
         : request.targetType();
-    FpoMemberProfileEntity targetMember = resolveTargetMember(currentUser, request, targetType);
-    String targetVillage = resolveTargetVillage(request, targetType);
+    AdvisoryCategory category = requireCategory(request.category());
+    CropCatalogEntity crop = resolveTargetCrop(currentUser, request.cropId(), targetType);
+    CropSeasonEntity season = resolveActiveSeason(currentUser, request.seasonId());
+    NotificationChannel channel = resolvePhase1Channel(request.channel());
     Instant now = Instant.now();
     FpoAdvisoryEntity advisory = new FpoAdvisoryEntity(
         UUID.randomUUID(),
-        requireTenant(currentUser.tenantId()),
-        resolveActiveCrop(currentUser, request.cropId()),
-        resolveActiveSeason(currentUser, request.seasonId()),
+        tenant,
+        crop,
+        season,
         targetType,
-        targetVillage,
-        targetMember,
+        category,
         request.title().trim(),
         request.message().trim(),
-        request.channel() == null ? NotificationChannel.IN_APP : request.channel(),
+        channel,
         request.status() == null ? AdvisoryStatus.DRAFT : request.status(),
         actor(currentUser),
         now
     );
+    buildImages(tenant, request.images(), now).forEach(advisory::addImage);
 
     FpoAdvisoryEntity saved = advisoryRepository.save(advisory);
     auditAdvisory(currentUser, saved, AuditAction.FPO_ADVISORY_CREATED, null);
@@ -175,59 +191,77 @@ public class FpoAdvisoryService {
         .orElseThrow(() -> notFound("FPO member profile not found."));
   }
 
-  private FpoMemberProfileEntity resolveTargetMember(
+  private CropCatalogEntity resolveTargetCrop(
       CurrentUser currentUser,
-      FpoAdvisoryRequest request,
+      UUID cropId,
       AdvisoryTargetType targetType
   ) {
-    if (targetType != AdvisoryTargetType.MEMBER) {
-      if (request.targetMemberId() != null) {
-        throw validation("Target member can only be set for MEMBER advisories.");
+    if (targetType == AdvisoryTargetType.ALL_MEMBERS) {
+      if (cropId != null) {
+        throw validation("Crop can only be set for CROP targeted advisories.");
       }
       return null;
     }
 
-    if (request.targetMemberId() == null) {
-      throw validation("Target member is required for MEMBER advisories.");
-    }
-
-    FpoMemberProfileEntity member = memberRepository
-        .findByIdAndTenantId(request.targetMemberId(), currentUser.tenantId())
-        .orElseThrow(() -> notFound("Target FPO member profile not found."));
-    if (member.getStatus() != FpoMemberStatus.ACTIVE) {
-      throw validation("Target member must be active.");
-    }
-    return member;
-  }
-
-  private String resolveTargetVillage(
-      FpoAdvisoryRequest request,
-      AdvisoryTargetType targetType
-  ) {
-    if (targetType != AdvisoryTargetType.VILLAGE) {
-      if (hasText(request.targetVillage())) {
-        throw validation("Target village can only be set for VILLAGE advisories.");
-      }
-      return null;
-    }
-
-    if (!hasText(request.targetVillage())) {
-      throw validation("Target village is required for VILLAGE advisories.");
-    }
-    return request.targetVillage().trim();
-  }
-
-  private CropCatalogEntity resolveActiveCrop(CurrentUser currentUser, UUID cropId) {
     if (cropId == null) {
-      return null;
+      throw validation("Crop is required for CROP targeted advisories.");
     }
-
     CropCatalogEntity crop = cropRepository.findByIdAndTenantId(cropId, currentUser.tenantId())
         .orElseThrow(() -> notFound("Crop not found."));
     if (crop.getStatus() != FarmRecordStatus.ACTIVE) {
       throw validation("Advisory crop must be active.");
     }
     return crop;
+  }
+
+  private NotificationChannel resolvePhase1Channel(NotificationChannel channel) {
+    NotificationChannel resolved = channel == null ? NotificationChannel.IN_APP : channel;
+    if (resolved != NotificationChannel.IN_APP) {
+      throw validation("Phase 1 advisories support IN_APP channel only.");
+    }
+    return resolved;
+  }
+
+  private List<FpoAdvisoryImageEntity> buildImages(
+      TenantEntity tenant,
+      List<FpoAdvisoryImageRequest> images,
+      Instant now
+  ) {
+    if (images == null || images.isEmpty()) {
+      return List.of();
+    }
+    if (images.size() > 10) {
+      throw validation("A maximum of 10 advisory images can be attached.");
+    }
+
+    return IntStream.range(0, images.size())
+        .mapToObj(index -> buildImage(tenant, images.get(index), index, now))
+        .toList();
+  }
+
+  private FpoAdvisoryImageEntity buildImage(
+      TenantEntity tenant,
+      FpoAdvisoryImageRequest image,
+      int sortOrder,
+      Instant now
+  ) {
+    return new FpoAdvisoryImageEntity(
+        UUID.randomUUID(),
+        tenant,
+        normalizeImageUrl(image.imageUrl()),
+        normalizeOptional(image.storageKey()),
+        normalizeOptional(image.originalFilename()),
+        normalizeImageContentType(image.contentType()),
+        sortOrder,
+        now
+    );
+  }
+
+  private AdvisoryCategory requireCategory(AdvisoryCategory category) {
+    if (category == null) {
+      throw validation("Advisory category is required.");
+    }
+    return category;
   }
 
   private CropSeasonEntity resolveActiveSeason(CurrentUser currentUser, UUID seasonId) {
@@ -255,9 +289,13 @@ public class FpoAdvisoryService {
 
     return switch (advisory.getTargetType()) {
       case ALL_MEMBERS -> true;
-      case VILLAGE -> equalsIgnoreCase(advisory.getTargetVillage(), member.getVillage());
-      case MEMBER -> advisory.getTargetMember() != null
-          && advisory.getTargetMember().getId().equals(member.getId());
+      case CROP -> advisory.getCrop() != null
+          && cropPlanRepository.existsByTenantIdAndMemberProfileIdAndCropIdAndStatus(
+              advisory.getTenant().getId(),
+              member.getId(),
+              advisory.getCrop().getId(),
+              CropPlanStatus.CONFIRMED
+          );
     };
   }
 
@@ -274,9 +312,11 @@ public class FpoAdvisoryService {
       AdvisoryStatus previousStatus
   ) {
     Map<String, Object> metadata = new LinkedHashMap<>();
+    metadata.put("category", advisory.getCategory().name());
     metadata.put("status", advisory.getStatus().name());
     metadata.put("targetType", advisory.getTargetType().name());
     metadata.put("channel", advisory.getChannel().name());
+    metadata.put("imageCount", advisory.getImages().size());
     if (previousStatus != null) {
       metadata.put("previousStatus", previousStatus.name());
     }
@@ -286,13 +326,6 @@ public class FpoAdvisoryService {
     if (advisory.getSeason() != null) {
       metadata.put("seasonId", advisory.getSeason().getId().toString());
     }
-    if (advisory.getTargetMember() != null) {
-      metadata.put("targetMemberId", advisory.getTargetMember().getId().toString());
-    }
-    if (hasText(advisory.getTargetVillage())) {
-      metadata.put("targetVillage", advisory.getTargetVillage());
-    }
-
     auditEventService.record(
         advisory.getTenant(),
         actor(currentUser),
@@ -311,8 +344,45 @@ public class FpoAdvisoryService {
     return value != null && !value.isBlank();
   }
 
-  private boolean equalsIgnoreCase(String left, String right) {
-    return left != null && right != null && left.trim().equalsIgnoreCase(right.trim());
+  private String normalizeImageUrl(String value) {
+    String trimmed = normalizeRequired(value, "Image URL is required.");
+    try {
+      URI uri = new URI(trimmed);
+      String scheme = uri.getScheme();
+      if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme)) {
+        throw validation("Advisory image URL must use http or https.");
+      }
+      return trimmed;
+    } catch (URISyntaxException exception) {
+      throw validation("Advisory image URL is not valid.");
+    }
+  }
+
+  private String normalizeImageContentType(String value) {
+    String trimmed = normalizeOptional(value);
+    if (trimmed == null) {
+      return null;
+    }
+    String normalized = trimmed.toLowerCase(Locale.ROOT);
+    if (!normalized.startsWith("image/")) {
+      throw validation("Advisory attachment content type must be an image.");
+    }
+    return normalized;
+  }
+
+  private String normalizeRequired(String value, String message) {
+    if (!hasText(value)) {
+      throw validation(message);
+    }
+    return value.trim();
+  }
+
+  private String normalizeOptional(String value) {
+    return hasText(value) ? value.trim() : null;
+  }
+
+  private boolean canManageAdvisories(CurrentUser currentUser) {
+    return currentUser.hasAnyRole(Role.ADMIN, Role.FPO_MANAGER);
   }
 
   private ApplicationException validation(String message) {

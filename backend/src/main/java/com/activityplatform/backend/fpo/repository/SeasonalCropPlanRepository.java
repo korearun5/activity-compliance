@@ -1,6 +1,7 @@
 package com.activityplatform.backend.fpo.repository;
 
 import com.activityplatform.backend.fpo.domain.SeasonalCropPlanEntity;
+import com.activityplatform.backend.fpo.domain.CropPlanStatus;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -23,6 +24,13 @@ public interface SeasonalCropPlanRepository
   List<SeasonalCropPlanEntity> findByTenantIdAndMemberProfileUserIdOrderByCreatedAtDesc(
       UUID tenantId,
       UUID userId
+  );
+
+  boolean existsByTenantIdAndMemberProfileIdAndCropIdAndStatus(
+      UUID tenantId,
+      UUID memberProfileId,
+      UUID cropId,
+      CropPlanStatus status
   );
 
   Optional<SeasonalCropPlanEntity> findByIdAndTenantId(UUID id, UUID tenantId);

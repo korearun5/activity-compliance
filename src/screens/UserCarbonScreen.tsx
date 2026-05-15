@@ -205,10 +205,12 @@ function Metric({ label, value }: { label: string; value: number | string }) {
 
 function toLocalAdvisoryRecord(advisory: CarbonAdvisory): AdvisoryRecord {
   return {
+    category: "AGRONOMY",
     channel: "IN_APP",
     createdAt: advisory.createdAt,
     createdByName: "Demo advisory",
     id: advisory.id,
+    images: [],
     message: advisory.message,
     publishedAt: advisory.createdAt,
     status: "PUBLISHED",

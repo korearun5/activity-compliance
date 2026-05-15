@@ -75,8 +75,8 @@ them in this order unless a production defect interrupts the work.
 | 6 | FPO-ALIGN-006 | Add crop plan `confirmed_at`, crop year string, and optional expected yield | Backend/Frontend/QA | Done |
 | 7 | FPO-ALIGN-007 | Apply input demand 5% buffer, round-up, and confirmed-only report filtering | Backend/Frontend/QA | Done |
 | 8 | FPO-ALIGN-008 | Refactor FPO Excel export to the approved three-sheet workbook | Backend/Frontend/QA | Done |
-| 9 | FPO-ALIGN-009 | Add advisory crop targeting and multiple image attachments through storage | Backend/Frontend/QA | Pending |
-| 10 | FPO-ALIGN-010 | Convert UAT guide scenarios into smoke/integration coverage where practical | QA/Backend/Frontend | Pending |
+| 9 | FPO-ALIGN-009 | Add advisory crop targeting and multiple image attachments through storage | Backend/Frontend/QA | Done |
+| 10 | FPO-ALIGN-010 | Convert UAT guide scenarios into smoke/integration coverage where practical | QA/Backend/Frontend | Partial |
 
 ## Module Platform Tasks
 
@@ -909,22 +909,24 @@ Fields:
 
 - `cropId`.
 - `seasonId`.
+- `category`.
 - `targetType`.
-- `targetVillage`.
-- `targetMemberId`.
 - `title`.
 - `message`.
 - `channel`.
 - `status`.
+- `images`.
 
 Phase 1 rule:
 
 - Done: Store advisories for in-app use.
-- Done: Keep SMS/WhatsApp delivery out of Phase 1 provider scope.
+- Done: Keep SMS/WhatsApp/push/email delivery out of Phase 1 provider scope.
 - Done: Guard APIs with the `ADVISORY` module.
 - Done: Allow admin/FPO manager to create and publish advisories.
-- Done: Allow farmers to view only published advisories targeted to all
-  members, their village, or their own member profile.
+- Done: Allow all-members or crop-targeted advisories only.
+- Done: Allow multiple advisory image links for stored object URLs.
+- Done: Allow farmers to view only published advisories targeted to all members
+  or to crops where they have confirmed crop plans.
 - Done: Audit advisory create and status changes.
 
 Acceptance criteria:
@@ -942,7 +944,8 @@ Frontend tasks:
 
 - Done: Admin advisory create/list screen.
 - Done: Farmer advisory list screen inside the carbon tab.
-- Done: Crop/season context and all-member/village/member targeting controls.
+- Done: Category, season context, all-member/crop targeting controls, and image
+  link preview list.
 - Done: Status filters, publish action, archive action, empty states, and
   local dummy fallback.
 

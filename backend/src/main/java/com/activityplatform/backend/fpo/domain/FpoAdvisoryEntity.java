@@ -3,6 +3,7 @@ package com.activityplatform.backend.fpo.domain;
 import com.activityplatform.backend.auth.domain.TenantEntity;
 import com.activityplatform.backend.auth.domain.UserEntity;
 import com.activityplatform.backend.notification.domain.NotificationChannel;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -11,8 +12,13 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -37,12 +43,9 @@ public class FpoAdvisoryEntity {
   @Column(name = "target_type", nullable = false)
   private AdvisoryTargetType targetType;
 
-  @Column(name = "target_village")
-  private String targetVillage;
-
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "target_member_id")
-  private FpoMemberProfileEntity targetMember;
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false)
+  private AdvisoryCategory category;
 
   @Column(nullable = false)
   private String title;
@@ -71,6 +74,10 @@ public class FpoAdvisoryEntity {
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
 
+  @OneToMany(mappedBy = "advisory", cascade = CascadeType.ALL, orphanRemoval = true)
+  @OrderBy("sortOrder ASC")
+  private List<FpoAdvisoryImageEntity> images = new ArrayList<>();
+
   protected FpoAdvisoryEntity() {
   }
 
@@ -80,8 +87,7 @@ public class FpoAdvisoryEntity {
       CropCatalogEntity crop,
       CropSeasonEntity season,
       AdvisoryTargetType targetType,
-      String targetVillage,
-      FpoMemberProfileEntity targetMember,
+      AdvisoryCategory category,
       String title,
       String message,
       NotificationChannel channel,
@@ -94,8 +100,7 @@ public class FpoAdvisoryEntity {
     this.crop = crop;
     this.season = season;
     this.targetType = targetType;
-    this.targetVillage = targetVillage;
-    this.targetMember = targetMember;
+    this.category = category;
     this.title = title;
     this.message = message;
     this.channel = channel;
@@ -126,12 +131,8 @@ public class FpoAdvisoryEntity {
     return targetType;
   }
 
-  public String getTargetVillage() {
-    return targetVillage;
-  }
-
-  public FpoMemberProfileEntity getTargetMember() {
-    return targetMember;
+  public AdvisoryCategory getCategory() {
+    return category;
   }
 
   public String getTitle() {
@@ -164,6 +165,15 @@ public class FpoAdvisoryEntity {
 
   public Instant getUpdatedAt() {
     return updatedAt;
+  }
+
+  public List<FpoAdvisoryImageEntity> getImages() {
+    return Collections.unmodifiableList(images);
+  }
+
+  public void addImage(FpoAdvisoryImageEntity image) {
+    image.attachTo(this);
+    images.add(image);
   }
 
   public void updateStatus(AdvisoryStatus status, Instant now) {

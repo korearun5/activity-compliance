@@ -140,11 +140,14 @@ does not create misleading demand.
 The advisory model is tenant-scoped and intentionally delivery-light for Phase
 1:
 
-1. `fpo_advisories` stores title, message, channel, crop/season context, target
-   type, and lifecycle status.
-2. `target_type` is `ALL_MEMBERS`, `VILLAGE`, or `MEMBER`.
-3. Published member reads return only records targeted to all members, the
-   member's village, or the member's own profile.
+1. `fpo_advisories` stores title, message, category, in-app channel,
+   crop/season context, target type, and lifecycle status.
+2. `target_type` is `ALL_MEMBERS` or `CROP`; crop-targeted advisories require
+   `crop_id`.
+3. `fpo_advisory_images` stores one or more object-storage image links and
+   optional image metadata per advisory.
+4. Published farmer reads return records targeted to all members or to crops
+   where the farmer has a confirmed crop plan.
 
 Advisory records are protected by the `ADVISORY` module and managed through:
 
@@ -152,9 +155,9 @@ Advisory records are protected by the `ADVISORY` module and managed through:
 - `/api/v1/fpo/advisories/{advisoryId}`
 - `/api/v1/fpo/advisories/{advisoryId}/status`
 
-Advisory status values use `DRAFT`, `PUBLISHED`, and `ARCHIVED`. Phase 1 stores
-the channel and status but does not imply actual SMS, WhatsApp, push, or email
-delivery unless a delivery provider is separately added.
+Advisory status values use `DRAFT`, `PUBLISHED`, and `ARCHIVED`. Phase 1 allows
+`IN_APP` advisories only; SMS, WhatsApp, push, and email delivery require a
+separate provider integration later.
 
 ## FPO Dashboard Summary Pattern
 

@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { useEffect, useState } from "react";
+import { Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import {
   AdvisoryInput,
@@ -9,6 +9,7 @@ import {
   updateAdvisoryStatus
 } from "../data/advisoryStore";
 import {
+  AdvisoryCategory,
   AdvisoryStatus,
   AdvisoryTargetType,
   NotificationChannel
@@ -28,34 +29,37 @@ type AdminAdvisoriesTabProps = {
   participants: FpoMember[];
 };
 
-const channelOptions: NotificationChannel[] = ["IN_APP", "PUSH", "SMS"];
+const categoryOptions: AdvisoryCategory[] = [
+  "AGRONOMY",
+  "PEST_DISEASE_MANAGEMENT",
+  "SOIL_HEALTH",
+  "WEATHER_ALERT"
+];
 const statusFilters: Array<AdvisoryStatus | "ALL"> = [
   "ALL",
   "DRAFT",
   "PUBLISHED",
   "ARCHIVED"
 ];
-const targetOptions: AdvisoryTargetType[] = ["ALL_MEMBERS", "VILLAGE", "MEMBER"];
+const targetOptions: AdvisoryTargetType[] = ["ALL_MEMBERS", "CROP"];
 
 export function AdminAdvisoriesTab({
-  canManageAdvisories,
-  participants
+  canManageAdvisories
 }: AdminAdvisoriesTabProps) {
   const [advisories, setAdvisories] = useState<AdvisoryRecord[]>([]);
-  const [channel, setChannel] = useState<NotificationChannel>("IN_APP");
+  const [category, setCategory] = useState<AdvisoryCategory>("AGRONOMY");
   const [crops, setCrops] = useState<CropCatalog[]>([]);
   const [cropId, setCropId] = useState("");
   const [error, setError] = useState("");
   const [filter, setFilter] = useState<AdvisoryStatus | "ALL">("ALL");
+  const [imageLinks, setImageLinks] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [seasons, setSeasons] = useState<CropSeason[]>([]);
   const [seasonId, setSeasonId] = useState("");
   const [status, setStatus] = useState<AdvisoryStatus>("DRAFT");
-  const [targetMemberId, setTargetMemberId] = useState("");
   const [targetType, setTargetType] = useState<AdvisoryTargetType>("ALL_MEMBERS");
-  const [targetVillage, setTargetVillage] = useState("");
   const [title, setTitle] = useState("");
   const [updatingAdvisoryId, setUpdatingAdvisoryId] = useState<string | null>(null);
 
@@ -66,16 +70,6 @@ export function AdminAdvisoriesTab({
   useEffect(() => {
     loadAdvisories(filter);
   }, [filter]);
-
-  const villages = useMemo(
-    () =>
-      [
-        ...new Set(
-          participants.map((participant) => participant.village).filter(Boolean)
-        )
-      ].sort((left, right) => left.localeCompare(right)),
-    [participants]
-  );
 
   async function loadReferenceData() {
     try {
@@ -110,14 +104,14 @@ export function AdminAdvisoriesTab({
 
   async function handleCreateAdvisory() {
     const input: AdvisoryInput = {
-      channel,
+      category,
+      channel: "IN_APP",
       cropId,
+      imageUrls: parseImageLinks(imageLinks),
       message,
       seasonId,
       status,
-      targetMemberId,
       targetType,
-      targetVillage,
       title
     };
 
@@ -130,14 +124,13 @@ export function AdminAdvisoriesTab({
         advisory,
         ...current.filter((item) => item.id !== advisory.id)
       ]);
-      setChannel("IN_APP");
+      setCategory("AGRONOMY");
       setCropId("");
+      setImageLinks("");
       setMessage("");
       setSeasonId("");
       setStatus("DRAFT");
-      setTargetMemberId("");
       setTargetType("ALL_MEMBERS");
-      setTargetVillage("");
       setTitle("");
     } catch (createError) {
       setError(getErrorMessage(createError, "Unable to create advisory."));
@@ -185,7 +178,12 @@ export function AdminAdvisoriesTab({
                   styles.choiceButton,
                   targetType === option && styles.choiceButtonActive
                 ]}
-                onPress={() => setTargetType(option)}
+                onPress={() => {
+                  setTargetType(option);
+                  if (option === "ALL_MEMBERS") {
+                    setCropId("");
+                  }
+                }}
               >
                 <Text
                   style={[
@@ -199,103 +197,53 @@ export function AdminAdvisoriesTab({
             ))}
           </View>
 
-          {targetType === "VILLAGE" ? (
+          {targetType === "CROP" ? (
             <>
-              <Text style={styles.formLabel}>Village</Text>
+              <Text style={styles.formLabel}>Target crop</Text>
               <View style={styles.choiceRow}>
-                {villages.map((village) => (
+                {crops.map((crop) => (
                   <Pressable
                     accessibilityRole="button"
-                    key={village}
+                    key={crop.id}
                     style={[
                       styles.choiceButton,
-                      targetVillage === village && styles.choiceButtonActive
+                      cropId === crop.id && styles.choiceButtonActive
                     ]}
-                    onPress={() => setTargetVillage(village)}
+                    onPress={() => setCropId(crop.id)}
                   >
                     <Text
                       style={[
                         styles.choiceButtonText,
-                        targetVillage === village && styles.choiceButtonTextActive
+                        cropId === crop.id && styles.choiceButtonTextActive
                       ]}
                     >
-                      {village}
+                      {crop.name}
                     </Text>
-                  </Pressable>
-                ))}
-              </View>
-              <AdvisoryField
-                label="Custom village"
-                value={targetVillage}
-                onChange={setTargetVillage}
-              />
-            </>
-          ) : null}
-
-          {targetType === "MEMBER" ? (
-            <>
-              <Text style={styles.formLabel}>Member</Text>
-              <View style={styles.choiceRow}>
-                {participants.map((participant) => (
-                  <Pressable
-                    accessibilityRole="button"
-                    key={participant.memberId}
-                    style={[
-                      styles.choiceButton,
-                      targetMemberId === participant.memberId &&
-                        styles.choiceButtonActive
-                    ]}
-                    onPress={() => setTargetMemberId(participant.memberId)}
-                  >
-                    <Text
-                      style={[
-                        styles.choiceButtonText,
-                        targetMemberId === participant.memberId &&
-                          styles.choiceButtonTextActive
-                      ]}
-                    >
-                      {participant.name}
-                    </Text>
-                    <Text style={styles.choiceButtonMeta}>{participant.village}</Text>
                   </Pressable>
                 ))}
               </View>
             </>
           ) : null}
 
-          <Text style={styles.formLabel}>Crop context</Text>
+          <Text style={styles.formLabel}>Category</Text>
           <View style={styles.choiceRow}>
-            <Pressable
-              accessibilityRole="button"
-              style={[styles.choiceButton, !cropId && styles.choiceButtonActive]}
-              onPress={() => setCropId("")}
-            >
-              <Text
-                style={[
-                  styles.choiceButtonText,
-                  !cropId && styles.choiceButtonTextActive
-                ]}
-              >
-                Any crop
-              </Text>
-            </Pressable>
-            {crops.map((crop) => (
+            {categoryOptions.map((option) => (
               <Pressable
                 accessibilityRole="button"
-                key={crop.id}
+                key={option}
                 style={[
                   styles.choiceButton,
-                  cropId === crop.id && styles.choiceButtonActive
+                  category === option && styles.choiceButtonActive
                 ]}
-                onPress={() => setCropId(crop.id)}
+                onPress={() => setCategory(option)}
               >
                 <Text
                   style={[
                     styles.choiceButtonText,
-                    cropId === crop.id && styles.choiceButtonTextActive
+                    category === option && styles.choiceButtonTextActive
                   ]}
                 >
-                  {crop.name}
+                  {categoryLabel(option)}
                 </Text>
               </Pressable>
             ))}
@@ -341,30 +289,19 @@ export function AdminAdvisoriesTab({
           </View>
 
           <View style={styles.formGrid}>
-            <View style={styles.formBlock}>
-              <Text style={styles.formLabel}>Channel</Text>
-              <View style={styles.choiceRow}>
-                {channelOptions.map((option) => (
-                  <Pressable
-                    accessibilityRole="button"
-                    key={option}
-                    style={[
-                      styles.choiceButton,
-                      channel === option && styles.choiceButtonActive
-                    ]}
-                    onPress={() => setChannel(option)}
-                  >
-                    <Text
-                      style={[
-                        styles.choiceButtonText,
-                        channel === option && styles.choiceButtonTextActive
-                      ]}
-                    >
-                      {channelLabel(option)}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
+            <View style={styles.formField}>
+              <Text style={styles.formLabel}>Image links</Text>
+              <TextInput
+                autoCapitalize="none"
+                autoCorrect={false}
+                multiline
+                numberOfLines={3}
+                onChangeText={setImageLinks}
+                placeholder="One image URL per line"
+                style={[styles.formInput, styles.messageInput]}
+                textAlignVertical="top"
+                value={imageLinks}
+              />
             </View>
             <View style={styles.formBlock}>
               <Text style={styles.formLabel}>Status</Text>
@@ -454,12 +391,28 @@ export function AdminAdvisoriesTab({
               <Text style={styles.cardTitle}>{advisory.title}</Text>
               <Text style={styles.cardDescription}>{advisory.message}</Text>
               <Text style={styles.cardMeta}>
-                {targetSummary(advisory)} - {channelLabel(advisory.channel)}
+                {categoryLabel(advisory.category)} - {targetSummary(advisory)} -{" "}
+                {channelLabel(advisory.channel)}
               </Text>
               {advisory.cropName || advisory.seasonName ? (
                 <Text style={styles.cardMeta}>
                   {[advisory.cropName, advisory.seasonName].filter(Boolean).join(" / ")}
                 </Text>
+              ) : null}
+              {advisory.images.length ? (
+                <View style={styles.imageRow}>
+                  {advisory.images.map((image, index) => (
+                    <View key={image.id ?? `${advisory.id}-${index}`} style={styles.imageItem}>
+                      <Image
+                        source={{ uri: image.imageUrl }}
+                        style={styles.advisoryImage}
+                      />
+                      <Text numberOfLines={1} style={styles.imageLink}>
+                        {image.originalFilename ?? image.imageUrl}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
               ) : null}
             </View>
             <View style={styles.statusActions}>
@@ -534,25 +487,39 @@ function AdvisoryField({
 
 function targetTypeLabel(targetType: AdvisoryTargetType) {
   switch (targetType) {
-    case "MEMBER":
-      return "Member";
-    case "VILLAGE":
-      return "Village";
+    case "CROP":
+      return "Crop";
     default:
       return "All members";
   }
 }
 
 function targetSummary(advisory: AdvisoryRecord) {
-  if (advisory.targetType === "MEMBER") {
-    return advisory.targetMemberName ?? "Member target";
-  }
-
-  if (advisory.targetType === "VILLAGE") {
-    return advisory.targetVillage ?? "Village target";
+  if (advisory.targetType === "CROP") {
+    return advisory.cropName ? `Crop: ${advisory.cropName}` : "Crop target";
   }
 
   return "All members";
+}
+
+function categoryLabel(category: AdvisoryCategory) {
+  switch (category) {
+    case "PEST_DISEASE_MANAGEMENT":
+      return "Pest & disease";
+    case "SOIL_HEALTH":
+      return "Soil health";
+    case "WEATHER_ALERT":
+      return "Weather alert";
+    default:
+      return "Agronomy";
+  }
+}
+
+function parseImageLinks(value: string) {
+  return value
+    .split(/\r?\n|,/)
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 function channelLabel(channel: NotificationChannel) {
@@ -643,6 +610,29 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700",
     marginTop: 7
+  },
+  imageRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginTop: 12
+  },
+  imageItem: {
+    gap: 5,
+    width: 112
+  },
+  advisoryImage: {
+    backgroundColor: "#eef4f6",
+    borderColor: "#d9e4ea",
+    borderRadius: 8,
+    borderWidth: 1,
+    height: 76,
+    width: 112
+  },
+  imageLink: {
+    color: "#53666f",
+    fontSize: 11,
+    fontWeight: "700"
   },
   formGrid: {
     flexDirection: "row",

@@ -2,6 +2,8 @@ package com.activityplatform.backend.fpo.api;
 
 import com.activityplatform.backend.common.api.ApiResponse;
 import com.activityplatform.backend.fpo.domain.AdvisoryStatus;
+import com.activityplatform.backend.fpo.domain.AdvisoryTargetType;
+import com.activityplatform.backend.fpo.domain.AdvisoryCategory;
 import com.activityplatform.backend.fpo.service.FpoAdvisoryService;
 import com.activityplatform.backend.security.CurrentUser;
 import jakarta.validation.Valid;
@@ -31,16 +33,18 @@ public class FpoAdvisoryController {
   ApiResponse<List<FpoAdvisoryResponse>> list(
       Authentication authentication,
       @RequestParam(required = false) AdvisoryStatus status,
+      @RequestParam(required = false) AdvisoryCategory category,
+      @RequestParam(required = false) AdvisoryTargetType targetType,
       @RequestParam(required = false) UUID cropId,
-      @RequestParam(required = false) UUID seasonId,
-      @RequestParam(required = false) String targetVillage
+      @RequestParam(required = false) UUID seasonId
   ) {
     return ApiResponse.success(advisoryService.list(
         CurrentUser.from(authentication),
         status,
+        category,
+        targetType,
         cropId,
-        seasonId,
-        targetVillage
+        seasonId
     ));
   }
 

@@ -3,7 +3,12 @@ import { Id } from "./contracts";
 export type FpoMemberStatus = "ACTIVE" | "INACTIVE" | "SUSPENDED";
 export type FarmRecordStatus = "ACTIVE" | "ARCHIVED" | "INACTIVE";
 export type AdvisoryStatus = "ARCHIVED" | "DRAFT" | "PUBLISHED";
-export type AdvisoryTargetType = "ALL_MEMBERS" | "MEMBER" | "VILLAGE";
+export type AdvisoryCategory =
+  | "AGRONOMY"
+  | "PEST_DISEASE_MANAGEMENT"
+  | "SOIL_HEALTH"
+  | "WEATHER_ALERT";
+export type AdvisoryTargetType = "ALL_MEMBERS" | "CROP";
 export type NotificationChannel = "EMAIL" | "IN_APP" | "PUSH" | "SMS";
 
 export type FpoMemberResponse = {
@@ -449,7 +454,25 @@ export type FpoDashboardSummaryResponse = {
   totalPlots: number;
 };
 
+export type FpoAdvisoryImageResponse = {
+  contentType: string | null;
+  createdAt: string;
+  id: Id;
+  imageUrl: string;
+  originalFilename: string | null;
+  sortOrder: number;
+  storageKey: string | null;
+};
+
+export type FpoAdvisoryImageRequest = {
+  contentType?: string;
+  imageUrl: string;
+  originalFilename?: string;
+  storageKey?: string;
+};
+
 export type FpoAdvisoryResponse = {
+  category: AdvisoryCategory;
   channel: NotificationChannel;
   createdAt: string;
   createdByName: string | null;
@@ -463,24 +486,22 @@ export type FpoAdvisoryResponse = {
   seasonName: string | null;
   seasonYear: number | null;
   status: AdvisoryStatus;
-  targetMemberId: Id | null;
-  targetMemberName: string | null;
   targetType: AdvisoryTargetType;
-  targetVillage: string | null;
   tenantId: Id;
   title: string;
   updatedAt: string;
+  images: FpoAdvisoryImageResponse[];
 };
 
 export type FpoAdvisoryRequest = {
+  category: AdvisoryCategory;
   channel?: NotificationChannel;
   cropId?: Id;
+  images?: FpoAdvisoryImageRequest[];
   message: string;
   seasonId?: Id;
   status?: AdvisoryStatus;
-  targetMemberId?: Id;
   targetType?: AdvisoryTargetType;
-  targetVillage?: string;
   title: string;
 };
 
