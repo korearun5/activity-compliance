@@ -480,6 +480,8 @@ Implemented foundation:
 - FPO advisory backend and admin UI.
 - Carbon app-flow screens backed by dummy frontend data and Carbon/FPO package
   toggles, with Carbon screens/data exported from `src/modules/carbon`.
+- Durable Carbon foundation schema for profiles, farm plots, soil profiles, and
+  activity categories.
 
 Current production-readiness coverage:
 

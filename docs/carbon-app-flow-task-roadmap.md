@@ -92,10 +92,10 @@ support later verification.
 
 | ID | Status | Task | Acceptance |
 | --- | --- | --- | --- |
-| CARBON-PROFILE-001 | Pending | Draft carbon data dictionary | Defines carbon identity, farmer profile extension, farm profile, documents, and bank-status fields. |
+| CARBON-PROFILE-001 | Done | Draft carbon data dictionary | [Carbon Data Dictionary](carbon-data-dictionary.md) defines Carbon identity, participant profile, farm plot, soil profile, and activity-category fields. |
 | CARBON-PROFILE-002 | Pending | Add backend carbon identity/profile APIs | Carbon identity can be created, viewed, and scoped by tenant/user role. |
 | CARBON-PROFILE-003 | Pending | Add frontend carbon profile forms | Farmer/FPO/admin can view and maintain carbon profile fields based on role. |
-| CARBON-SOIL-001 | Pending | Add durable soil profile schema | Stores SOC, pH, EC, NPK, bulk density, texture, and optional biological fields without calculating credits. |
+| CARBON-SOIL-001 | Done | Add durable soil profile schema | `carbon_soil_profiles` stores SOC, pH, EC, NPK, bulk density, texture, optional biological fields, and report metadata without calculating credits. |
 | CARBON-SOIL-002 | Pending | Add soil report upload support | PDF/image report links are stored through the storage adapter with metadata. |
 | CARBON-GEO-001 | Pending | Add Carbon farm GPS capture | Point capture works now; boundary drawing remains blocked on map provider. |
 
@@ -105,7 +105,7 @@ Goal: Turn regenerative practices into auditable activity records.
 
 | ID | Status | Task | Acceptance |
 | --- | --- | --- | --- |
-| CARBON-ACT-001 | Pending | Seed carbon activity categories | Land preparation, sowing, irrigation, fertilizer, biologicals, compost, biomass, and harvest categories exist. |
+| CARBON-ACT-001 | Done | Seed carbon activity categories | `carbon_activity_categories` seeds land preparation, sowing, fertigation, irrigation, biological application, compost addition, pruning biomass incorporation, and harvesting. |
 | CARBON-ACT-002 | Pending | Add carbon activity entry flow | User selects farm, crop, activity, date, input quantity, remarks, and evidence. |
 | CARBON-ACT-003 | Pending | Reuse evidence upload and review | Photos/documents can be uploaded, reviewed, approved, or rejected. |
 | CARBON-ACT-004 | Pending | Add verification queue for admins/agronomists | Reviewers can see pending carbon activity evidence with filters and status changes. |
@@ -162,16 +162,17 @@ Goal: Replace placeholders with production providers and operational controls.
 | CARBON-INT-004 | Blocked | AI image verification | Needs provider, confidence thresholds, rejection process, and audit policy. |
 | CARBON-OPS-001 | Pending | Add production object storage setup | S3-compatible storage configured for advisory, soil, and activity evidence. |
 | CARBON-OPS-002 | Pending | Add monitoring and backup runbooks | Uptime, logs, storage health, database backup, and restore drill are documented and tested. |
-| CARBON-UAT-001 | Pending | Create Carbon UAT guide | End-to-end UAT scenarios cover login, profile, soil, activity, advisory, marketplace, calculator, and reports. |
+| CARBON-UAT-001 | Done | Create Carbon UAT guide | [Carbon UAT Guide](carbon-uat-guide.md) covers Carbon package entry criteria, dashboard, profile, soil, activity, advisory, weather, dealers, module toggles, and source-handover checks. |
 
 ## Recommended Next Sprint
 
 Work in this order unless a client demo date changes priority:
 
-1. `CARBON-PROFILE-001`: draft the durable carbon data dictionary.
-2. `CARBON-SOIL-001`: add durable soil profile schema for Carbon.
-3. `CARBON-ACT-001`: seed carbon activity categories.
-4. `CARBON-UAT-001`: create Carbon UAT scenarios before client review.
+1. `CARBON-PROFILE-002`: add backend carbon identity/profile APIs.
+2. `CARBON-PROFILE-003`: add frontend carbon profile forms.
+3. `CARBON-SOIL-002`: add soil report upload support.
+4. `CARBON-ACT-002`: add carbon activity entry flow.
+5. `CARBON-MOD-006`: define the Carbon source distribution package before any source handover.
 
 ## Demo-Ready Definition
 

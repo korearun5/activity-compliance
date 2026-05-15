@@ -51,6 +51,10 @@ Implemented in the codebase now:
   operations hidden by default.
 - Added a `src/modules` registry and moved Carbon screens/data behind the
   `src/modules/carbon` module entry point.
+- Added durable Carbon foundation schema for Carbon profiles, farm plots, soil
+  profiles, and activity categories.
+- Added [Carbon Data Dictionary](carbon-data-dictionary.md) and
+  [Carbon UAT Guide](carbon-uat-guide.md).
 - Added an admin `Carbon` tab showing:
   - farm area,
   - carbon credit potential,

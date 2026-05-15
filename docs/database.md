@@ -13,6 +13,10 @@ For visual class/table diagrams, see
 - `user_roles`: user-to-role assignments.
 - `platform_modules`: sellable module catalog for modular packaging/pricing.
 - `tenant_module_subscriptions`: enabled/disabled module subscriptions per tenant.
+- `carbon_profiles`: Carbon identity and participant/farmer profile foundation.
+- `carbon_farm_plots`: Carbon farm/plot GPS point and optional boundary data.
+- `carbon_soil_profiles`: Carbon soil test values and optional report metadata.
+- `carbon_activity_categories`: seeded regenerative activity category catalog.
 - `fpo_member_profiles`: first-class FPO farmer/member profile linked to `users`.
 - `farm_landholdings`: Phase 1 landholding records for each FPO member.
 - `farm_plots`: GPS-ready farm plot records for each member/landholding.

@@ -49,6 +49,10 @@ activity-compliance platform.
 - [Carbon App Flow Task Roadmap](carbon-app-flow-task-roadmap.md): phase-wise
   Carbon execution plan, task IDs, module-toggle rules, and demo/production
   readiness definitions.
+- [Carbon Data Dictionary](carbon-data-dictionary.md): durable Carbon profile,
+  farm, soil, and activity-category fields.
+- [Carbon UAT Guide](carbon-uat-guide.md): Carbon-first package UAT scenarios,
+  entry criteria, and exit criteria.
 - [API Standards](api-standards.md): REST shape, response envelope, errors, and
   current endpoint conventions.
 - [Database Notes](database.md): schema and database design notes.
@@ -77,6 +81,8 @@ To prevent duplicate status drift:
   execution checklists in [FPO Developer Task List](fpo-developer-task-list.md).
 - Keep Carbon app-flow sequencing and task IDs in
   [Carbon App Flow Task Roadmap](carbon-app-flow-task-roadmap.md).
+- Keep Carbon field definitions in [Carbon Data Dictionary](carbon-data-dictionary.md)
+  and Carbon acceptance scenarios in [Carbon UAT Guide](carbon-uat-guide.md).
 
 Before client production handoff, create a final client-facing documentation set:
 
