@@ -85,6 +85,36 @@ are managed through `/api/v1/fpo/members/{memberId}/landholdings` and
 `/api/v1/fpo/members/{memberId}/plots`, with status changes handled through
 `PATCH` endpoints rather than hard deletes.
 
+## Carbon Profile Pattern
+
+The Carbon profile model is separate from FPO member records so Carbon can be
+packaged as its own client app:
+
+1. `carbon_profiles` stores Carbon identity, participant type, location, farm
+   summary, practice baseline, document readiness, linked user, optional FPO
+   member, and optional assigned field coordinator.
+2. `carbon_farm_plots` stores Carbon plot/farm units with required GPS point
+   capture and plot-level baseline context.
+3. `carbon_soil_profiles` stores existing soil test values and optional report
+   metadata. These values do not calculate carbon credits.
+4. Field coordinators can only read or mutate Carbon profiles assigned through
+   `carbon_profiles.coordinator_user_id`.
+5. Farmers can read their linked profile and related plot/soil records through
+   their login; OTP remains future/provider-dependent.
+
+Carbon records are protected by the `SUSTAINABILITY` module and managed through:
+
+- `/api/v1/carbon/profiles`
+- `/api/v1/carbon/profiles/me`
+- `/api/v1/carbon/profiles/{profileId}/plots`
+- `/api/v1/carbon/plots/{plotId}`
+- `/api/v1/carbon/profiles/{profileId}/soil-profiles`
+- `/api/v1/carbon/soil-profiles/{soilProfileId}`
+
+The schema intentionally stores profile, plot, and soil data only. Methodology,
+verified carbon calculation, AI verification, satellite layers, payments, and
+OTP/SMS remain outside the current implementation.
+
 ## FPO Crop Planning Pattern
 
 The crop planning model is explicit and tenant-scoped:

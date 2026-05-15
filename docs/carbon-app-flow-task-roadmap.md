@@ -93,7 +93,7 @@ support later verification.
 | ID | Status | Task | Acceptance |
 | --- | --- | --- | --- |
 | CARBON-PROFILE-001 | Done | Draft carbon data dictionary | [Carbon Data Dictionary](carbon-data-dictionary.md) defines Carbon identity, participant profile, farm plot, soil profile, and activity-category fields. |
-| CARBON-PROFILE-002 | Pending | Add backend carbon identity/profile APIs | Carbon identity can be created, viewed, and scoped by tenant/user role. |
+| CARBON-PROFILE-002 | Done | Add backend carbon identity/profile APIs | Carbon identity, farm plots, and soil profile metadata APIs are implemented with tenant/module/role scoping and verified by `CarbonProfileControllerIT`. |
 | CARBON-PROFILE-003 | Pending | Add frontend carbon profile forms | Farmer/FPO/admin can view and maintain carbon profile fields based on role. |
 | CARBON-SOIL-001 | Done | Add durable soil profile schema | `carbon_soil_profiles` stores SOC, pH, EC, NPK, bulk density, texture, optional biological fields, and report metadata without calculating credits. |
 | CARBON-SOIL-002 | Pending | Add soil report upload support | PDF/image report links are stored through the storage adapter with metadata. |
@@ -164,15 +164,43 @@ Goal: Replace placeholders with production providers and operational controls.
 | CARBON-OPS-002 | Pending | Add monitoring and backup runbooks | Uptime, logs, storage health, database backup, and restore drill are documented and tested. |
 | CARBON-UAT-001 | Done | Create Carbon UAT guide | [Carbon UAT Guide](carbon-uat-guide.md) covers Carbon package entry criteria, dashboard, profile, soil, activity, advisory, weather, dealers, module toggles, and source-handover checks. |
 
-## Recommended Next Sprint
+## Next Sprint Target
 
-Work in this order unless a client demo date changes priority:
+Sprint goal: move Carbon from a dashboard/schema foundation into a backend-backed data-entry MVP slice that follows the client App Flow and can be UAT-tested without touching the FPO-first workflows.
 
-1. `CARBON-PROFILE-002`: add backend carbon identity/profile APIs.
-2. `CARBON-PROFILE-003`: add frontend carbon profile forms.
-3. `CARBON-SOIL-002`: add soil report upload support.
-4. `CARBON-ACT-002`: add carbon activity entry flow.
-5. `CARBON-MOD-006`: define the Carbon source distribution package before any source handover.
+Completed in this sprint:
+
+| ID | Outcome |
+| --- | --- |
+| `CARBON-PROFILE-002` | Backend APIs for Carbon profiles, farm plots, and soil profile metadata are implemented and Testcontainers-verified. |
+
+Committed sprint tasks remaining:
+
+| Order | ID | Target outcome |
+| --- | --- | --- |
+| 1 | `CARBON-PROFILE-003` | Frontend Carbon profile forms that create/edit profile and farm plot data through the backend. |
+| 2 | `CARBON-SOIL-002` | Optional soil report image/PDF upload or stored document link, with SOC, pH, N, P, and K manual entry. |
+| 3 | `CARBON-ACT-002` | Carbon activity entry flow for the App Flow activity categories already seeded in the database. |
+| 4 | `CARBON-MOD-006` | Carbon source distribution package definition so client handover is Carbon-only by contract and structure. |
+
+Stretch tasks, only after committed tasks are green:
+
+| ID | Target outcome |
+| --- | --- |
+| `CARBON-GEO-001` | GPS point capture for Carbon farm plots if the profile flow is stable early. |
+| `CARBON-ACT-003` | Evidence upload/review reuse after the basic activity entry flow is working. |
+| `CARBON-MOD-005` | Polished disabled-module empty states and upgrade CTA copy. |
+
+Sprint exit criteria:
+
+1. Carbon module remains independently visible through `EXPO_PUBLIC_ENABLED_CLIENT_MODULES=carbon`.
+2. Backend Carbon APIs require the `SUSTAINABILITY` tenant module and do not depend on FPO module UI.
+3. Admin, FPO manager, field coordinator, and farmer roles keep their existing access model without reintroducing farmer OTP.
+4. Carbon profile, farm plot, soil profile, and activity entry data can be created and read through the app using persisted backend data.
+5. No carbon sequestration calculation, AI verification, satellite/NDVI, map polygon drawing, payments, or marketplace ordering is introduced in this sprint.
+6. Unit, integration, module visibility, lint, and typecheck commands pass before the sprint is marked done.
+
+No new client clarification is needed for the committed sprint tasks. Later client decisions are still needed for carbon calculation methodology, production storage bucket ownership, source-handover commercial terms, branding assets, OTP/SMS provider, map provider, and any AI/satellite integrations.
 
 ## Demo-Ready Definition
 

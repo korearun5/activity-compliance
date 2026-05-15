@@ -18,9 +18,9 @@ Use with:
 
 | Area | Status | Notes |
 | --- | --- | --- |
-| Carbon profile identity | Schema ready | `carbon_profiles` stores the Carbon identity and participant/farmer profile foundation. |
-| Carbon farm/plot | Schema ready | `carbon_farm_plots` stores GPS point capture and optional boundary JSON for later map work. |
-| Carbon soil profile | Schema ready | `carbon_soil_profiles` stores SOC, pH, EC, NPK, bulk density, texture, optional biological fields, and report metadata. |
+| Carbon profile identity | API ready | `carbon_profiles` stores the Carbon identity and participant/farmer profile foundation; backend APIs are verified by `CarbonProfileControllerIT`. |
+| Carbon farm/plot | API ready | `carbon_farm_plots` stores GPS point capture and optional boundary JSON for later map work; backend APIs are verified by `CarbonProfileControllerIT`. |
+| Carbon soil profile | API ready | `carbon_soil_profiles` stores SOC, pH, EC, NPK, bulk density, texture, and report metadata; backend APIs are verified by `CarbonProfileControllerIT`. |
 | Carbon activity categories | Seeded | `carbon_activity_categories` stores App Flow activity categories. |
 | Carbon score/calculation | Not implemented | Methodology, eligibility, buffer, leakage, and verification rules must be approved before implementation. |
 | Provider integrations | Not implemented | OTP, map boundary drawing, AI verification, satellite layers, weather API, and payment integrations remain future/provider-dependent. |
@@ -47,6 +47,7 @@ standalone app package.
 | Tenant | Yes | Existing tenant | Scope for all Carbon data. |
 | User | No | Existing user | Optional until login and OTP flows are finalized. |
 | FPO member profile | No | Existing FPO member | Optional link when Carbon is used with FPO package. |
+| Coordinator user | No | Existing `FIELD_COORDINATOR` user | Scopes field-coordinator access; admins/FPO managers can assign or clear it. |
 | Carbon identity ID | Yes | Unique within tenant | Example: `CCI-MH-2026-001`. |
 | Participant type | Yes | `FARMER`, `FPO_FPC`, `AGRONOMIST` | Based on App Flow login/user types. |
 | Display name | Yes | Text | Farmer or participant name. |
@@ -112,14 +113,14 @@ methodology is approved and versioned.
 | Potassium kg/ha | No | Non-negative decimal | K value. |
 | Bulk density g/cm3 | No | Non-negative decimal | Required by many carbon methodologies but optional until report exists. |
 | Texture | No | Text | Example: clay loam, sandy clay. |
-| Microbial count | No | Non-negative decimal | Optional biological parameter. |
-| Microbial count unit | No | Text | Store unit when available. |
-| Biological notes | No | Text | Optional notes such as microbial/necromass context. |
+| Microbial count | No | Non-negative decimal | Schema-only future field; not exposed in current Phase 1 Carbon APIs. |
+| Microbial count unit | No | Text | Schema-only future field; not exposed in current Phase 1 Carbon APIs. |
+| Biological notes | No | Text | Schema-only future field; not exposed in current Phase 1 Carbon APIs. |
 | Report file name | No | Text | Optional PDF/image metadata. |
 | Report content type | No | PDF or image MIME type | `application/pdf` or `image/*`. |
 | Report storage key | No | Text | Object storage key. |
 | Report URL | No | URL text | External/cloud link when available. |
-| Status | Yes | Lifecycle text | Recommended values: `DRAFT`, `SUBMITTED`, `VERIFIED`, `REJECTED`. |
+| Status | Yes | Lifecycle text | Current API values: `ACTIVE`, `INACTIVE`, `SUSPENDED`, `ARCHIVED`. |
 
 ## Carbon Activity Categories
 
