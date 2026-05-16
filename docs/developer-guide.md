@@ -165,7 +165,13 @@ username: activity_app
 password: activity_app
 host port: 5432
 container port: 5432
+docker volume: backend_activity-platform-postgres-data
 ```
+
+The root `docker-compose.yml` and `backend/compose.yaml` intentionally share
+that same local PostgreSQL volume. Normal Docker restarts keep the data. Records
+only disappear when the app is pointed at a different Postgres container/volume
+or the volume is removed with `down -v`/Docker Desktop cleanup.
 
 ## Local Seed Users
 

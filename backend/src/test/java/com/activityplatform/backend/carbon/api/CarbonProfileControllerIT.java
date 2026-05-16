@@ -344,7 +344,6 @@ class CarbonProfileControllerIT {
         CarbonParticipantType.FARMER,
         displayName,
         "9876543210",
-        "English",
         "Wagholi",
         "Haveli",
         "Pune",

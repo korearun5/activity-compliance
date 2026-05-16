@@ -28,7 +28,7 @@ The following areas can be built with dummy data now:
 
 | Client Flow Area            | Base We Can Build Now                                               | Notes                                                             |
 | --------------------------- | ------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| Splash and language         | Store language preference and prepare labels                        | Final translations can come later.                                |
+| Splash and UI language      | Store app UI language preference and prepare labels                  | English, Hindi, and Marathi are app-level UI choices, not Carbon profile fields. |
 | Farmer/FPO/agronomist roles | Reuse current admin, supervisor, participant roles                  | Add agronomist role only if client wants separate permissions.    |
 | Farmer profile              | Extend FPO member profile with carbon identity fields               | Dummy Aadhaar/bank/document status can be shown now.              |
 | Farm GPS location           | Reuse plot latitude/longitude fields                                | Boundary drawing needs map provider later.                        |
@@ -88,7 +88,8 @@ Compose config validation, and local Docker stack startup checks.
 
 Until client data is supplied, the base uses:
 
-- Languages: English, Marathi, Hindi.
+- UI languages: English, Hindi, Marathi. This controls app copy and labels for
+  the logged-in user; it is not farmer/profile data.
 - Farmer profile fields: carbon identity ID, village, taluka, district, GPS,
   landholding, irrigation, cropping pattern, livestock count, tillage status,
   bank status, and document status.

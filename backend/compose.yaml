@@ -18,3 +18,4 @@ services:
 
 volumes:
   activity-platform-postgres-data:
+    name: backend_activity-platform-postgres-data

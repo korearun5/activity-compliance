@@ -15,9 +15,10 @@ import { getErrorMessage } from "../core/errors/AppError";
 
 type LoginScreenProps = {
   onLogin: (username: string, password: string) => Promise<void>;
+  sessionMessage?: string;
 };
 
-export function LoginScreen({ onLogin }: LoginScreenProps) {
+export function LoginScreen({ onLogin, sessionMessage = "" }: LoginScreenProps) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -92,6 +93,9 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
                 </View>
               </View>
 
+              {sessionMessage && !error ? (
+                <Text style={styles.notice}>{sessionMessage}</Text>
+              ) : null}
               {error ? <Text style={styles.error}>{error}</Text> : null}
 
               <Pressable
@@ -238,6 +242,11 @@ const styles = StyleSheet.create({
     color: "#b42318",
     fontSize: 14,
     fontWeight: "600"
+  },
+  notice: {
+    color: "#1f6f73",
+    fontSize: 14,
+    fontWeight: "700"
   },
   primaryButton: {
     minHeight: 52,

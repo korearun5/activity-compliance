@@ -9,7 +9,6 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 
 final class CarbonProfileRules {
-  private static final List<String> LANGUAGE_PREFERENCES = List.of("English", "Hindi", "Marathi");
   private static final List<String> TILLAGE_STATUSES = List.of(
       "Conventional",
       "Reduced tillage",
@@ -51,10 +50,6 @@ final class CarbonProfileRules {
     }
 
     return digits;
-  }
-
-  static String normalizeLanguagePreference(String value) {
-    return normalizeOptionalChoice(value, LANGUAGE_PREFERENCES, "Language preference");
   }
 
   static String normalizeTillageStatus(String value) {

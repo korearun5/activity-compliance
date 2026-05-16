@@ -76,4 +76,5 @@ services:
 
 volumes:
   postgres-data:
+    name: backend_activity-platform-postgres-data
   minio-data:

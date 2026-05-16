@@ -1,5 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { ReactNode, useEffect, useMemo, useState } from "react";
+import {
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View
+} from "react-native";
 
 import { getErrorMessage } from "../../../core/errors/AppError";
 import { StatusBadge } from "../../../ui/StatusBadge";
@@ -7,7 +15,6 @@ import {
   CARBON_AADHAAR_STATUSES,
   CARBON_BANK_STATUSES,
   CARBON_DOCUMENT_STATUSES,
-  CARBON_LANGUAGES,
   CARBON_PARTICIPANT_TYPES,
   CARBON_RECORD_STATUSES,
   CARBON_TILLAGE_STATUSES,
@@ -32,9 +39,12 @@ type CarbonProfileAdminPanelProps = {
   onProfilesLoaded?: (profiles: CarbonProfileRecord[]) => void;
 };
 
+type ActiveEnrollmentForm = "profile" | "plot" | "soil" | null;
+
 export function CarbonProfileAdminPanel({
   onProfilesLoaded
 }: CarbonProfileAdminPanelProps) {
+  const [activeForm, setActiveForm] = useState<ActiveEnrollmentForm>(null);
   const [editingPlot, setEditingPlot] = useState<CarbonFarmPlotRecord | null>(null);
   const [editingProfile, setEditingProfile] = useState<CarbonProfileRecord | null>(
     null
@@ -125,6 +135,7 @@ export function CarbonProfileAdminPanel({
       onProfilesLoaded?.(nextProfiles);
       setSelectedProfileId(saved.id);
       setEditingProfile(null);
+      setActiveForm(null);
       return true;
     } catch (saveError) {
       setError(getErrorMessage(saveError, "Unable to save Carbon profile."));
@@ -150,6 +161,7 @@ export function CarbonProfileAdminPanel({
 
       setPlots((current) => upsertById(current, saved));
       setEditingPlot(null);
+      setActiveForm(null);
       return true;
     } catch (saveError) {
       setError(getErrorMessage(saveError, "Unable to save Carbon farm plot."));
@@ -175,6 +187,7 @@ export function CarbonProfileAdminPanel({
 
       setSoilProfiles((current) => upsertById(current, saved));
       setEditingSoilProfile(null);
+      setActiveForm(null);
       return true;
     } catch (saveError) {
       setError(getErrorMessage(saveError, "Unable to save Carbon soil profile."));
@@ -184,14 +197,60 @@ export function CarbonProfileAdminPanel({
     }
   }
 
+  function handleSelectProfile(profile: CarbonProfileRecord) {
+    setSelectedProfileId(profile.id);
+    setEditingPlot(null);
+    setEditingSoilProfile(null);
+    setActiveForm((current) => (current === "profile" ? current : null));
+  }
+
+  function openProfileForm(profile: CarbonProfileRecord | null = null) {
+    setEditingProfile(profile);
+    setEditingPlot(null);
+    setEditingSoilProfile(null);
+    setActiveForm("profile");
+  }
+
+  function openPlotForm(plot: CarbonFarmPlotRecord | null = null) {
+    setEditingPlot(plot);
+    setEditingProfile(null);
+    setEditingSoilProfile(null);
+    setActiveForm("plot");
+  }
+
+  function openSoilForm(profile: CarbonSoilProfileRecord | null = null) {
+    setEditingSoilProfile(profile);
+    setEditingProfile(null);
+    setEditingPlot(null);
+    setActiveForm("soil");
+  }
+
+  function closeActiveForm() {
+    setActiveForm(null);
+    setEditingProfile(null);
+    setEditingPlot(null);
+    setEditingSoilProfile(null);
+  }
+
+  const modalTitle = getEnrollmentModalTitle(
+    activeForm,
+    Boolean(editingProfile || editingPlot || editingSoilProfile)
+  );
+  const modalSubtitle =
+    activeForm === "profile"
+      ? "Capture the participant details needed for carbon enrollment."
+      : selectedProfile
+        ? `${selectedProfile.displayName} - ${selectedProfile.carbonIdentityId}`
+        : "Select a Carbon profile before adding records.";
+
   return (
     <View style={styles.panel}>
       <View style={styles.panelHeader}>
         <View>
-          <Text style={styles.subsectionTitle}>Carbon profiles and farm records</Text>
+          <Text style={styles.subsectionTitle}>Enrollment workspace</Text>
           <Text style={styles.panelMeta}>
-            {profiles.length} profile{profiles.length === 1 ? "" : "s"} -{" "}
-            {formatNumber(activeArea)} active acres
+            Select a profile first, then manage that farmer's farm plots and soil
+            records.
           </Text>
         </View>
         <Pressable
@@ -208,82 +267,240 @@ export function CarbonProfileAdminPanel({
 
       {error ? <Text style={styles.formError}>{error}</Text> : null}
 
-      <ProfileList
-        editingProfileId={editingProfile?.id}
-        onEdit={setEditingProfile}
-        onSelect={(profile) => setSelectedProfileId(profile.id)}
-        profiles={profiles}
-        selectedProfileId={selectedProfileId}
-      />
-
-      <CarbonProfileForm
-        editingProfile={editingProfile}
-        isSubmitting={savingKey === "profile"}
-        onCancel={() => setEditingProfile(null)}
-        onSubmit={handleProfileSubmit}
-      />
-
-      <View style={styles.divider} />
-
-      {selectedProfile ? (
-        <>
-          <View style={styles.selectedHeader}>
+      <View style={styles.workspaceGrid}>
+        <View style={styles.profileColumn}>
+          <View style={styles.columnHeader}>
             <View>
-              <Text style={styles.selectedTitle}>{selectedProfile.displayName}</Text>
+              <Text style={styles.columnTitle}>1. Carbon profiles</Text>
               <Text style={styles.panelMeta}>
-                {selectedProfile.carbonIdentityId} -{" "}
-                {[selectedProfile.village, selectedProfile.taluka]
-                  .filter(Boolean)
-                  .join(", ") || "Location not set"}
+                {profiles.length} profile{profiles.length === 1 ? "" : "s"} saved
               </Text>
             </View>
-            <StatusBadge label={selectedProfile.status} tone="neutral" />
+            <View style={styles.headerActions}>
+              <StatusBadge
+                label={`${formatNumber(activeArea)} active ac`}
+                tone="neutral"
+              />
+              <ActionButton
+                label={activeForm === "profile" && !editingProfile ? "Adding" : "Add"}
+                onPress={() => openProfileForm()}
+              />
+            </View>
           </View>
 
+          <ProfileList
+            editingProfileId={editingProfile?.id}
+            onEdit={(profile) => openProfileForm(profile)}
+            onSelect={handleSelectProfile}
+            profiles={profiles}
+            selectedProfileId={selectedProfileId}
+          />
+        </View>
+
+        <View style={styles.detailColumn}>
+          <View style={styles.columnHeader}>
+            <View>
+              <Text style={styles.columnTitle}>2. Selected profile workspace</Text>
+              <Text style={styles.panelMeta}>
+                Farm plots and soil profiles are attached to the selected profile.
+              </Text>
+            </View>
+          </View>
+
+          {selectedProfile ? (
+            <>
+              <SelectedProfileSummary
+                plots={plots}
+                profile={selectedProfile}
+                soilProfiles={soilProfiles}
+              />
+
+              <PlotList
+                editingPlotId={editingPlot?.id}
+                isFormOpen={activeForm === "plot"}
+                onAdd={() => openPlotForm()}
+                onEdit={(plot) => openPlotForm(plot)}
+                plots={plots}
+              />
+
+              <SoilProfileList
+                editingSoilProfileId={editingSoilProfile?.id}
+                isFormOpen={activeForm === "soil"}
+                onAdd={() => openSoilForm()}
+                onEdit={(soilProfile) => openSoilForm(soilProfile)}
+                plots={plots}
+                soilProfiles={soilProfiles}
+              />
+            </>
+          ) : (
+            <View style={styles.emptyStatePanel}>
+              <Text style={styles.emptyTitle}>No profile selected</Text>
+              <Text style={styles.emptyText}>
+                Select a profile from the left side to view and manage its farm plots
+                and soil records.
+              </Text>
+            </View>
+          )}
+        </View>
+      </View>
+
+      <EnrollmentFormModal
+        subtitle={modalSubtitle}
+        title={modalTitle}
+        visible={activeForm !== null}
+        onClose={closeActiveForm}
+      >
+        {activeForm === "profile" ? (
+          <CarbonProfileForm
+            editingProfile={editingProfile}
+            isSubmitting={savingKey === "profile"}
+            onSubmit={handleProfileSubmit}
+          />
+        ) : null}
+        {activeForm === "plot" ? (
           <CarbonPlotForm
             editingPlot={editingPlot}
             isSubmitting={savingKey === "plot"}
-            onCancel={() => setEditingPlot(null)}
             onSubmit={handlePlotSubmit}
           />
-
-          <PlotList
-            editingPlotId={editingPlot?.id}
-            onEdit={setEditingPlot}
-            plots={plots}
-          />
-
+        ) : null}
+        {activeForm === "soil" ? (
           <CarbonSoilProfileForm
             editingSoilProfile={editingSoilProfile}
             isSubmitting={savingKey === "soil"}
-            onCancel={() => setEditingSoilProfile(null)}
             onSubmit={handleSoilSubmit}
             plots={plots}
           />
-
-          <SoilProfileList
-            editingSoilProfileId={editingSoilProfile?.id}
-            onEdit={setEditingSoilProfile}
-            plots={plots}
-            soilProfiles={soilProfiles}
-          />
-        </>
-      ) : (
-        <Text style={styles.emptyText}>Create a Carbon profile to add farm records.</Text>
-      )}
+        ) : null}
+      </EnrollmentFormModal>
     </View>
+  );
+}
+
+function SelectedProfileSummary({
+  plots,
+  profile,
+  soilProfiles
+}: {
+  plots: CarbonFarmPlotRecord[];
+  profile: CarbonProfileRecord;
+  soilProfiles: CarbonSoilProfileRecord[];
+}) {
+  const profileArea =
+    profile.totalLandHoldingAcres ??
+    plots.reduce((total, plot) => total + plot.areaAcres, 0);
+
+  return (
+    <View style={styles.selectedHeader}>
+      <View style={styles.rowText}>
+        <Text style={styles.selectedEyebrow}>Selected profile</Text>
+        <Text style={styles.selectedTitle}>{profile.displayName}</Text>
+        <Text style={styles.panelMeta}>
+          {profile.carbonIdentityId} -{" "}
+          {[profile.village, profile.taluka, profile.districtName]
+            .filter(Boolean)
+            .join(", ") || "Location not set"}
+        </Text>
+        <View style={styles.summaryPillRow}>
+          <View style={styles.summaryPill}>
+            <Text style={styles.summaryPillValue}>{formatNumber(profileArea)} ac</Text>
+            <Text style={styles.summaryPillLabel}>Land</Text>
+          </View>
+          <View style={styles.summaryPill}>
+            <Text style={styles.summaryPillValue}>{plots.length}</Text>
+            <Text style={styles.summaryPillLabel}>Plots</Text>
+          </View>
+          <View style={styles.summaryPill}>
+            <Text style={styles.summaryPillValue}>{soilProfiles.length}</Text>
+            <Text style={styles.summaryPillLabel}>Soil tests</Text>
+          </View>
+        </View>
+      </View>
+      <StatusBadge label={profile.status} tone="neutral" />
+    </View>
+  );
+}
+
+function getEnrollmentModalTitle(
+  activeForm: ActiveEnrollmentForm,
+  isEditing: boolean
+) {
+  if (activeForm === "profile") {
+    return isEditing ? "Edit Carbon profile" : "Add Carbon profile";
+  }
+
+  if (activeForm === "plot") {
+    return isEditing ? "Edit farm plot" : "Add farm plot";
+  }
+
+  if (activeForm === "soil") {
+    return isEditing ? "Edit soil profile" : "Add soil profile";
+  }
+
+  return "Enrollment";
+}
+
+function EnrollmentFormModal({
+  children,
+  subtitle,
+  title,
+  visible,
+  onClose
+}: {
+  children: ReactNode;
+  subtitle: string;
+  title: string;
+  visible: boolean;
+  onClose: () => void;
+}) {
+  return (
+    <Modal
+      animationType="fade"
+      transparent
+      visible={visible}
+      onRequestClose={onClose}
+    >
+      <View style={styles.modalOverlay}>
+        <Pressable
+          accessibilityLabel="Close enrollment form"
+          accessibilityRole="button"
+          style={styles.modalBackdrop}
+          onPress={onClose}
+        />
+        <View style={styles.modalCard}>
+          <View style={styles.modalHeader}>
+            <View style={styles.modalTitleBlock}>
+              <Text style={styles.modalTitle}>{title}</Text>
+              <Text style={styles.modalSubtitle}>{subtitle}</Text>
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              style={styles.modalCloseButton}
+              onPress={onClose}
+            >
+              <Text style={styles.modalCloseText}>Cancel</Text>
+            </Pressable>
+          </View>
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            style={styles.modalBody}
+            contentContainerStyle={styles.modalBodyContent}
+          >
+            {children}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
 function CarbonProfileForm({
   editingProfile,
   isSubmitting,
-  onCancel,
   onSubmit
 }: {
   editingProfile: CarbonProfileRecord | null;
   isSubmitting: boolean;
-  onCancel: () => void;
   onSubmit: (input: CarbonProfileInput) => Promise<boolean>;
 }) {
   const [aadhaarStatus, setAadhaarStatus] = useState<string>(
@@ -301,9 +518,6 @@ function CarbonProfileForm({
   const [fpoMemberProfileId, setFpoMemberProfileId] = useState("");
   const [gpsLatitude, setGpsLatitude] = useState("");
   const [gpsLongitude, setGpsLongitude] = useState("");
-  const [languagePreference, setLanguagePreference] = useState<string>(
-    CARBON_LANGUAGES[0]
-  );
   const [livestockCount, setLivestockCount] = useState("");
   const [localError, setLocalError] = useState("");
   const [mobileNumber, setMobileNumber] = useState("");
@@ -317,6 +531,7 @@ function CarbonProfileForm({
   const [totalLandHoldingAcres, setTotalLandHoldingAcres] = useState("");
   const [userId, setUserId] = useState("");
   const [village, setVillage] = useState("");
+  const [showAdvanced, setShowAdvanced] = useState(Boolean(editingProfile));
 
   useEffect(() => {
     setAadhaarStatus(editingProfile?.aadhaarStatus ?? CARBON_AADHAAR_STATUSES[1]);
@@ -330,7 +545,6 @@ function CarbonProfileForm({
     setFpoMemberProfileId(editingProfile?.fpoMemberProfileId ?? "");
     setGpsLatitude(toInputNumber(editingProfile?.gpsLatitude));
     setGpsLongitude(toInputNumber(editingProfile?.gpsLongitude));
-    setLanguagePreference(editingProfile?.languagePreference ?? CARBON_LANGUAGES[0]);
     setLivestockCount(toInputNumber(editingProfile?.livestockCount));
     setMobileNumber(editingProfile?.mobileNumber ?? "");
     setParticipantType(editingProfile?.participantType ?? CARBON_PARTICIPANT_TYPES[0]);
@@ -341,6 +555,7 @@ function CarbonProfileForm({
     setTotalLandHoldingAcres(toInputNumber(editingProfile?.totalLandHoldingAcres));
     setUserId(editingProfile?.userId ?? "");
     setVillage(editingProfile?.village ?? "");
+    setShowAdvanced(Boolean(editingProfile));
     setLocalError("");
   }, [editingProfile]);
 
@@ -357,7 +572,6 @@ function CarbonProfileForm({
       fpoMemberProfileId,
       gpsLatitude,
       gpsLongitude,
-      languagePreference,
       livestockCount,
       mobileNumber,
       participantType,
@@ -391,22 +605,12 @@ function CarbonProfileForm({
       setTotalLandHoldingAcres("");
       setUserId("");
       setVillage("");
+      setShowAdvanced(false);
     }
   }
 
   return (
     <View style={styles.formBlock}>
-      <View style={styles.formTitleRow}>
-        <Text style={styles.sectionLabel}>
-          {editingProfile ? "Edit Carbon profile" : "Add Carbon profile"}
-        </Text>
-        {editingProfile ? (
-          <Pressable accessibilityRole="button" onPress={onCancel}>
-            <Text style={styles.linkText}>Cancel edit</Text>
-          </Pressable>
-        ) : null}
-      </View>
-
       {localError ? <Text style={styles.formError}>{localError}</Text> : null}
 
       <View style={styles.formGrid}>
@@ -428,87 +632,91 @@ function CarbonProfileForm({
           onChange={setTotalLandHoldingAcres}
         />
         <FormField
-          label="Latitude"
-          keyboardType="decimal-pad"
-          value={gpsLatitude}
-          onChange={setGpsLatitude}
-        />
-        <FormField
-          label="Longitude"
-          keyboardType="decimal-pad"
-          value={gpsLongitude}
-          onChange={setGpsLongitude}
-        />
-        <FormField
-          label="Livestock count"
-          keyboardType="number-pad"
-          value={livestockCount}
-          onChange={setLivestockCount}
-        />
-        <FormField
           label="Cropping pattern"
           value={croppingPattern}
           onChange={setCroppingPattern}
         />
-        <FormField label="User ID" value={userId} onChange={setUserId} />
-        <FormField
-          label="FPO member ID"
-          value={fpoMemberProfileId}
-          onChange={setFpoMemberProfileId}
-        />
-        <FormField
-          label="Coordinator ID"
-          value={coordinatorUserId}
-          onChange={setCoordinatorUserId}
-        />
       </View>
 
-      <OptionGroup
-        label="Participant"
-        options={CARBON_PARTICIPANT_TYPES}
-        value={participantType}
-        onChange={setParticipantType}
-      />
-      <OptionGroup
-        label="Language"
-        options={CARBON_LANGUAGES}
-        value={languagePreference}
-        onChange={setLanguagePreference}
-      />
-      <OptionGroup
-        label="Tillage"
-        options={CARBON_TILLAGE_STATUSES}
-        value={tillageStatus}
-        onChange={setTillageStatus}
-      />
-      <OptionGroup
-        label="Bank"
-        options={CARBON_BANK_STATUSES}
-        value={bankStatus}
-        onChange={setBankStatus}
-      />
-      <OptionGroup
-        label="Aadhaar"
-        options={CARBON_AADHAAR_STATUSES}
-        value={aadhaarStatus}
-        onChange={setAadhaarStatus}
-      />
-      <OptionGroup
-        label="Documents"
-        options={CARBON_DOCUMENT_STATUSES}
-        value={documentStatus}
-        onChange={setDocumentStatus}
-      />
-      <OptionGroup
-        label="Status"
-        options={CARBON_RECORD_STATUSES}
-        value={status}
-        onChange={setStatus}
-      />
+      <AdvancedSection
+        isOpen={showAdvanced}
+        label="More profile details"
+        onToggle={() => setShowAdvanced((current) => !current)}
+      >
+        <View style={styles.formGrid}>
+          <FormField
+            label="Latitude"
+            keyboardType="decimal-pad"
+            value={gpsLatitude}
+            onChange={setGpsLatitude}
+          />
+          <FormField
+            label="Longitude"
+            keyboardType="decimal-pad"
+            value={gpsLongitude}
+            onChange={setGpsLongitude}
+          />
+          <FormField
+            label="Livestock count"
+            keyboardType="number-pad"
+            value={livestockCount}
+            onChange={setLivestockCount}
+          />
+          <FormField label="User ID" value={userId} onChange={setUserId} />
+          <FormField
+            label="FPO member ID"
+            value={fpoMemberProfileId}
+            onChange={setFpoMemberProfileId}
+          />
+          <FormField
+            label="Coordinator ID"
+            value={coordinatorUserId}
+            onChange={setCoordinatorUserId}
+          />
+        </View>
+        <OptionGroup
+          label="Participant"
+          options={CARBON_PARTICIPANT_TYPES}
+          value={participantType}
+          onChange={setParticipantType}
+        />
+        <OptionGroup
+          label="Tillage"
+          options={CARBON_TILLAGE_STATUSES}
+          value={tillageStatus}
+          onChange={setTillageStatus}
+        />
+        <OptionGroup
+          label="Bank"
+          options={CARBON_BANK_STATUSES}
+          value={bankStatus}
+          onChange={setBankStatus}
+        />
+        <OptionGroup
+          label="Aadhaar"
+          options={CARBON_AADHAAR_STATUSES}
+          value={aadhaarStatus}
+          onChange={setAadhaarStatus}
+        />
+        <OptionGroup
+          label="Documents"
+          options={CARBON_DOCUMENT_STATUSES}
+          value={documentStatus}
+          onChange={setDocumentStatus}
+        />
+        <OptionGroup
+          label="Status"
+          options={CARBON_RECORD_STATUSES}
+          value={status}
+          onChange={setStatus}
+        />
+      </AdvancedSection>
 
       <PrimaryButton
         disabled={isSubmitting}
-        label={isSubmitting ? "Saving..." : editingProfile ? "Update profile" : "Add profile"}
+        label={
+          isSubmitting ? "Saving..." : editingProfile ? "Update profile" : "Add profile"
+        }
         onPress={handleSubmit}
       />
     </View>
@@ -518,12 +726,10 @@ function CarbonProfileForm({
 function CarbonPlotForm({
   editingPlot,
   isSubmitting,
-  onCancel,
   onSubmit
 }: {
   editingPlot: CarbonFarmPlotRecord | null;
   isSubmitting: boolean;
-  onCancel: () => void;
   onSubmit: (input: CarbonFarmPlotInput) => Promise<boolean>;
 }) {
   const [areaAcres, setAreaAcres] = useState("");
@@ -538,6 +744,7 @@ function CarbonPlotForm({
   const [tillageStatus, setTillageStatus] = useState<string>(
     CARBON_TILLAGE_STATUSES[1]
   );
+  const [showAdvanced, setShowAdvanced] = useState(Boolean(editingPlot));
 
   useEffect(() => {
     setAreaAcres(toInputNumber(editingPlot?.areaAcres));
@@ -549,11 +756,17 @@ function CarbonPlotForm({
     setStatus(editingPlot?.status ?? CARBON_RECORD_STATUSES[0]);
     setSurveyNumber(editingPlot?.surveyNumber ?? "");
     setTillageStatus(editingPlot?.tillageStatus ?? CARBON_TILLAGE_STATUSES[1]);
+    setShowAdvanced(Boolean(editingPlot));
     setLocalError("");
   }, [editingPlot]);
 
   async function handleSubmit() {
-    if (!farmName.trim() || !areaAcres.trim() || !latitude.trim() || !longitude.trim()) {
+    if (
+      !farmName.trim() ||
+      !areaAcres.trim() ||
+      !latitude.trim() ||
+      !longitude.trim()
+    ) {
       setLocalError("Farm name, area, latitude, and longitude are required.");
       return;
     }
@@ -577,21 +790,12 @@ function CarbonPlotForm({
       setLongitude("");
       setPrimaryCrop("");
       setSurveyNumber("");
+      setShowAdvanced(false);
     }
   }
 
   return (
     <View style={styles.formBlock}>
-      <View style={styles.formTitleRow}>
-        <Text style={styles.sectionLabel}>
-          {editingPlot ? "Edit farm plot" : "Add farm plot"}
-        </Text>
-        {editingPlot ? (
-          <Pressable accessibilityRole="button" onPress={onCancel}>
-            <Text style={styles.linkText}>Cancel edit</Text>
-          </Pressable>
-        ) : null}
-      </View>
       {localError ? <Text style={styles.formError}>{localError}</Text> : null}
       <View style={styles.formGrid}>
         <FormField label="Farm name" value={farmName} onChange={setFarmName} />
@@ -615,24 +819,33 @@ function CarbonPlotForm({
           onChange={setLongitude}
         />
         <FormField label="Primary crop" value={primaryCrop} onChange={setPrimaryCrop} />
-        <FormField
-          label="Irrigation"
-          value={irrigationSource}
-          onChange={setIrrigationSource}
-        />
       </View>
-      <OptionGroup
-        label="Tillage"
-        options={CARBON_TILLAGE_STATUSES}
-        value={tillageStatus}
-        onChange={setTillageStatus}
-      />
-      <OptionGroup
-        label="Status"
-        options={CARBON_RECORD_STATUSES}
-        value={status}
-        onChange={setStatus}
-      />
+
+      <AdvancedSection
+        isOpen={showAdvanced}
+        label="More plot details"
+        onToggle={() => setShowAdvanced((current) => !current)}
+      >
+        <View style={styles.formGrid}>
+          <FormField
+            label="Irrigation"
+            value={irrigationSource}
+            onChange={setIrrigationSource}
+          />
+        </View>
+        <OptionGroup
+          label="Tillage"
+          options={CARBON_TILLAGE_STATUSES}
+          value={tillageStatus}
+          onChange={setTillageStatus}
+        />
+        <OptionGroup
+          label="Status"
+          options={CARBON_RECORD_STATUSES}
+          value={status}
+          onChange={setStatus}
+        />
+      </AdvancedSection>
       <PrimaryButton
         disabled={isSubmitting}
         label={isSubmitting ? "Saving..." : editingPlot ? "Update plot" : "Add plot"}
@@ -645,13 +858,11 @@ function CarbonPlotForm({
 function CarbonSoilProfileForm({
   editingSoilProfile,
   isSubmitting,
-  onCancel,
   onSubmit,
   plots
 }: {
   editingSoilProfile: CarbonSoilProfileRecord | null;
   isSubmitting: boolean;
-  onCancel: () => void;
   onSubmit: (input: CarbonSoilProfileInput) => Promise<boolean>;
   plots: CarbonFarmPlotRecord[];
 }) {
@@ -671,11 +882,14 @@ function CarbonSoilProfileForm({
   const [status, setStatus] = useState(CARBON_RECORD_STATUSES[0]);
   const [testDate, setTestDate] = useState("");
   const [texture, setTexture] = useState("");
+  const [showAdvanced, setShowAdvanced] = useState(Boolean(editingSoilProfile));
 
   useEffect(() => {
     setBulkDensityGmCm3(toInputNumber(editingSoilProfile?.bulkDensityGmCm3));
     setCarbonFarmPlotId(editingSoilProfile?.carbonFarmPlotId ?? "");
-    setElectricalConductivity(toInputNumber(editingSoilProfile?.electricalConductivity));
+    setElectricalConductivity(
+      toInputNumber(editingSoilProfile?.electricalConductivity)
+    );
     setLabName(editingSoilProfile?.labName ?? "");
     setNitrogenKgHa(toInputNumber(editingSoilProfile?.nitrogenKgHa));
     setPh(toInputNumber(editingSoilProfile?.ph));
@@ -691,6 +905,7 @@ function CarbonSoilProfileForm({
     setStatus(editingSoilProfile?.status ?? CARBON_RECORD_STATUSES[0]);
     setTestDate(editingSoilProfile?.testDate ?? "");
     setTexture(editingSoilProfile?.texture ?? "");
+    setShowAdvanced(Boolean(editingSoilProfile));
   }, [editingSoilProfile]);
 
   async function handleSubmit() {
@@ -728,22 +943,12 @@ function CarbonSoilProfileForm({
       setSoilOrganicCarbonPercent("");
       setTestDate("");
       setTexture("");
+      setShowAdvanced(false);
     }
   }
 
   return (
     <View style={styles.formBlock}>
-      <View style={styles.formTitleRow}>
-        <Text style={styles.sectionLabel}>
-          {editingSoilProfile ? "Edit soil profile" : "Add soil profile"}
-        </Text>
-        {editingSoilProfile ? (
-          <Pressable accessibilityRole="button" onPress={onCancel}>
-            <Text style={styles.linkText}>Cancel edit</Text>
-          </Pressable>
-        ) : null}
-      </View>
-
       {plots.length ? (
         <OptionGroup
           label="Plot"
@@ -751,7 +956,7 @@ function CarbonSoilProfileForm({
           value={carbonFarmPlotId}
           renderLabel={(value) =>
             value
-              ? plots.find((plot) => plot.id === value)?.farmName ?? value
+              ? (plots.find((plot) => plot.id === value)?.farmName ?? value)
               : "No plot link"
           }
           onChange={setCarbonFarmPlotId}
@@ -760,7 +965,6 @@ function CarbonSoilProfileForm({
 
       <View style={styles.formGrid}>
         <FormField label="Test date" value={testDate} onChange={setTestDate} />
-        <FormField label="Lab name" value={labName} onChange={setLabName} />
         <FormField
           label="SOC %"
           keyboardType="decimal-pad"
@@ -768,12 +972,6 @@ function CarbonSoilProfileForm({
           onChange={setSoilOrganicCarbonPercent}
         />
         <FormField label="pH" keyboardType="decimal-pad" value={ph} onChange={setPh} />
-        <FormField
-          label="EC"
-          keyboardType="decimal-pad"
-          value={electricalConductivity}
-          onChange={setElectricalConductivity}
-        />
         <FormField
           label="N kg/ha"
           keyboardType="decimal-pad"
@@ -792,37 +990,52 @@ function CarbonSoilProfileForm({
           value={potassiumKgHa}
           onChange={setPotassiumKgHa}
         />
-        <FormField
-          label="Bulk density"
-          keyboardType="decimal-pad"
-          value={bulkDensityGmCm3}
-          onChange={setBulkDensityGmCm3}
-        />
-        <FormField label="Texture" value={texture} onChange={setTexture} />
-        <FormField
-          label="Report file"
-          value={reportFileName}
-          onChange={setReportFileName}
-        />
-        <FormField
-          label="Content type"
-          value={reportContentType}
-          onChange={setReportContentType}
-        />
-        <FormField
-          label="Storage key"
-          value={reportStorageKey}
-          onChange={setReportStorageKey}
-        />
-        <FormField label="Report URL" value={reportUrl} onChange={setReportUrl} />
       </View>
 
-      <OptionGroup
-        label="Status"
-        options={CARBON_RECORD_STATUSES}
-        value={status}
-        onChange={setStatus}
-      />
+      <AdvancedSection
+        isOpen={showAdvanced}
+        label="More soil report details"
+        onToggle={() => setShowAdvanced((current) => !current)}
+      >
+        <View style={styles.formGrid}>
+          <FormField label="Lab name" value={labName} onChange={setLabName} />
+          <FormField
+            label="EC"
+            keyboardType="decimal-pad"
+            value={electricalConductivity}
+            onChange={setElectricalConductivity}
+          />
+          <FormField
+            label="Bulk density"
+            keyboardType="decimal-pad"
+            value={bulkDensityGmCm3}
+            onChange={setBulkDensityGmCm3}
+          />
+          <FormField label="Texture" value={texture} onChange={setTexture} />
+          <FormField
+            label="Report file"
+            value={reportFileName}
+            onChange={setReportFileName}
+          />
+          <FormField
+            label="Content type"
+            value={reportContentType}
+            onChange={setReportContentType}
+          />
+          <FormField
+            label="Storage key"
+            value={reportStorageKey}
+            onChange={setReportStorageKey}
+          />
+          <FormField label="Report URL" value={reportUrl} onChange={setReportUrl} />
+        </View>
+        <OptionGroup
+          label="Status"
+          options={CARBON_RECORD_STATUSES}
+          value={status}
+          onChange={setStatus}
+        />
+      </AdvancedSection>
       <PrimaryButton
         disabled={isSubmitting}
         label={
@@ -857,51 +1070,76 @@ function ProfileList({
 
   return (
     <View style={styles.listBlock}>
-      {profiles.map((profile) => (
-        <View
-          key={profile.id}
-          style={[
-            styles.recordRow,
-            selectedProfileId === profile.id && styles.selectedRow
-          ]}
-        >
-          <View style={styles.rowText}>
-            <Text style={styles.rowTitle}>{profile.displayName}</Text>
-            <Text style={styles.rowMeta}>
-              {profile.carbonIdentityId} - {profile.participantType}
-            </Text>
-            <Text style={styles.rowMeta}>
-              {[profile.village, profile.taluka, profile.districtName]
-                .filter(Boolean)
-                .join(", ") || "Location not set"}
-            </Text>
-          </View>
-          <View style={styles.actionColumn}>
-            <StatusBadge label={profile.status} tone="neutral" />
-            <ActionButton label="Select" onPress={() => onSelect(profile)} />
-            <ActionButton
-              label={editingProfileId === profile.id ? "Editing" : "Edit"}
-              onPress={() => onEdit(profile)}
-            />
-          </View>
-        </View>
-      ))}
+      {profiles.map((profile) => {
+        const isSelected = selectedProfileId === profile.id;
+
+        return (
+          <Pressable
+            key={profile.id}
+            accessibilityRole="button"
+            style={[styles.recordRow, isSelected && styles.selectedRow]}
+            onPress={() => onSelect(profile)}
+          >
+            <View style={styles.rowText}>
+              <Text style={styles.rowTitle}>{profile.displayName}</Text>
+              <Text style={styles.rowMeta}>
+                {profile.carbonIdentityId} - {profile.participantType}
+              </Text>
+              <Text style={styles.rowMeta}>
+                {[profile.village, profile.taluka, profile.districtName]
+                  .filter(Boolean)
+                  .join(", ") || "Location not set"}
+              </Text>
+              {isSelected ? (
+                <Text style={styles.selectedHint}>
+                  Farm and soil records shown on right
+                </Text>
+              ) : null}
+            </View>
+            <View style={styles.actionColumn}>
+              <StatusBadge
+                label={isSelected ? "Selected" : profile.status}
+                tone="neutral"
+              />
+              <ActionButton
+                label={editingProfileId === profile.id ? "Editing" : "Edit"}
+                onPress={() => onEdit(profile)}
+              />
+            </View>
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
 
 function PlotList({
   editingPlotId,
+  isFormOpen,
+  onAdd,
   onEdit,
   plots
 }: {
   editingPlotId?: string;
+  isFormOpen: boolean;
+  onAdd: () => void;
   onEdit: (plot: CarbonFarmPlotRecord) => void;
   plots: CarbonFarmPlotRecord[];
 }) {
   return (
     <View style={styles.listBlock}>
-      <Text style={styles.sectionLabel}>Saved farm plots</Text>
+      <View style={styles.sectionHeaderRow}>
+        <View>
+          <Text style={styles.sectionLabel}>Saved farm plots</Text>
+          <Text style={styles.panelMeta}>
+            {plots.length} plot{plots.length === 1 ? "" : "s"} for this profile
+          </Text>
+        </View>
+        <ActionButton
+          label={isFormOpen && !editingPlotId ? "Adding" : "Add plot"}
+          onPress={onAdd}
+        />
+      </View>
       {plots.length ? (
         plots.map((plot) => (
           <View key={plot.id} style={styles.recordRow}>
@@ -934,18 +1172,33 @@ function PlotList({
 
 function SoilProfileList({
   editingSoilProfileId,
+  isFormOpen,
+  onAdd,
   onEdit,
   plots,
   soilProfiles
 }: {
   editingSoilProfileId?: string;
+  isFormOpen: boolean;
+  onAdd: () => void;
   onEdit: (profile: CarbonSoilProfileRecord) => void;
   plots: CarbonFarmPlotRecord[];
   soilProfiles: CarbonSoilProfileRecord[];
 }) {
   return (
     <View style={styles.listBlock}>
-      <Text style={styles.sectionLabel}>Saved soil profiles</Text>
+      <View style={styles.sectionHeaderRow}>
+        <View>
+          <Text style={styles.sectionLabel}>Saved soil profiles</Text>
+          <Text style={styles.panelMeta}>
+            {soilProfiles.length} soil record{soilProfiles.length === 1 ? "" : "s"}
+          </Text>
+        </View>
+        <ActionButton
+          label={isFormOpen && !editingSoilProfileId ? "Adding" : "Add soil"}
+          onPress={onAdd}
+        />
+      </View>
       {soilProfiles.length ? (
         soilProfiles.map((profile) => {
           const plotName =
@@ -970,16 +1223,15 @@ function SoilProfileList({
                     .join(" - ") || "Lab values not entered"}
                 </Text>
                 <Text style={styles.rowMeta}>
-                  {[profile.labName, profile.reportFileName].filter(Boolean).join(" - ") ||
-                    "Report metadata not set"}
+                  {[profile.labName, profile.reportFileName]
+                    .filter(Boolean)
+                    .join(" - ") || "Report metadata not set"}
                 </Text>
               </View>
               <View style={styles.actionColumn}>
                 <StatusBadge label={profile.status} tone="neutral" />
                 <ActionButton
-                  label={
-                    editingSoilProfileId === profile.id ? "Editing" : "Edit"
-                  }
+                  label={editingSoilProfileId === profile.id ? "Editing" : "Edit"}
                   onPress={() => onEdit(profile)}
                 />
               </View>
@@ -1063,6 +1315,32 @@ function OptionGroup<T extends string>({
   );
 }
 
+function AdvancedSection({
+  children,
+  isOpen,
+  label,
+  onToggle
+}: {
+  children: ReactNode;
+  isOpen: boolean;
+  label: string;
+  onToggle: () => void;
+}) {
+  return (
+    <View style={styles.advancedBlock}>
+      <Pressable
+        accessibilityRole="button"
+        style={styles.advancedHeader}
+        onPress={onToggle}
+      >
+        <Text style={styles.advancedTitle}>{label}</Text>
+        <Text style={styles.advancedToggleText}>{isOpen ? "Hide" : "Show"}</Text>
+      </Pressable>
+      {isOpen ? <View style={styles.advancedContent}>{children}</View> : null}
+    </View>
+  );
+}
+
 function PrimaryButton({
   disabled,
   label,
@@ -1123,17 +1401,78 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
     gap: 8
   },
+  advancedBlock: {
+    backgroundColor: "#f7fafb",
+    borderColor: "#d9e4ea",
+    borderRadius: 8,
+    borderWidth: 1
+  },
+  advancedContent: {
+    borderTopColor: "#d9e4ea",
+    borderTopWidth: 1,
+    gap: 12,
+    padding: 12
+  },
+  advancedHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    minHeight: 44,
+    paddingHorizontal: 12,
+    paddingVertical: 10
+  },
+  advancedTitle: {
+    color: "#172126",
+    fontSize: 13,
+    fontWeight: "800"
+  },
+  advancedToggleText: {
+    color: "#1f6f73",
+    fontSize: 12,
+    fontWeight: "800"
+  },
+  columnHeader: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: 12,
+    justifyContent: "space-between"
+  },
+  columnTitle: {
+    color: "#172126",
+    fontSize: 15,
+    fontWeight: "800"
+  },
+  detailColumn: {
+    backgroundColor: "#fbfcfd",
+    borderColor: "#d9e4ea",
+    borderRadius: 8,
+    borderWidth: 1,
+    flex: 1.4,
+    gap: 12,
+    minWidth: 360,
+    padding: 14
+  },
   disabledButton: {
     opacity: 0.55
-  },
-  divider: {
-    backgroundColor: "#d9e4ea",
-    height: 1
   },
   emptyText: {
     color: "#53666f",
     fontSize: 13,
-    fontWeight: "700"
+    fontWeight: "700",
+    lineHeight: 18
+  },
+  emptyStatePanel: {
+    backgroundColor: "#f7fafb",
+    borderColor: "#d9e4ea",
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 6,
+    padding: 14
+  },
+  emptyTitle: {
+    color: "#172126",
+    fontSize: 14,
+    fontWeight: "800"
   },
   field: {
     flex: 1,
@@ -1163,10 +1502,9 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: 10
   },
-  formTitleRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between"
+  headerActions: {
+    alignItems: "flex-end",
+    gap: 8
   },
   input: {
     backgroundColor: "#ffffff",
@@ -1180,13 +1518,77 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 9
   },
-  linkText: {
-    color: "#1f6f73",
+  listBlock: {
+    gap: 10
+  },
+  modalBackdrop: {
+    bottom: 0,
+    left: 0,
+    position: "absolute",
+    right: 0,
+    top: 0
+  },
+  modalBody: {
+    maxHeight: 620
+  },
+  modalBodyContent: {
+    padding: 18
+  },
+  modalCard: {
+    backgroundColor: "#ffffff",
+    borderColor: "#d9e4ea",
+    borderRadius: 8,
+    borderWidth: 1,
+    maxWidth: 760,
+    overflow: "hidden",
+    width: "92%"
+  },
+  modalCloseButton: {
+    alignItems: "center",
+    backgroundColor: "#f7fafb",
+    borderColor: "#c9d8df",
+    borderRadius: 8,
+    borderWidth: 1,
+    minHeight: 38,
+    paddingHorizontal: 13,
+    justifyContent: "center"
+  },
+  modalCloseText: {
+    color: "#53666f",
     fontSize: 13,
     fontWeight: "800"
   },
-  listBlock: {
-    gap: 10
+  modalHeader: {
+    alignItems: "flex-start",
+    backgroundColor: "#eef7f7",
+    borderBottomColor: "#d9e4ea",
+    borderBottomWidth: 1,
+    flexDirection: "row",
+    gap: 14,
+    justifyContent: "space-between",
+    padding: 18
+  },
+  modalOverlay: {
+    alignItems: "center",
+    backgroundColor: "rgba(23, 33, 38, 0.54)",
+    flex: 1,
+    justifyContent: "center",
+    padding: 18
+  },
+  modalSubtitle: {
+    color: "#53666f",
+    fontSize: 13,
+    fontWeight: "700",
+    lineHeight: 18,
+    marginTop: 4
+  },
+  modalTitle: {
+    color: "#172126",
+    fontSize: 18,
+    fontWeight: "800"
+  },
+  modalTitleBlock: {
+    flex: 1
   },
   optionBlock: {
     gap: 6
@@ -1249,9 +1651,16 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "800"
   },
+  profileColumn: {
+    flex: 1,
+    gap: 12,
+    minWidth: 320
+  },
   recordRow: {
     alignItems: "flex-start",
     backgroundColor: "#f7fafb",
+    borderColor: "#edf3f6",
+    borderWidth: 1,
     borderRadius: 8,
     flexDirection: "row",
     gap: 12,
@@ -1287,6 +1696,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "800"
   },
+  sectionHeaderRow: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: 12,
+    justifyContent: "space-between"
+  },
   sectionLabel: {
     color: "#172126",
     fontSize: 14,
@@ -1304,17 +1719,64 @@ const styles = StyleSheet.create({
     padding: 12
   },
   selectedRow: {
+    backgroundColor: "#eef7f7",
     borderColor: "#1f6f73",
-    borderWidth: 1
+    borderWidth: 2
+  },
+  selectedEyebrow: {
+    color: "#1f6f73",
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0,
+    marginBottom: 3,
+    textTransform: "uppercase"
+  },
+  selectedHint: {
+    color: "#1f6f73",
+    fontSize: 12,
+    fontWeight: "800",
+    marginTop: 7
   },
   selectedTitle: {
     color: "#172126",
     fontSize: 15,
     fontWeight: "800"
   },
+  summaryPill: {
+    backgroundColor: "#ffffff",
+    borderColor: "#b9d8d6",
+    borderRadius: 8,
+    borderWidth: 1,
+    minWidth: 78,
+    paddingHorizontal: 10,
+    paddingVertical: 8
+  },
+  summaryPillLabel: {
+    color: "#53666f",
+    fontSize: 11,
+    fontWeight: "800",
+    marginTop: 2
+  },
+  summaryPillRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 10
+  },
+  summaryPillValue: {
+    color: "#172126",
+    fontSize: 14,
+    fontWeight: "800"
+  },
   subsectionTitle: {
     color: "#172126",
     fontSize: 15,
     fontWeight: "800"
+  },
+  workspaceGrid: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 14
   }
 });

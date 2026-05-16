@@ -5,7 +5,6 @@ export type {
   CarbonActivity,
   CarbonAdvisory,
   CarbonDealer,
-  CarbonLanguage,
   CarbonProfile,
   CarbonProgramSnapshot,
   CarbonWeatherSnapshot,

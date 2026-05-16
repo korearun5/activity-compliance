@@ -51,7 +51,9 @@ Thumbs.db
 *.tmp
 *.swp
 *.swo
-.vscode/
+.vscode/*
+!.vscode/
+!.vscode/settings.json
 .idea/
 *.iws
 *.iml

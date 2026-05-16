@@ -17,7 +17,6 @@ export type CarbonProfileResponse = {
   gpsLatitude: number | null;
   gpsLongitude: number | null;
   id: Id;
-  languagePreference: string | null;
   livestockCount: number | null;
   mobileNumber: string | null;
   participantType: CarbonParticipantType;
@@ -44,7 +43,6 @@ export type CarbonProfileRequest = {
   fpoMemberProfileId?: Id;
   gpsLatitude?: number;
   gpsLongitude?: number;
-  languagePreference?: string;
   livestockCount?: number;
   mobileNumber?: string;
   participantType?: CarbonParticipantType;

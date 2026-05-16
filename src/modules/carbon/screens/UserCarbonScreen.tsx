@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { AdvisoryRecord, getAdvisories } from "../../../data/advisoryStore";
 import { StatusBadge } from "../../../ui/StatusBadge";
@@ -18,16 +18,26 @@ type UserCarbonScreenProps = {
 };
 
 type FarmerCarbonSnapshot = Awaited<ReturnType<typeof getFarmerCarbonSnapshot>>;
+type CarbonUserSectionId = "home" | "farm" | "activities" | "advisory" | "marketplace";
+
+const carbonUserSections: { id: CarbonUserSectionId; label: string }[] = [
+  { id: "home", label: "Home" },
+  { id: "farm", label: "Farm" },
+  { id: "activities", label: "Activities" },
+  { id: "advisory", label: "Advisory" },
+  { id: "marketplace", label: "Marketplace" }
+];
 
 export function UserCarbonScreen({ username }: UserCarbonScreenProps) {
+  const [activeSection, setActiveSection] = useState<CarbonUserSectionId>("home");
   const [snapshot, setSnapshot] = useState<FarmerCarbonSnapshot | null>(null);
   const [advisories, setAdvisories] = useState<AdvisoryRecord[]>([]);
   const [liveError, setLiveError] = useState("");
   const [livePlots, setLivePlots] = useState<CarbonFarmPlotRecord[]>([]);
   const [liveProfile, setLiveProfile] = useState<CarbonProfileRecord | null>(null);
-  const [liveSoilProfiles, setLiveSoilProfiles] = useState<
-    CarbonSoilProfileRecord[]
-  >([]);
+  const [liveSoilProfiles, setLiveSoilProfiles] = useState<CarbonSoilProfileRecord[]>(
+    []
+  );
 
   useEffect(() => {
     async function loadCarbonData() {
@@ -55,7 +65,9 @@ export function UserCarbonScreen({ username }: UserCarbonScreenProps) {
         setLiveProfile(null);
         setLivePlots([]);
         setLiveSoilProfiles([]);
-        setLiveError(error instanceof Error ? error.message : "Carbon profile unavailable.");
+        setLiveError(
+          error instanceof Error ? error.message : "Carbon profile unavailable."
+        );
       }
     }
 
@@ -68,7 +80,8 @@ export function UserCarbonScreen({ username }: UserCarbonScreenProps) {
     }
 
     const liveArea =
-      liveProfile?.totalLandHoldingAcres ?? sum(livePlots.map((plot) => plot.areaAcres));
+      liveProfile?.totalLandHoldingAcres ??
+      sum(livePlots.map((plot) => plot.areaAcres));
     const primarySoilProfile = liveSoilProfiles[0];
     return [
       {
@@ -121,221 +134,284 @@ export function UserCarbonScreen({ username }: UserCarbonScreenProps) {
   return (
     <View style={styles.section}>
       <View>
-        <Text style={styles.pageTitle}>Carbon dashboard</Text>
+        <Text style={styles.pageTitle}>Carbon program</Text>
         <Text style={styles.pageCopy}>
-          Soil carbon, activity evidence, advisory, and nearby support for your
-          Carbon program.
+          Soil carbon, activity evidence, advisory, and nearby support for your Carbon
+          program.
         </Text>
       </View>
 
       {liveError ? <Text style={styles.errorText}>{liveError}</Text> : null}
 
-      <View style={styles.statsGrid}>
-        {summary.map((item) => (
-          <View key={item.label} style={styles.statCard}>
-            <Text style={styles.statValue}>{item.value}</Text>
-            <Text style={styles.statLabel}>{item.label}</Text>
-          </View>
-        ))}
-      </View>
+      <CarbonSectionTabs
+        activeSection={activeSection}
+        onChange={setActiveSection}
+        sections={carbonUserSections}
+      />
 
-      <View style={styles.card}>
-        <View style={styles.cardHeader}>
-          <View style={styles.cardHeaderText}>
-            <Text style={styles.sectionTitle}>Weather snapshot</Text>
-            <Text style={styles.cardDescription}>
-              {snapshot.weatherSnapshot.condition} -{" "}
-              {snapshot.weatherSnapshot.humidityPercent}% humidity - rain risk{" "}
-              {snapshot.weatherSnapshot.rainfallRisk}
-            </Text>
-            <Text style={styles.cardMeta}>{snapshot.weatherSnapshot.advisory}</Text>
+      {activeSection === "home" ? (
+        <>
+          <View style={styles.statsGrid}>
+            {summary.map((item) => (
+              <View key={item.label} style={styles.statCard}>
+                <Text style={styles.statValue}>{item.value}</Text>
+                <Text style={styles.statLabel}>{item.label}</Text>
+              </View>
+            ))}
           </View>
-          <StatusBadge label={snapshot.weatherSnapshot.updatedAt} tone="neutral" />
-        </View>
-      </View>
 
-      <View style={styles.card}>
-        <View style={styles.cardHeader}>
-          <View style={styles.cardHeaderText}>
-            <Text style={styles.cardTitle}>
-              {liveProfile?.carbonIdentityId ?? snapshot.profile.carbonIdentityId}
-            </Text>
-            <Text style={styles.cardDescription}>
-              {liveProfile?.displayName ?? snapshot.profile.farmerName} -{" "}
-              {[liveProfile?.village, liveProfile?.taluka].filter(Boolean).join(", ") ||
-                `${snapshot.profile.village}, ${snapshot.profile.taluka}`}
-            </Text>
-            <Text style={styles.cardMeta}>
-              {liveProfile?.tillageStatus ?? snapshot.profile.tillageStatus} -{" "}
-              {liveProfile?.languagePreference ?? snapshot.profile.language}
-            </Text>
-          </View>
-          <StatusBadge
-            label={liveProfile?.bankStatus ?? snapshot.profile.bankStatus}
-            tone={
-              (liveProfile?.bankStatus ?? snapshot.profile.bankStatus) === "Linked"
-                ? "good"
-                : "warning"
-            }
-          />
-        </View>
-        <View style={styles.tagRow}>
-          {(liveProfile
-            ? [
-                liveProfile.documentStatus ?? "Documents pending",
-                liveProfile.aadhaarStatus ?? "Aadhaar optional",
-                liveProfile.status
-              ]
-            : snapshot.profile.documents
-          ).map((documentLabel) => (
-            <View key={documentLabel} style={styles.tag}>
-              <Text style={styles.tagText}>{documentLabel}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      {livePlots.length ? (
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Farm plots</Text>
-          {livePlots.map((plot) => (
-            <View key={plot.id} style={styles.listRow}>
-              <View style={styles.rowText}>
-                <Text style={styles.rowTitle}>{plot.farmName}</Text>
-                <Text style={styles.rowMeta}>
-                  {formatNumber(plot.areaAcres)} ac - {plot.latitude}, {plot.longitude}
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <View style={styles.cardHeaderText}>
+                <Text style={styles.sectionTitle}>Weather snapshot</Text>
+                <Text style={styles.cardDescription}>
+                  {snapshot.weatherSnapshot.condition} -{" "}
+                  {snapshot.weatherSnapshot.humidityPercent}% humidity - rain risk{" "}
+                  {snapshot.weatherSnapshot.rainfallRisk}
                 </Text>
-                <Text style={styles.rowMeta}>
-                  {[plot.primaryCrop, plot.irrigationSource, plot.tillageStatus]
+                <Text style={styles.cardMeta}>{snapshot.weatherSnapshot.advisory}</Text>
+              </View>
+              <StatusBadge label={snapshot.weatherSnapshot.updatedAt} tone="neutral" />
+            </View>
+          </View>
+        </>
+      ) : null}
+
+      {activeSection === "farm" ? (
+        <>
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <View style={styles.cardHeaderText}>
+                <Text style={styles.cardTitle}>
+                  {liveProfile?.carbonIdentityId ?? snapshot.profile.carbonIdentityId}
+                </Text>
+                <Text style={styles.cardDescription}>
+                  {liveProfile?.displayName ?? snapshot.profile.farmerName} -{" "}
+                  {[liveProfile?.village, liveProfile?.taluka]
                     .filter(Boolean)
-                    .join(" - ") || "Plot context not set"}
+                    .join(", ") ||
+                    `${snapshot.profile.village}, ${snapshot.profile.taluka}`}
+                </Text>
+                <Text style={styles.cardMeta}>
+                  {liveProfile?.tillageStatus ?? snapshot.profile.tillageStatus} -{" "}
+                  {liveProfile?.documentStatus ?? "Documents pending"}
                 </Text>
               </View>
-              <StatusBadge label={plot.status} tone="neutral" />
+              <StatusBadge
+                label={liveProfile?.bankStatus ?? snapshot.profile.bankStatus}
+                tone={
+                  (liveProfile?.bankStatus ?? snapshot.profile.bankStatus) === "Linked"
+                    ? "good"
+                    : "warning"
+                }
+              />
+            </View>
+            <View style={styles.tagRow}>
+              {(liveProfile
+                ? [
+                    liveProfile.documentStatus ?? "Documents pending",
+                    liveProfile.aadhaarStatus ?? "Aadhaar optional",
+                    liveProfile.status
+                  ]
+                : snapshot.profile.documents
+              ).map((documentLabel) => (
+                <View key={documentLabel} style={styles.tag}>
+                  <Text style={styles.tagText}>{documentLabel}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          {livePlots.length ? (
+            <View style={styles.card}>
+              <Text style={styles.sectionTitle}>Farm plots</Text>
+              {livePlots.map((plot) => (
+                <View key={plot.id} style={styles.listRow}>
+                  <View style={styles.rowText}>
+                    <Text style={styles.rowTitle}>{plot.farmName}</Text>
+                    <Text style={styles.rowMeta}>
+                      {formatNumber(plot.areaAcres)} ac - {plot.latitude},{" "}
+                      {plot.longitude}
+                    </Text>
+                    <Text style={styles.rowMeta}>
+                      {[plot.primaryCrop, plot.irrigationSource, plot.tillageStatus]
+                        .filter(Boolean)
+                        .join(" - ") || "Plot context not set"}
+                    </Text>
+                  </View>
+                  <StatusBadge label={plot.status} tone="neutral" />
+                </View>
+              ))}
+            </View>
+          ) : null}
+
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>Soil profile</Text>
+            {liveSoilProfiles[0] ? (
+              <View style={styles.metricGrid}>
+                <Metric
+                  label="SOC"
+                  value={
+                    liveSoilProfiles[0].soilOrganicCarbonPercent !== undefined
+                      ? `${liveSoilProfiles[0].soilOrganicCarbonPercent}%`
+                      : "Not set"
+                  }
+                />
+                <Metric label="pH" value={liveSoilProfiles[0].ph ?? "Not set"} />
+                <Metric
+                  label="EC"
+                  value={liveSoilProfiles[0].electricalConductivity ?? "Not set"}
+                />
+                <Metric
+                  label="Nitrogen"
+                  value={liveSoilProfiles[0].nitrogenKgHa ?? "Not set"}
+                />
+                <Metric
+                  label="Phosphorus"
+                  value={liveSoilProfiles[0].phosphorusKgHa ?? "Not set"}
+                />
+                <Metric
+                  label="Potassium"
+                  value={liveSoilProfiles[0].potassiumKgHa ?? "Not set"}
+                />
+                <Metric
+                  label="Texture"
+                  value={liveSoilProfiles[0].texture ?? "Not set"}
+                />
+                <Metric
+                  label="Report"
+                  value={liveSoilProfiles[0].reportFileName ?? "Not linked"}
+                />
+              </View>
+            ) : (
+              <>
+                <View style={styles.metricGrid}>
+                  <Metric
+                    label="SOC"
+                    value={`${snapshot.soilProfile.soilOrganicCarbonPercent}%`}
+                  />
+                  <Metric label="pH" value={snapshot.soilProfile.ph} />
+                  <Metric label="EC" value={snapshot.soilProfile.ec} />
+                  <Metric label="NDVI" value={snapshot.soilProfile.ndvi} />
+                  <Metric label="Texture" value={snapshot.soilProfile.texture} />
+                  <Metric
+                    label="Microbial count"
+                    value={snapshot.soilProfile.microbialCount}
+                  />
+                </View>
+                <Text style={styles.cardMeta}>
+                  Recommended inputs:{" "}
+                  {snapshot.soilProfile.recommendedInputs.join(", ")}
+                </Text>
+              </>
+            )}
+          </View>
+        </>
+      ) : null}
+
+      {activeSection === "activities" ? (
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Carbon activities</Text>
+          {snapshot.activities.map((activity) => (
+            <View key={activity.id} style={styles.listRow}>
+              <View style={styles.rowText}>
+                <Text style={styles.rowTitle}>{activity.category}</Text>
+                <Text style={styles.rowMeta}>
+                  {activity.crop} - {activity.inputUsed} - {activity.quantity}
+                </Text>
+                <Text style={styles.rowMeta}>
+                  Score {activity.activityScore} - {activity.emissionReductionTco2e}{" "}
+                  tCO2e
+                </Text>
+              </View>
+              <StatusBadge
+                label={activity.verificationStatus}
+                tone={activity.verificationStatus === "Verified" ? "good" : "warning"}
+              />
             </View>
           ))}
         </View>
       ) : null}
 
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Soil profile</Text>
-        {liveSoilProfiles[0] ? (
-          <View style={styles.metricGrid}>
-            <Metric
-              label="SOC"
-              value={
-                liveSoilProfiles[0].soilOrganicCarbonPercent !== undefined
-                  ? `${liveSoilProfiles[0].soilOrganicCarbonPercent}%`
-                  : "Not set"
-              }
-            />
-            <Metric label="pH" value={liveSoilProfiles[0].ph ?? "Not set"} />
-            <Metric
-              label="EC"
-              value={liveSoilProfiles[0].electricalConductivity ?? "Not set"}
-            />
-            <Metric
-              label="Nitrogen"
-              value={liveSoilProfiles[0].nitrogenKgHa ?? "Not set"}
-            />
-            <Metric
-              label="Phosphorus"
-              value={liveSoilProfiles[0].phosphorusKgHa ?? "Not set"}
-            />
-            <Metric
-              label="Potassium"
-              value={liveSoilProfiles[0].potassiumKgHa ?? "Not set"}
-            />
-            <Metric label="Texture" value={liveSoilProfiles[0].texture ?? "Not set"} />
-            <Metric
-              label="Report"
-              value={liveSoilProfiles[0].reportFileName ?? "Not linked"}
-            />
-          </View>
-        ) : (
-          <>
-            <View style={styles.metricGrid}>
-              <Metric
-                label="SOC"
-                value={`${snapshot.soilProfile.soilOrganicCarbonPercent}%`}
-              />
-              <Metric label="pH" value={snapshot.soilProfile.ph} />
-              <Metric label="EC" value={snapshot.soilProfile.ec} />
-              <Metric label="NDVI" value={snapshot.soilProfile.ndvi} />
-              <Metric label="Texture" value={snapshot.soilProfile.texture} />
-              <Metric
-                label="Microbial count"
-                value={snapshot.soilProfile.microbialCount}
-              />
-            </View>
-            <Text style={styles.cardMeta}>
-              Recommended inputs: {snapshot.soilProfile.recommendedInputs.join(", ")}
-            </Text>
-          </>
-        )}
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Carbon activities</Text>
-        {snapshot.activities.map((activity) => (
-          <View key={activity.id} style={styles.listRow}>
-            <View style={styles.rowText}>
-              <Text style={styles.rowTitle}>{activity.category}</Text>
-              <Text style={styles.rowMeta}>
-                {activity.crop} - {activity.inputUsed} - {activity.quantity}
-              </Text>
-              <Text style={styles.rowMeta}>
-                Score {activity.activityScore} - {activity.emissionReductionTco2e} tCO2e
-              </Text>
-            </View>
-            <StatusBadge
-              label={activity.verificationStatus}
-              tone={activity.verificationStatus === "Verified" ? "good" : "warning"}
-            />
-          </View>
-        ))}
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Advisory alerts</Text>
-        {advisories.length ? (
-          advisories.map((advisory) => (
-            <View key={advisory.id} style={styles.listRow}>
-              <View style={styles.rowText}>
-                <Text style={styles.rowTitle}>{advisory.title}</Text>
-                <Text style={styles.rowMeta}>{advisory.message}</Text>
-                <Text style={styles.rowMeta}>
-                  {[advisory.cropName, advisory.seasonName]
-                    .filter(Boolean)
-                    .join(" / ") || "General advisory"}
-                </Text>
+      {activeSection === "advisory" ? (
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Advisory alerts</Text>
+          {advisories.length ? (
+            advisories.map((advisory) => (
+              <View key={advisory.id} style={styles.listRow}>
+                <View style={styles.rowText}>
+                  <Text style={styles.rowTitle}>{advisory.title}</Text>
+                  <Text style={styles.rowMeta}>{advisory.message}</Text>
+                  <Text style={styles.rowMeta}>
+                    {[advisory.cropName, advisory.seasonName]
+                      .filter(Boolean)
+                      .join(" / ") || "General advisory"}
+                  </Text>
+                </View>
+                <StatusBadge label="Published" tone="good" />
               </View>
-              <StatusBadge label="Published" tone="good" />
-            </View>
-          ))
-        ) : (
-          <Text style={styles.cardDescription}>No advisory alerts are available.</Text>
-        )}
-      </View>
+            ))
+          ) : (
+            <Text style={styles.cardDescription}>
+              No advisory alerts are available.
+            </Text>
+          )}
+        </View>
+      ) : null}
 
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Nearby dealers and labs</Text>
-        {snapshot.dealers.map((dealer) => (
-          <View key={dealer.id} style={styles.listRow}>
-            <View style={styles.rowText}>
-              <Text style={styles.rowTitle}>{dealer.name}</Text>
-              <Text style={styles.rowMeta}>
-                {dealer.category} - {dealer.distanceKm} km - rating {dealer.rating}
-              </Text>
-              <Text style={styles.rowMeta}>{dealer.products.join(", ")}</Text>
+      {activeSection === "marketplace" ? (
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Nearby dealers and labs</Text>
+          {snapshot.dealers.map((dealer) => (
+            <View key={dealer.id} style={styles.listRow}>
+              <View style={styles.rowText}>
+                <Text style={styles.rowTitle}>{dealer.name}</Text>
+                <Text style={styles.rowMeta}>
+                  {dealer.category} - {dealer.distanceKm} km - rating {dealer.rating}
+                </Text>
+                <Text style={styles.rowMeta}>{dealer.products.join(", ")}</Text>
+              </View>
+              <StatusBadge
+                label={dealer.stockStatus}
+                tone={dealer.stockStatus === "Available" ? "good" : "warning"}
+              />
             </View>
-            <StatusBadge
-              label={dealer.stockStatus}
-              tone={dealer.stockStatus === "Available" ? "good" : "warning"}
-            />
-          </View>
-        ))}
-      </View>
+          ))}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+function CarbonSectionTabs({
+  activeSection,
+  onChange,
+  sections
+}: {
+  activeSection: CarbonUserSectionId;
+  onChange: (section: CarbonUserSectionId) => void;
+  sections: { id: CarbonUserSectionId; label: string }[];
+}) {
+  return (
+    <View style={styles.sectionTabs}>
+      {sections.map((section) => {
+        const isActive = activeSection === section.id;
+
+        return (
+          <Pressable
+            key={section.id}
+            accessibilityRole="button"
+            style={[styles.sectionTab, isActive && styles.sectionTabActive]}
+            onPress={() => onChange(section.id)}
+          >
+            <Text
+              style={[styles.sectionTabText, isActive && styles.sectionTabTextActive]}
+            >
+              {section.label}
+            </Text>
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
@@ -443,6 +519,31 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700",
     padding: 10
+  },
+  sectionTab: {
+    backgroundColor: "#ffffff",
+    borderColor: "#c9d8df",
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8
+  },
+  sectionTabActive: {
+    backgroundColor: "#1f6f73",
+    borderColor: "#1f6f73"
+  },
+  sectionTabs: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8
+  },
+  sectionTabText: {
+    color: "#53666f",
+    fontSize: 13,
+    fontWeight: "800"
+  },
+  sectionTabTextActive: {
+    color: "#ffffff"
   },
   cardHeader: {
     alignItems: "flex-start",

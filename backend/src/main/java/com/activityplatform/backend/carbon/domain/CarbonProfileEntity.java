@@ -51,9 +51,6 @@ public class CarbonProfileEntity {
   @Column(name = "mobile_number")
   private String mobileNumber;
 
-  @Column(name = "language_preference")
-  private String languagePreference;
-
   private String village;
 
   private String taluka;
@@ -114,7 +111,6 @@ public class CarbonProfileEntity {
       CarbonParticipantType participantType,
       String displayName,
       String mobileNumber,
-      String languagePreference,
       String village,
       String taluka,
       String districtName,
@@ -140,7 +136,6 @@ public class CarbonProfileEntity {
     this.participantType = participantType;
     this.displayName = displayName;
     this.mobileNumber = mobileNumber;
-    this.languagePreference = languagePreference;
     this.village = village;
     this.taluka = taluka;
     this.districtName = districtName;
@@ -193,10 +188,6 @@ public class CarbonProfileEntity {
 
   public String getMobileNumber() {
     return mobileNumber;
-  }
-
-  public String getLanguagePreference() {
-    return languagePreference;
   }
 
   public String getVillage() {
@@ -271,7 +262,6 @@ public class CarbonProfileEntity {
       CarbonParticipantType participantType,
       String displayName,
       String mobileNumber,
-      String languagePreference,
       String village,
       String taluka,
       String districtName,
@@ -295,7 +285,6 @@ public class CarbonProfileEntity {
     this.participantType = participantType;
     this.displayName = displayName;
     this.mobileNumber = mobileNumber;
-    this.languagePreference = languagePreference;
     this.village = village;
     this.taluka = taluka;
     this.districtName = districtName;

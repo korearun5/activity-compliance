@@ -108,6 +108,33 @@ Remove-Item -Force expo-web*.log -ErrorAction SilentlyContinue
 Keep `.env.example` and `.env.production.example`. Private `.env` files are
 ignored by Git and can be recreated from `.env.example` when needed.
 
+## Local PostgreSQL Volume Safety
+
+Both the root Docker Compose stack and `backend/compose.yaml` must point to the
+same local PostgreSQL Docker volume:
+
+```text
+backend_activity-platform-postgres-data
+```
+
+This volume is persistent across normal Docker restarts. Data is removed only
+when the volume is deleted, for example with `docker compose down -v`, Docker
+Desktop volume cleanup, or a manual volume delete.
+
+If Carbon or FPO records appear to vanish after a restart, first check that only
+one project PostgreSQL container is running and that it is using the shared
+volume:
+
+```powershell
+docker ps -a
+docker volume ls
+docker compose exec -T postgres psql "postgresql://activity_app:activity_app@localhost:5432/activity_platform" -c "select count(*) from carbon_profiles;"
+```
+
+Do not start an older stopped PostgreSQL container from Docker Desktop by hand.
+Use one of the compose commands in this runbook so the container is recreated
+with the shared volume.
+
 ## Fresh Start: Full Docker Stack
 
 From the repository root:

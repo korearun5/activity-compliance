@@ -38,7 +38,8 @@ export async function loginWithBackend(
       password,
       tenantCode: appConfig.defaultTenantCode,
       username
-    }
+    },
+    { accessToken: null }
   );
 }
 

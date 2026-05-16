@@ -34,6 +34,13 @@ Use with:
 | FPO reuse | Carbon may reference FPO member profiles where useful, but Carbon identity is stored separately. |
 | Source handover | Carbon-only source distribution must include shared core plus Carbon, not complete unlicensed FPO workflows. |
 
+## UI Language Preference
+
+English, Hindi, and Marathi belong to the app shell/localization layer. Store
+the selected language as a user/app preference when `CARBON-SHELL-001` is
+implemented. Do not store UI language on `carbon_profiles` or treat it as
+farmer/profile data.
+
 ## Carbon Profile
 
 Table: `carbon_profiles`
@@ -52,7 +59,6 @@ standalone app package.
 | Participant type | Yes | `FARMER`, `FPO_FPC`, `AGRONOMIST` | Based on App Flow login/user types. |
 | Display name | Yes | Text | Farmer or participant name. |
 | Mobile number | No | Phone text | OTP validation waits for Phase 2/provider decision. |
-| Language preference | No | `English`, `Hindi`, `Marathi` | App Flow language choices. |
 | Village | No | Text | Used for filters and grouping. |
 | Taluka | No | Text | Preferred over block. |
 | District | No | Text | Location grouping. |

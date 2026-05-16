@@ -21,8 +21,6 @@ public record CarbonProfileRequest(
     String displayName,
     @Size(max = 40)
     String mobileNumber,
-    @Size(max = 40)
-    String languagePreference,
     @Size(max = 160)
     String village,
     @Size(max = 160)

@@ -1,0 +1,20 @@
+{
+  "files.watcherExclude": {
+    "**/.expo/**": true,
+    "**/node_modules/**": true
+  },
+  "gradle.autoDetect": "off",
+  "gradle.nestedProjects": false,
+  "java.import.exclusions": [
+    "**/.expo/**",
+    "**/node_modules/**"
+  ],
+  "java.import.gradle.enabled": false,
+  "java.import.gradle.wrapper.enabled": false,
+  "java.import.projectSelection": "manual",
+  "java.project.importOnFirstTimeStartup": "disabled",
+  "search.exclude": {
+    "**/.expo/**": true,
+    "**/node_modules/**": true
+  }
+}

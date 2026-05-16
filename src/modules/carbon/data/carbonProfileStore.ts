@@ -26,7 +26,6 @@ export const CARBON_RECORD_STATUSES: CarbonRecordStatus[] = [
   "ARCHIVED"
 ];
 
-export const CARBON_LANGUAGES = ["English", "Hindi", "Marathi"] as const;
 export const CARBON_TILLAGE_STATUSES = [
   "Conventional",
   "Reduced tillage",
@@ -57,7 +56,6 @@ export type CarbonProfileRecord = {
   gpsLatitude?: number;
   gpsLongitude?: number;
   id: string;
-  languagePreference?: string;
   livestockCount?: number;
   mobileNumber?: string;
   participantType: CarbonParticipantType;
@@ -84,7 +82,6 @@ export type CarbonProfileInput = {
   fpoMemberProfileId?: string;
   gpsLatitude?: string;
   gpsLongitude?: string;
-  languagePreference?: string;
   livestockCount?: string;
   mobileNumber?: string;
   participantType: CarbonParticipantType;
@@ -330,7 +327,6 @@ function toCarbonProfile(response: CarbonProfileResponse): CarbonProfileRecord {
     gpsLatitude: response.gpsLatitude ?? undefined,
     gpsLongitude: response.gpsLongitude ?? undefined,
     id: response.id,
-    languagePreference: response.languagePreference ?? undefined,
     livestockCount: response.livestockCount ?? undefined,
     mobileNumber: response.mobileNumber ?? undefined,
     participantType: response.participantType,
@@ -419,7 +415,6 @@ function toCarbonProfileRequest(input: CarbonProfileInput): CarbonProfileRequest
     fpoMemberProfileId: cleanOptional(input.fpoMemberProfileId),
     gpsLatitude,
     gpsLongitude,
-    languagePreference: cleanOptional(input.languagePreference),
     livestockCount: parseOptionalInteger(input.livestockCount, "Livestock count"),
     mobileNumber: cleanOptional(input.mobileNumber),
     participantType: input.participantType,
@@ -596,15 +591,37 @@ function toCarbonError(error: unknown, fallbackMessage: string) {
   }
 
   if (error instanceof ApiClientError) {
+    const message =
+      error.message === "Unable to complete API request."
+        ? fallbackMessage
+        : error.message;
+
     if (error.status === 400) {
-      return new AppError("VALIDATION_FAILED", error.message);
+      return new AppError("VALIDATION_FAILED", message);
     }
 
-    if (error.status === 401 || error.status === 403) {
-      return new AppError("ACCESS_DENIED", error.message);
+    if (error.status === 401) {
+      return new AppError(
+        "ACCESS_DENIED",
+        "Your login session expired. Please sign in again."
+      );
     }
 
-    return new AppError("API_REQUEST_FAILED", error.message);
+    if (error.status === 403) {
+      return new AppError(
+        "ACCESS_DENIED",
+        "Your role or client module settings do not allow Carbon enrollment access."
+      );
+    }
+
+    if (error.status === 0) {
+      return new AppError(
+        "API_REQUEST_FAILED",
+        "Unable to reach the backend API. Confirm Spring Boot is running on http://localhost:8080."
+      );
+    }
+
+    return new AppError("API_REQUEST_FAILED", message);
   }
 
   return new AppError("API_REQUEST_FAILED", fallbackMessage);

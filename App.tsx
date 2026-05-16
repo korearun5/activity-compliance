@@ -11,6 +11,10 @@ import {
   logout,
   Role
 } from "./src/auth/authService";
+import {
+  resetSessionExpiredNotification,
+  subscribeSessionExpired
+} from "./src/core/auth/sessionEvents";
 import { LoginScreen } from "./src/screens/LoginScreen";
 import { RootStackParamList } from "./src/navigation/types";
 import { UserHomeScreen } from "./src/screens/UserHomeScreen";
@@ -21,6 +25,7 @@ export default function App() {
   const [role, setRole] = useState<Role | null>(null);
   const [username, setUsername] = useState<string | null>(null);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
+  const [sessionMessage, setSessionMessage] = useState("");
 
   useEffect(() => {
     async function restoreSession() {
@@ -34,14 +39,26 @@ export default function App() {
     restoreSession();
   }, []);
 
+  useEffect(() => {
+    return subscribeSessionExpired(async (event) => {
+      await logout();
+      setRole(null);
+      setUsername(null);
+      setSessionMessage(event.message);
+    });
+  }, []);
+
   async function handleLogin(username: string, password: string) {
+    setSessionMessage("");
     const signedInRole = await login(username, password);
+    resetSessionExpiredNotification();
     setRole(signedInRole);
     setUsername(username);
   }
 
   async function handleLogout() {
     await logout();
+    setSessionMessage("");
     setRole(null);
     setUsername(null);
   }
@@ -69,7 +86,12 @@ export default function App() {
             </Stack.Screen>
           ) : (
             <Stack.Screen name="Login">
-              {() => <LoginScreen onLogin={handleLogin} />}
+              {() => (
+                <LoginScreen
+                  onLogin={handleLogin}
+                  sessionMessage={sessionMessage}
+                />
+              )}
             </Stack.Screen>
           )}
         </Stack.Navigator>

@@ -1,5 +1,3 @@
-export type CarbonLanguage = "English" | "Hindi" | "Marathi";
-
 export type CarbonProfile = {
   aadhaarStatus: "Optional not captured" | "Provided";
   bankStatus: "Linked" | "Pending";
@@ -11,7 +9,6 @@ export type CarbonProfile = {
   gpsLocation: string;
   id: string;
   irrigationSource: string;
-  language: CarbonLanguage;
   livestockCount: number;
   memberNumber: string;
   mobileNumber: string;
@@ -75,7 +72,6 @@ export type CarbonAdvisory = {
   channel: "In app" | "Voice" | "WhatsApp placeholder";
   createdAt: string;
   id: string;
-  language: CarbonLanguage;
   message: string;
   status: "Draft" | "Published";
   title: string;
@@ -129,7 +125,6 @@ const profiles: CarbonProfile[] = [
     gpsLocation: "18.5204, 73.8567",
     id: "carbon-profile-1",
     irrigationSource: "Drip irrigation",
-    language: "Marathi",
     livestockCount: 3,
     memberNumber: "FPO-001",
     mobileNumber: "9876543210",
@@ -149,7 +144,6 @@ const profiles: CarbonProfile[] = [
     gpsLocation: "18.5789, 74.0021",
     id: "carbon-profile-2",
     irrigationSource: "Borewell",
-    language: "Hindi",
     livestockCount: 5,
     memberNumber: "FPO-002",
     mobileNumber: "9876500123",
@@ -169,7 +163,6 @@ const profiles: CarbonProfile[] = [
     gpsLocation: "17.6805, 74.0183",
     id: "carbon-profile-3",
     irrigationSource: "Canal",
-    language: "English",
     livestockCount: 2,
     memberNumber: "FPO-003",
     mobileNumber: "9876500456",
@@ -294,7 +287,6 @@ const advisories: CarbonAdvisory[] = [
     channel: "In app",
     createdAt: "2026-05-09",
     id: "carbon-advisory-1",
-    language: "Marathi",
     message: "Apply compost before sowing and keep crop residue on the plot.",
     status: "Published",
     title: "Residue retention for carbon build-up"
@@ -304,7 +296,6 @@ const advisories: CarbonAdvisory[] = [
     channel: "Voice",
     createdAt: "2026-05-10",
     id: "carbon-advisory-2",
-    language: "Hindi",
     message: "Use Trichoderma with compost for root-zone microbial support.",
     status: "Draft",
     title: "Biological input reminder"

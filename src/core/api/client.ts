@@ -1,8 +1,10 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+import { notifySessionExpired } from "../auth/sessionEvents";
 import { appConfig } from "../config/appConfig";
 import { storageKeys } from "../storage/storageKeys";
 import { ApiErrorBody, ApiResponse } from "./contracts";
+import { endpoints } from "./endpoints";
 
 type RequestOptions = {
   accessToken?: string | null;
@@ -129,6 +131,14 @@ async function requestJson<TResponse>(
 
   if (!response.ok || !payload?.success) {
     const error = payload && !payload.success ? payload.error : undefined;
+    if (response.status === 401 && shouldExpireSession(path, accessToken)) {
+      notifySessionExpired({
+        message: "Your login session expired. Please sign in again.",
+        path,
+        status: response.status
+      });
+    }
+
     throw new ApiClientError(
       error?.message ?? "Unable to complete API request.",
       response.status,
@@ -145,6 +155,14 @@ async function resolveAccessToken(accessToken: string | null | undefined) {
   }
 
   return AsyncStorage.getItem(storageKeys.auth.accessToken);
+}
+
+function shouldExpireSession(path: string, accessToken: string | null) {
+  if (!accessToken) {
+    return false;
+  }
+
+  return path !== endpoints.auth.login && path !== endpoints.auth.refresh;
 }
 
 function parseApiResponse<TResponse>(text: string) {
