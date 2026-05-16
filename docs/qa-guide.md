@@ -29,6 +29,9 @@ Not final yet:
 
 For live test gaps and completion percentages, use
 [Project Status And Gap Register](project-status-and-gap-register.md).
+For the longer-term quality, TDD, E2E, load-test, backup/restore, and
+reliability backlog, use
+[Foundation Hardening Roadmap](foundation-hardening-roadmap.md).
 
 ## Test Environment
 
@@ -383,7 +386,7 @@ Do not use real farmer/client personal data in development or screenshots.
 - Browser and device matrix.
 - API contract tests.
 - Frontend component/screen tests.
-- Browser/E2E smoke tests.
+- Browser/E2E smoke tests, preferably with Playwright for the web app.
 - Load testing for evidence uploads and reports.
 - Backup/restore test.
 - MinIO storage integration test.
@@ -393,3 +396,20 @@ Do not use real farmer/client personal data in development or screenshots.
 - Security test checklist.
 - Production deployment verification checklist.
 - Client UAT sign-off scenarios.
+
+## Hardening QA Direction
+
+The current suite is enough for development confidence, but not yet a complete
+production-quality automation system. Future hardening should follow these
+rules:
+
+- Write unit tests first for clear business rules, calculations, permission
+  rules, and bug fixes whenever practical.
+- Add integration tests for API, database, module guard, security, and
+  transaction behavior.
+- Add Playwright E2E smoke for the highest-value user journeys before expanding
+  the screen set further.
+- Add k6 or Gatling load tests for API paths; do not use browser E2E as the
+  primary load-test mechanism.
+- Use measurable SLOs such as p95 latency, error rate, RPO, and RTO instead of
+  informal "100%" reliability claims.

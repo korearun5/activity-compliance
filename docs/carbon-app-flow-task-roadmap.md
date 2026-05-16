@@ -1,6 +1,6 @@
 # Carbon App Flow Task Roadmap
 
-Last updated: 2026-05-16
+Last updated: 2026-05-17
 
 This document is the task-wise execution roadmap for the client-provided
 `App Flow.docx`. It should be used for Carbon app sequencing only.
@@ -13,6 +13,8 @@ Related documents:
   tenant subscriptions, and feature-toggle rules.
 - [Project Status And Gap Register](project-status-and-gap-register.md):
   completion percentages, go-live confidence, and open gaps.
+- [Foundation Hardening Roadmap](foundation-hardening-roadmap.md): shared UI,
+  backend, testing, performance, rollback, and operations hardening tasks.
 
 ## Product Direction
 
@@ -77,27 +79,27 @@ Goal: Make the app safe to package as Carbon-only, FPO-only, or full platform.
 Goal: Match the main screens from `App Flow.docx` so the client can see the
 Carbon journey end to end with safe dummy/provisional data.
 
-| ID               | Status    | Task                                       | Acceptance                                                                                                                                                                                                                            |
-| ---------------- | --------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| CARBON-SHELL-001 | Pending   | Add splash and UI language-selection shell | Logo/tagline area exists with app-level English, Hindi, and Marathi UI choices stored as the logged-in user's app preference; this must not be stored as Carbon profile/farmer data.                                                  |
-| CARBON-SHELL-002 | Pending   | Align login/entry screen with user types   | Farmer, FPO/FPC, and Agronomist paths are visible; OTP remains marked Phase 2/provider-dependent.                                                                                                                                     |
-| CARBON-SHELL-003 | Done      | Carbon dashboard widgets                   | Admin and farmer Carbon dashboards show farm area, soil carbon score, credit potential, pending activities, advisory alerts, weather snapshot, and nearby dealers.                                                                    |
-| CARBON-SHELL-004 | In review | Carbon journey navigation model            | Farmer Carbon UI is split into Home, Farm, Activities, Advisory, and Marketplace; admin Carbon UI is split into Overview, Enrollment, Evidence, and Marketplace so forms and operational queues do not confuse the first client demo. |
-| CARBON-SHELL-005 | Pending   | Carbon demo seed dataset                   | Demo includes at least one farmer, farm, soil profile, advisory, activity, dealer, and carbon summary.                                                                                                                                |
+| ID               | Status    | Task                                       | Acceptance                                                                                                                                                                                                                                                                       |
+| ---------------- | --------- | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| CARBON-SHELL-001 | Pending   | Add splash and UI language-selection shell | Logo/tagline area exists with app-level English, Hindi, and Marathi UI choices stored as the logged-in user's app preference; this must not be stored as Carbon profile/farmer data.                                                                                             |
+| CARBON-SHELL-002 | Pending   | Align login/entry screen with user types   | Farmer, FPO/FPC, and Agronomist paths are visible; OTP remains marked Phase 2/provider-dependent.                                                                                                                                                                                |
+| CARBON-SHELL-003 | Done      | Carbon dashboard widgets                   | Admin and farmer Carbon dashboards show farm area, soil carbon score, credit potential, pending activities, advisory alerts, weather snapshot, and nearby dealers.                                                                                                               |
+| CARBON-SHELL-004 | In review | Carbon journey navigation model            | Farmer Carbon UI is split into Home, Farm, Activities, Advisory, and Marketplace; admin Carbon UI is split into Overview, Enrollment, Evidence, and Marketplace. Dense enrollment add/edit flows use focused modal forms with common fields first and advanced fields collapsed. |
+| CARBON-SHELL-005 | Pending   | Carbon demo seed dataset                   | Demo includes at least one farmer, farm, soil profile, advisory, activity, dealer, and carbon summary.                                                                                                                                                                           |
 
 ## Phase C2: Carbon Identity, Farm, And Soil Profile
 
 Goal: Replace dummy profile and soil records with durable backend data that can
 support later verification.
 
-| ID                 | Status    | Task                                     | Acceptance                                                                                                                                                                                |
-| ------------------ | --------- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| CARBON-PROFILE-001 | Done      | Draft carbon data dictionary             | [Carbon Data Dictionary](carbon-data-dictionary.md) defines Carbon identity, participant profile, farm plot, soil profile, and activity-category fields.                                  |
-| CARBON-PROFILE-002 | Done      | Add backend carbon identity/profile APIs | Carbon identity, farm plots, and soil profile metadata APIs are implemented with tenant/module/role scoping and verified by `CarbonProfileControllerIT`.                                  |
-| CARBON-PROFILE-003 | Done      | Add frontend carbon profile forms        | Admin/FPO Carbon screen can list/create/update Carbon profiles, plots, and soil metadata through backend APIs; farmer Carbon screen reads linked backend profile, plot, and soil records. |
-| CARBON-SOIL-001    | Done      | Add durable soil profile schema          | `carbon_soil_profiles` stores SOC, pH, EC, NPK, bulk density, texture, optional biological fields, and report metadata without calculating credits.                                       |
-| CARBON-SOIL-002    | In review | Add soil report upload support           | Soil report metadata, storage key, and URL fields are wired in the Carbon UI/API path; direct PDF/image upload through the storage adapter remains.                                       |
-| CARBON-GEO-001     | Pending   | Add Carbon farm GPS capture              | Point capture works now; boundary drawing remains blocked on map provider.                                                                                                                |
+| ID                 | Status  | Task                                     | Acceptance                                                                                                                                                                                |
+| ------------------ | ------- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| CARBON-PROFILE-001 | Done    | Draft carbon data dictionary             | [Carbon Data Dictionary](carbon-data-dictionary.md) defines Carbon identity, participant profile, farm plot, soil profile, and activity-category fields.                                  |
+| CARBON-PROFILE-002 | Done    | Add backend carbon identity/profile APIs | Carbon identity, farm plots, and soil profile metadata APIs are implemented with tenant/module/role scoping and verified by `CarbonProfileControllerIT`.                                  |
+| CARBON-PROFILE-003 | Done    | Add frontend carbon profile forms        | Admin/FPO Carbon screen can list/create/update Carbon profiles, plots, and soil metadata through backend APIs; farmer Carbon screen reads linked backend profile, plot, and soil records. |
+| CARBON-SOIL-001    | Done    | Add durable soil profile schema          | `carbon_soil_profiles` stores SOC, pH, EC, NPK, bulk density, texture, optional biological fields, and report metadata without calculating credits.                                       |
+| CARBON-SOIL-002    | Done    | Add soil report upload support           | Soil report metadata, storage key, and URL fields are wired in the Carbon UI/API path; direct PDF/image upload uses the shared storage adapter.                                           |
+| CARBON-GEO-001     | Pending | Add Carbon farm GPS capture              | Point capture works now; boundary drawing remains blocked on map provider.                                                                                                                |
 
 ## Phase C3: Farm Activity Tracking And Evidence
 
@@ -106,7 +108,7 @@ Goal: Turn regenerative practices into auditable activity records.
 | ID             | Status  | Task                                          | Acceptance                                                                                                                                                                     |
 | -------------- | ------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | CARBON-ACT-001 | Done    | Seed carbon activity categories               | `carbon_activity_categories` seeds land preparation, sowing, fertigation, irrigation, biological application, compost addition, pruning biomass incorporation, and harvesting. |
-| CARBON-ACT-002 | Pending | Add carbon activity entry flow                | User selects farm, crop, activity, date, input quantity, remarks, and evidence.                                                                                                |
+| CARBON-ACT-002 | Done    | Add carbon activity entry flow                | User selects farm, crop, activity category, date, input quantity, and remarks; evidence count/status is tracked for the next upload/review slice.                              |
 | CARBON-ACT-003 | Pending | Reuse evidence upload and review              | Photos/documents can be uploaded, reviewed, approved, or rejected.                                                                                                             |
 | CARBON-ACT-004 | Pending | Add verification queue for admins/agronomists | Reviewers can see pending carbon activity evidence with filters and status changes.                                                                                            |
 | CARBON-ACT-005 | Pending | Add provisional practice score                | Score is shown as provisional until methodology is approved.                                                                                                                   |
@@ -162,6 +164,7 @@ Goal: Replace placeholders with production providers and operational controls.
 | CARBON-INT-004 | Blocked | AI image verification               | Needs provider, confidence thresholds, rejection process, and audit policy.                                                                                                               |
 | CARBON-OPS-001 | Pending | Add production object storage setup | S3-compatible storage configured for advisory, soil, and activity evidence.                                                                                                               |
 | CARBON-OPS-002 | Pending | Add monitoring and backup runbooks  | Uptime, logs, storage health, database backup, and restore drill are documented and tested.                                                                                               |
+| CARBON-OPS-003 | Pending | Add Carbon load and E2E smoke tests | Playwright covers core Carbon browser flows; k6 or Gatling covers critical API paths such as login, profile list/create, plot/soil save, evidence metadata, and report triggers.          |
 | CARBON-UAT-001 | Done    | Create Carbon UAT guide             | [Carbon UAT Guide](carbon-uat-guide.md) covers Carbon package entry criteria, dashboard, profile, soil, activity, advisory, weather, dealers, module toggles, and source-handover checks. |
 
 ## Next Sprint Target
@@ -175,15 +178,16 @@ Completed in this sprint:
 | `CARBON-PROFILE-002` | Backend APIs for Carbon profiles, farm plots, and soil profile metadata are implemented and Testcontainers-verified. |
 | `CARBON-PROFILE-003` | Frontend Carbon admin/farmer views are wired to backend Carbon profile, plot, and soil metadata APIs.                |
 | `CARBON-SHELL-004`   | Carbon screens now use journey sections so client-facing pages are not mixed with admin data-entry forms.            |
+| `CARBON-SOIL-002`    | Soil report PDF/image upload now stores files through the shared storage adapter and updates soil report metadata.   |
+| `CARBON-ACT-002`     | Carbon activity category listing and durable activity entry are wired through backend APIs and frontend forms.       |
 
 Committed sprint tasks remaining:
 
 | Order | ID                 | Target outcome                                                                                                       |
 | ----- | ------------------ | -------------------------------------------------------------------------------------------------------------------- |
 | 1     | `CARBON-SHELL-004` | Manual review of the new journey sections and any final wording/navigation corrections from client-demo perspective. |
-| 2     | `CARBON-SOIL-002`  | Complete direct PDF/image upload through the storage adapter; stored link/metadata is already wired.                 |
-| 3     | `CARBON-ACT-002`   | Carbon activity entry flow for the App Flow activity categories already seeded in the database.                      |
-| 4     | `CARBON-MOD-006`   | Carbon source distribution package definition so client handover is Carbon-only by contract and structure.           |
+| 2     | `CARBON-MOD-006`   | Carbon source distribution package definition so client handover is Carbon-only by contract and structure.           |
+| 3     | `CARBON-ACT-003`   | Reuse evidence upload/review for Carbon activity records.                                                            |
 
 Stretch tasks, only after committed tasks are green:
 

@@ -1,9 +1,9 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Platform } from "react-native";
 
 import { apiClient } from "../core/api/client";
 import { PageResponse } from "../core/api/contracts";
 import { endpoints } from "../core/api/endpoints";
+import { appendUploadFile } from "../core/api/uploadFile";
 import {
   ActivityStatus,
   ActivityTask,
@@ -19,11 +19,7 @@ type BackendTaskStatus = "DONE" | "NEXT" | "PENDING" | "SKIPPED";
 
 type BackendActivityStatus = "CANCELLED" | "COMPLETED" | "RUNNING";
 
-type BackendEvidenceStatus =
-  | "APPROVED"
-  | "PENDING_REVIEW"
-  | "REJECTED"
-  | "SUBMITTED";
+type BackendEvidenceStatus = "APPROVED" | "PENDING_REVIEW" | "REJECTED" | "SUBMITTED";
 
 export type BackendWorkflowTask = {
   code: string;
@@ -149,16 +145,14 @@ export async function getBackendWorkflowTemplates() {
   return response.content.map(toCropTemplate);
 }
 
-export async function getBackendWorkflowDefinitions(
-  status?: BackendWorkflowStatus
-) {
+export async function getBackendWorkflowDefinitions(status?: BackendWorkflowStatus) {
   const path = status
     ? `${endpoints.workflows.list}?status=${encodeURIComponent(status)}`
     : endpoints.workflows.list;
-  const response = await apiClient.getPaginated<PageResponse<BackendWorkflow>>(
-    path,
-    { size: 100, sort: "createdAt,desc" }
-  );
+  const response = await apiClient.getPaginated<PageResponse<BackendWorkflow>>(path, {
+    size: 100,
+    sort: "createdAt,desc"
+  });
 
   return response.content;
 }
@@ -209,10 +203,10 @@ export async function getBackendActivity(activityId: string) {
 }
 
 export async function startBackendActivity(input: StartBackendActivityInput) {
-  const activity = await apiClient.post<
-    StartBackendActivityInput,
-    BackendActivity
-  >(endpoints.activities.start, input);
+  const activity = await apiClient.post<StartBackendActivityInput, BackendActivity>(
+    endpoints.activities.start,
+    input
+  );
 
   return toCropCycle(activity);
 }
@@ -221,7 +215,9 @@ export async function getBackendProofs(activities: CropCycle[] = []) {
   const evidence = await apiClient.get<BackendEvidence[]>(endpoints.evidence.list);
   const activityById = new Map(activities.map((activity) => [activity.id, activity]));
 
-  return evidence.map((item) => toProofSubmission(item, activityById.get(item.activityId)));
+  return evidence.map((item) =>
+    toProofSubmission(item, activityById.get(item.activityId))
+  );
 }
 
 export async function uploadBackendProof({
@@ -237,7 +233,12 @@ export async function uploadBackendProof({
     formData.append("note", note.trim());
   }
 
-  await appendFile(formData, photoUri);
+  await appendUploadFile(
+    formData,
+    "file",
+    { uri: photoUri },
+    `evidence-${Date.now()}.jpg`
+  );
 
   const evidence = await apiClient.postFormData<BackendEvidence>(
     endpoints.evidence.upload,
@@ -426,47 +427,4 @@ function toDisplayDate(value: string) {
     month: "short",
     year: "numeric"
   });
-}
-
-async function appendFile(formData: FormData, uri: string) {
-  const name = fileNameFromUri(uri);
-  const type = contentTypeFromFilename(name);
-
-  if (Platform.OS === "web") {
-    const response = await fetch(uri);
-    const blob = await response.blob();
-    const typedBlob = new Blob([blob], { type });
-    formData.append("file", typedBlob, name);
-    return;
-  }
-
-  formData.append(
-    "file",
-    {
-      name,
-      type,
-      uri
-    } as unknown as Blob
-  );
-}
-
-function fileNameFromUri(uri: string) {
-  const cleanUri = uri.split("?")[0] ?? uri;
-  const filename = cleanUri.split("/").filter(Boolean).pop();
-  return filename?.includes(".") ? filename : `evidence-${Date.now()}.jpg`;
-}
-
-function contentTypeFromFilename(filename: string) {
-  const extension = filename.split(".").pop()?.toLowerCase();
-
-  switch (extension) {
-    case "png":
-      return "image/png";
-    case "webp":
-      return "image/webp";
-    case "heic":
-      return "image/heic";
-    default:
-      return "image/jpeg";
-  }
 }

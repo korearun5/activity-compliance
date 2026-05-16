@@ -29,6 +29,10 @@ Reasons:
 Use a modular monolith now. Split only the modules that become operationally
 heavy later.
 
+Cross-cutting hardening tasks for reusable UI patterns, backend transaction
+audits, E2E/load testing, observability, backup/restore, and source packaging
+are tracked in [Foundation Hardening Roadmap](foundation-hardening-roadmap.md).
+
 ## Target Architecture Now
 
 Backend:
@@ -111,22 +115,22 @@ Every paid service should be represented as a platform module.
 
 Suggested module codes:
 
-| Module Code | Purpose |
-| --- | --- |
-| `MEMBER_DATA` | Farmer/member profile management. |
-| `LAND_RECORDS` | Landholding records. |
-| `GEO_TAGGING` | Plot coordinates and geo-tag reports. |
-| `CROP_PLANNING` | Crop history and seasonal crop plans. |
-| `INPUT_DEMAND` | Input rules, acreage computation, demand reports. |
-| `ADVISORY` | Advisory templates and farmer/coordinator messages. |
+| Module Code           | Purpose                                              |
+| --------------------- | ---------------------------------------------------- |
+| `MEMBER_DATA`         | Farmer/member profile management.                    |
+| `LAND_RECORDS`        | Landholding records.                                 |
+| `GEO_TAGGING`         | Plot coordinates and geo-tag reports.                |
+| `CROP_PLANNING`       | Crop history and seasonal crop plans.                |
+| `INPUT_DEMAND`        | Input rules, acreage computation, demand reports.    |
+| `ADVISORY`            | Advisory templates and farmer/coordinator messages.  |
 | `ACTIVITY_COMPLIANCE` | Workflow/task timeline, proof upload, audit reports. |
-| `EVIDENCE_REVIEW` | Admin/supervisor proof review. |
-| `REPORT_EXPORT` | PDF/Excel export generation. |
-| `INVENTORY` | Input inventory and stock movement. |
-| `PROCUREMENT` | Produce aggregation/procurement records. |
-| `TRACEABILITY` | Lot tracking, QR traceability, buyer visibility. |
-| `SUSTAINABILITY` | Sustainable practice and carbon-related records. |
-| `ANALYTICS` | Advanced dashboards, forecasting, data marts. |
+| `EVIDENCE_REVIEW`     | Admin/supervisor proof review.                       |
+| `REPORT_EXPORT`       | PDF/Excel export generation.                         |
+| `INVENTORY`           | Input inventory and stock movement.                  |
+| `PROCUREMENT`         | Produce aggregation/procurement records.             |
+| `TRACEABILITY`        | Lot tracking, QR traceability, buyer visibility.     |
+| `SUSTAINABILITY`      | Sustainable practice and carbon-related records.     |
+| `ANALYTICS`           | Advanced dashboards, forecasting, data marts.        |
 
 ## Tenant Module Subscription Model
 
@@ -364,33 +368,34 @@ Only split a module when there is a clear operational reason.
 
 Good candidates:
 
-| Future Service | Split When |
-| --- | --- |
-| Notification service | SMS/WhatsApp/email volume grows or delivery retries need workers. |
-| Report/export service | PDF/Excel jobs become slow or need async workers. |
-| Geospatial/satellite service | NDVI/GIS processing becomes compute-heavy. |
-| IoT ingestion service | Sensor readings become frequent/time-series heavy. |
-| Analytics service | Dashboards need a warehouse, OLAP, or heavy aggregation. |
-| Integration service | Many external APIs need isolated retry/rate-limit handling. |
+| Future Service               | Split When                                                        |
+| ---------------------------- | ----------------------------------------------------------------- |
+| Notification service         | SMS/WhatsApp/email volume grows or delivery retries need workers. |
+| Report/export service        | PDF/Excel jobs become slow or need async workers.                 |
+| Geospatial/satellite service | NDVI/GIS processing becomes compute-heavy.                        |
+| IoT ingestion service        | Sensor readings become frequent/time-series heavy.                |
+| Analytics service            | Dashboards need a warehouse, OLAP, or heavy aggregation.          |
+| Integration service          | Many external APIs need isolated retry/rate-limit handling.       |
 
 Until then, keep the system as a modular monolith.
 
 ## Developer Tasks For Module Foundation
 
-| ID | Status | Task | Notes |
-| --- | --- | --- | --- |
-| MOD-001 | Done | Add module code enum | Includes Phase 1 and future module codes. |
-| MOD-002 | Done | Add `platform_modules` migration | Seeds known modules through Flyway. |
-| MOD-003 | Done | Add `tenant_module_subscriptions` migration | Tenant/module/status relationship. |
-| MOD-004 | Done | Add tenant module repository/service | Queries enabled modules by tenant. |
-| MOD-005 | Done | Add backend module guard | Explicit `TenantModuleService.requireEnabled` check. |
-| MOD-006 | Done | Add `MODULE_NOT_ENABLED` error code | Uses standard API envelope. |
-| MOD-007 | Done | Add endpoint to list enabled modules | `GET /api/v1/platform/modules/enabled`. |
-| MOD-008 | Done | Add admin-only module management API | `GET/PUT /api/v1/platform/module-subscriptions`. |
-| MOD-009 | Done | Add frontend enabled-module store | Loads after login and caches with session. |
-| MOD-010 | Done | Guard frontend navigation tabs | Hides disabled admin tabs. |
-| MOD-011 | Done | Add tests for disabled module access | Targeted integration tests added; require Docker/Testcontainers to run. |
-| MOD-012 | Pending | Document source-handover packaging process | Required before any source delivery. |
+| ID      | Status  | Task                                              | Notes                                                                                                                                       |
+| ------- | ------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| MOD-001 | Done    | Add module code enum                              | Includes Phase 1 and future module codes.                                                                                                   |
+| MOD-002 | Done    | Add `platform_modules` migration                  | Seeds known modules through Flyway.                                                                                                         |
+| MOD-003 | Done    | Add `tenant_module_subscriptions` migration       | Tenant/module/status relationship.                                                                                                          |
+| MOD-004 | Done    | Add tenant module repository/service              | Queries enabled modules by tenant.                                                                                                          |
+| MOD-005 | Done    | Add backend module guard                          | Explicit `TenantModuleService.requireEnabled` check.                                                                                        |
+| MOD-006 | Done    | Add `MODULE_NOT_ENABLED` error code               | Uses standard API envelope.                                                                                                                 |
+| MOD-007 | Done    | Add endpoint to list enabled modules              | `GET /api/v1/platform/modules/enabled`.                                                                                                     |
+| MOD-008 | Done    | Add admin-only module management API              | `GET/PUT /api/v1/platform/module-subscriptions`.                                                                                            |
+| MOD-009 | Done    | Add frontend enabled-module store                 | Loads after login and caches with session.                                                                                                  |
+| MOD-010 | Done    | Guard frontend navigation tabs                    | Hides disabled admin tabs.                                                                                                                  |
+| MOD-011 | Done    | Add tests for disabled module access              | Targeted integration tests added; require Docker/Testcontainers to run.                                                                     |
+| MOD-012 | Pending | Document source-handover packaging process        | Required before any source delivery.                                                                                                        |
+| MOD-013 | Pending | Align existing code with module-boundary standard | Tracked as `HARDEN-003` and `HARDEN-005` in the Foundation Hardening Roadmap; move FPO/Carbon/UI/backend boundaries gradually when touched. |
 
 ## Implemented Module API Surface
 

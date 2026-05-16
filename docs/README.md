@@ -26,6 +26,9 @@ activity-compliance platform.
   required environment variables, and release checklist.
 - [Deployment Security](DEPLOYMENT_SECURITY.md): production security hardening,
   dependency scanning, deployment safeguards, and maintenance checklist.
+- [Foundation Hardening Roadmap](foundation-hardening-roadmap.md): UI/backend
+  standards, TDD/QA strategy, performance/load testing, rollback/file
+  consistency, observability, backup/restore, and future hardening tasks.
 
 ## Architecture And Product Planning
 
@@ -83,6 +86,9 @@ To prevent duplicate status drift:
   [Carbon App Flow Task Roadmap](carbon-app-flow-task-roadmap.md).
 - Keep Carbon field definitions in [Carbon Data Dictionary](carbon-data-dictionary.md)
   and Carbon acceptance scenarios in [Carbon UAT Guide](carbon-uat-guide.md).
+- Keep cross-cutting hardening tasks and standards in
+  [Foundation Hardening Roadmap](foundation-hardening-roadmap.md) so they do not
+  get duplicated inside product-specific roadmaps.
 
 Before client production handoff, create a final client-facing documentation set:
 

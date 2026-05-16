@@ -26,20 +26,20 @@ providers.
 
 The following areas can be built with dummy data now:
 
-| Client Flow Area            | Base We Can Build Now                                               | Notes                                                             |
-| --------------------------- | ------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| Client Flow Area            | Base We Can Build Now                                                | Notes                                                                            |
+| --------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
 | Splash and UI language      | Store app UI language preference and prepare labels                  | English, Hindi, and Marathi are app-level UI choices, not Carbon profile fields. |
-| Farmer/FPO/agronomist roles | Reuse current admin, supervisor, participant roles                  | Add agronomist role only if client wants separate permissions.    |
-| Farmer profile              | Extend FPO member profile with carbon identity fields               | Dummy Aadhaar/bank/document status can be shown now.              |
-| Farm GPS location           | Reuse plot latitude/longitude fields                                | Boundary drawing needs map provider later.                        |
-| Soil profile                | Add dummy soil score, SOC, pH, EC, NPK, texture, biological metrics | Backend tables should wait for final soil report fields.          |
-| Activity tracking           | Reuse current activity/evidence workflow                            | Carbon activity categories can be seeded now.                     |
-| Activity evidence           | Reuse proof photo upload/review                                     | AI verification remains provider-dependent.                       |
-| Advisory                    | Use existing FPO advisory backend and new frontend UI               | SMS/WhatsApp/voice delivery remains provider-dependent.           |
-| Nearby dealers              | Dummy directory and filters                                         | Real dealer onboarding and GPS search need client data/provider.  |
-| Carbon calculator           | Show estimated CO2e, score, and potential from dummy metrics        | Final formula/methodology must be approved before production use. |
-| Reports                     | Reuse report/export foundation                                      | Add carbon-specific export after schema is finalized.             |
-| Admin portal                | Add carbon operations dashboard                                     | Current admin shell is suitable.                                  |
+| Farmer/FPO/agronomist roles | Reuse current admin, supervisor, participant roles                   | Add agronomist role only if client wants separate permissions.                   |
+| Farmer profile              | Extend FPO member profile with carbon identity fields                | Dummy Aadhaar/bank/document status can be shown now.                             |
+| Farm GPS location           | Reuse plot latitude/longitude fields                                 | Boundary drawing needs map provider later.                                       |
+| Soil profile                | Add dummy soil score, SOC, pH, EC, NPK, texture, biological metrics  | Backend tables should wait for final soil report fields.                         |
+| Activity tracking           | Carbon-specific activity records with reusable evidence upload later | Carbon activity categories and activity entries are wired now.                   |
+| Activity evidence           | Reuse proof photo upload/review                                      | AI verification remains provider-dependent.                                      |
+| Advisory                    | Use existing FPO advisory backend and new frontend UI                | SMS/WhatsApp/voice delivery remains provider-dependent.                          |
+| Nearby dealers              | Dummy directory and filters                                          | Real dealer onboarding and GPS search need client data/provider.                 |
+| Carbon calculator           | Show estimated CO2e, score, and potential from dummy metrics         | Final formula/methodology must be approved before production use.                |
+| Reports                     | Reuse report/export foundation                                       | Add carbon-specific export after schema is finalized.                            |
+| Admin portal                | Add carbon operations dashboard                                      | Current admin shell is suitable.                                                 |
 
 ## Current Update
 
@@ -52,7 +52,7 @@ Implemented in the codebase now:
 - Added a `src/modules` registry and moved Carbon screens/data behind the
   `src/modules/carbon` module entry point.
 - Added durable Carbon foundation schema for Carbon profiles, farm plots, soil
-  profiles, and activity categories.
+  profiles, activity categories, and activity records.
 - Added [Carbon Data Dictionary](carbon-data-dictionary.md) and
   [Carbon UAT Guide](carbon-uat-guide.md).
 - Added an admin `Carbon` tab showing:

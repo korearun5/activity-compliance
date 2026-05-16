@@ -14,6 +14,16 @@ export const endpoints = {
     refresh: `${apiRoot}/auth/refresh`
   },
   carbon: {
+    activityCategories: {
+      list: `${apiRoot}/carbon/activity-categories`
+    },
+    activities: {
+      byId: (activityId: string) => `${apiRoot}/carbon/activities/${activityId}`,
+      createForProfile: (profileId: string) =>
+        `${apiRoot}/carbon/profiles/${profileId}/activities`,
+      listByProfile: (profileId: string) =>
+        `${apiRoot}/carbon/profiles/${profileId}/activities`
+    },
     profiles: {
       byId: (profileId: string) => `${apiRoot}/carbon/profiles/${profileId}`,
       create: `${apiRoot}/carbon/profiles`,
@@ -33,7 +43,9 @@ export const endpoints = {
       createForProfile: (profileId: string) =>
         `${apiRoot}/carbon/profiles/${profileId}/soil-profiles`,
       listByProfile: (profileId: string) =>
-        `${apiRoot}/carbon/profiles/${profileId}/soil-profiles`
+        `${apiRoot}/carbon/profiles/${profileId}/soil-profiles`,
+      report: (soilProfileId: string) =>
+        `${apiRoot}/carbon/soil-profiles/${soilProfileId}/report`
     }
   },
   evidence: {

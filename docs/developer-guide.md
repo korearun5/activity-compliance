@@ -33,6 +33,10 @@ For module subscriptions, feature gating, source handover risk, and the
 modular-monolith-first decision, see
 [Modular Platform Strategy](modular-platform-strategy.md).
 
+For cross-cutting hardening tasks and standards that are important but not
+active feature work, see
+[Foundation Hardening Roadmap](foundation-hardening-roadmap.md).
+
 ## Repository Layout
 
 ```text
@@ -281,14 +285,14 @@ Backend:
 
 Frontend:
 
-| Variable                            | Purpose                                      |
-| ----------------------------------- | -------------------------------------------- |
-| `EXPO_PUBLIC_APP_NAME`              | Display app name.                            |
-| `EXPO_PUBLIC_API_BASE_URL`          | Backend API origin, default localhost.       |
-| `EXPO_PUBLIC_API_VERSION`           | API version segment, default `v1`.           |
-| `EXPO_PUBLIC_DEFAULT_TENANT_CODE`   | Default login tenant code for local usage.   |
-| `EXPO_PUBLIC_DEFAULT_LOCALE`        | Locale default, currently `en-IN`.           |
-| `EXPO_PUBLIC_STORAGE_NAMESPACE`     | Frontend storage namespace.                  |
+| Variable                             | Purpose                                                                                                     |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| `EXPO_PUBLIC_APP_NAME`               | Display app name.                                                                                           |
+| `EXPO_PUBLIC_API_BASE_URL`           | Backend API origin, default localhost.                                                                      |
+| `EXPO_PUBLIC_API_VERSION`            | API version segment, default `v1`.                                                                          |
+| `EXPO_PUBLIC_DEFAULT_TENANT_CODE`    | Default login tenant code for local usage.                                                                  |
+| `EXPO_PUBLIC_DEFAULT_LOCALE`         | Locale default, currently `en-IN`.                                                                          |
+| `EXPO_PUBLIC_STORAGE_NAMESPACE`      | Frontend storage namespace.                                                                                 |
 | `EXPO_PUBLIC_ENABLED_CLIENT_MODULES` | Comma-separated client package modules, for example `carbon`, `fpo`, or `carbon,fpo`. Defaults to `carbon`. |
 
 ## Authentication Flow
@@ -436,6 +440,13 @@ Database:
 - Keep reusable app types in `src/core/model/types.ts`.
 - Do not expose local/default credentials in screens.
 - Avoid adding domain-specific assumptions to core folders.
+- Keep operational screens view-first and action-second. Dense add/edit flows
+  should use a modal, drawer, wizard, or dedicated detail page with clear save
+  and cancel behavior.
+- Show common form fields first and place rarely used fields behind advanced
+  sections.
+- When introducing a reusable pattern, prefer extracting it into `src/ui` after
+  the second real use rather than copying bespoke UI blocks across modules.
 
 ## Adding A New Backend Feature
 

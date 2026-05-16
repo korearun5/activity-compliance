@@ -36,6 +36,9 @@ For the deeper component-by-component view and database class diagrams, see
 For module packaging, tenant subscription checks, and the decision to avoid
 microservices until operationally necessary, see
 [Modular Platform Strategy](modular-platform-strategy.md).
+For the future hardening backlog covering UI patterns, TDD, transaction/file
+rollback, load tests, observability, backup/restore, and reusable-code
+alignment, see [Foundation Hardening Roadmap](foundation-hardening-roadmap.md).
 
 ```mermaid
 flowchart LR
@@ -459,3 +462,8 @@ settings are updated together.
 - Add tenant ids to durable business tables.
 - Keep audit events append-only.
 - Prefer clear module boundaries over premature framework abstraction.
+- Keep add/edit UI flows focused: show records and context first, then open
+  modals, drawers, wizards, or detail pages for dense forms.
+- Keep database writes transactionally scoped inside services; treat object
+  storage as a separate resource that needs pending/ready metadata, retry, or
+  cleanup rather than assuming DB plus files are one atomic transaction.

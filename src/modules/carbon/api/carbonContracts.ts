@@ -2,6 +2,23 @@ import { Id } from "../../../core/api/contracts";
 
 export type CarbonParticipantType = "AGRONOMIST" | "FARMER" | "FPO_FPC";
 export type CarbonRecordStatus = "ACTIVE" | "ARCHIVED" | "INACTIVE" | "SUSPENDED";
+export type CarbonActivityVerificationStatus =
+  | "PENDING_EVIDENCE"
+  | "PENDING_REVIEW"
+  | "REJECTED"
+  | "VERIFIED";
+
+export type CarbonActivityCategoryResponse = {
+  code: string;
+  createdAt: string;
+  description: string;
+  evidenceRequired: boolean;
+  id: Id;
+  name: string;
+  sortOrder: number;
+  status: CarbonRecordStatus;
+  updatedAt: string;
+};
 
 export type CarbonProfileResponse = {
   aadhaarStatus: string | null;
@@ -125,4 +142,39 @@ export type CarbonSoilProfileRequest = {
   status?: CarbonRecordStatus;
   testDate?: string;
   texture?: string;
+};
+
+export type CarbonActivityRecordResponse = {
+  activityDate: string;
+  carbonFarmPlotId: Id | null;
+  carbonProfileId: Id;
+  categoryCode: string;
+  categoryId: Id;
+  categoryName: string;
+  createdAt: string;
+  cropName: string;
+  evidenceCount: number;
+  evidenceRequired: boolean;
+  farmName: string | null;
+  id: Id;
+  inputUsed: string | null;
+  quantityUnit: string | null;
+  quantityValue: number | null;
+  remarks: string | null;
+  status: CarbonRecordStatus;
+  tenantId: Id;
+  updatedAt: string;
+  verificationStatus: CarbonActivityVerificationStatus;
+};
+
+export type CarbonActivityRecordRequest = {
+  activityDate: string;
+  carbonFarmPlotId?: Id;
+  categoryId: Id;
+  cropName: string;
+  inputUsed?: string;
+  quantityUnit?: string;
+  quantityValue?: number;
+  remarks?: string;
+  status?: CarbonRecordStatus;
 };

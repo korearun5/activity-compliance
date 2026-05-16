@@ -1,10 +1,12 @@
 package com.activityplatform.backend.carbon.api;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.hamcrest.Matchers.startsWith;
 
 import com.activityplatform.backend.TestDataFactory;
 import com.activityplatform.backend.TestcontainersConfiguration;
@@ -25,6 +27,7 @@ import com.activityplatform.backend.platform.repository.PlatformModuleRepository
 import com.activityplatform.backend.platform.repository.TenantModuleSubscriptionRepository;
 import com.activityplatform.backend.security.Role;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -35,6 +38,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -188,6 +192,65 @@ class CarbonProfileControllerIT {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.data.primaryCrop").value("Wheat"));
 
+    mockMvc.perform(get("/api/v1/carbon/activity-categories")
+            .header("Authorization", "Bearer " + farmerToken))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.length()").value(8))
+        .andExpect(jsonPath("$.data[0].code").value("LAND_PREPARATION"));
+
+    UUID compostCategoryId = UUID.fromString("00000000-0000-0000-0000-000000000306");
+    CarbonActivityRecordRequest activityRequest = new CarbonActivityRecordRequest(
+        plot.id(),
+        compostCategoryId,
+        LocalDate.of(2026, 5, 16),
+        "Paddy",
+        "Farmyard compost",
+        new BigDecimal("25.0000"),
+        "kg",
+        "Applied compost before sowing.",
+        CarbonRecordStatus.ACTIVE
+    );
+    String activityResponse = mockMvc.perform(post("/api/v1/carbon/profiles/"
+            + profile.id() + "/activities")
+            .header("Authorization", "Bearer " + farmerToken)
+            .contentType("application/json")
+            .content(jsonMapper.writeValueAsString(activityRequest)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.categoryName").value("Compost Addition"))
+        .andExpect(jsonPath("$.data.evidenceCount").value(0))
+        .andExpect(jsonPath("$.data.verificationStatus").value("PENDING_EVIDENCE"))
+        .andReturn()
+        .getResponse()
+        .getContentAsString();
+    CarbonActivityRecordResponse activity = readData(
+        activityResponse,
+        CarbonActivityRecordResponse.class
+    );
+
+    CarbonActivityRecordRequest updateActivityRequest = new CarbonActivityRecordRequest(
+        plot.id(),
+        compostCategoryId,
+        LocalDate.of(2026, 5, 16),
+        "Paddy",
+        "Farmyard compost",
+        new BigDecimal("30.0000"),
+        "kg",
+        "Updated after supervisor review.",
+        CarbonRecordStatus.ACTIVE
+    );
+    mockMvc.perform(put("/api/v1/carbon/activities/" + activity.id())
+            .header("Authorization", "Bearer " + coordinatorToken)
+            .contentType("application/json")
+            .content(jsonMapper.writeValueAsString(updateActivityRequest)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.quantityValue").value(30.0000))
+        .andExpect(jsonPath("$.data.remarks").value("Updated after supervisor review."));
+
+    mockMvc.perform(get("/api/v1/carbon/profiles/" + profile.id() + "/activities")
+            .header("Authorization", "Bearer " + farmerToken))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data[0].id").value(activity.id().toString()));
+
     CarbonSoilProfileRequest soilRequest = new CarbonSoilProfileRequest(
         plot.id(),
         LocalDate.of(2026, 5, 15),
@@ -246,10 +309,38 @@ class CarbonProfileControllerIT {
         .andExpect(jsonPath("$.data.soilOrganicCarbonPercent").value(0.7200))
         .andExpect(jsonPath("$.data.ph").value(6.90));
 
+    MockMultipartFile soilReport = new MockMultipartFile(
+        "file",
+        "soil-lab-report.pdf",
+        "application/pdf",
+        "soil report content".getBytes(StandardCharsets.UTF_8)
+    );
+    mockMvc.perform(multipart("/api/v1/carbon/soil-profiles/" + soilProfile.id() + "/report")
+            .file(soilReport)
+            .header("Authorization", "Bearer " + adminToken))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.reportFileName").value("soil-lab-report.pdf"))
+        .andExpect(jsonPath("$.data.reportContentType").value("application/pdf"))
+        .andExpect(jsonPath("$.data.reportStorageKey").value(startsWith(
+            tenant.getId() + "/carbon-soil-report/" + soilProfile.id() + "/"
+        )));
+
+    MockMultipartFile farmerUploadAttempt = new MockMultipartFile(
+        "file",
+        "farmer-soil-report.pdf",
+        "application/pdf",
+        "soil report content".getBytes(StandardCharsets.UTF_8)
+    );
+    mockMvc.perform(multipart("/api/v1/carbon/soil-profiles/" + soilProfile.id() + "/report")
+            .file(farmerUploadAttempt)
+            .header("Authorization", "Bearer " + farmerToken))
+        .andExpect(status().isForbidden());
+
     mockMvc.perform(get("/api/v1/carbon/profiles/" + profile.id() + "/soil-profiles")
             .header("Authorization", "Bearer " + farmerToken))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.data[0].id").value(soilProfile.id().toString()));
+        .andExpect(jsonPath("$.data[0].id").value(soilProfile.id().toString()))
+        .andExpect(jsonPath("$.data[0].reportFileName").value("soil-lab-report.pdf"));
   }
 
   @Test

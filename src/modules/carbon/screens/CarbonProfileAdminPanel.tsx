@@ -1,3 +1,4 @@
+import * as DocumentPicker from "expo-document-picker";
 import { ReactNode, useEffect, useMemo, useState } from "react";
 import {
   Modal,
@@ -18,33 +19,48 @@ import {
   CARBON_PARTICIPANT_TYPES,
   CARBON_RECORD_STATUSES,
   CARBON_TILLAGE_STATUSES,
+  CarbonActivityCategoryRecord,
+  CarbonActivityInput,
+  CarbonActivityRecord,
   CarbonFarmPlotInput,
   CarbonFarmPlotRecord,
   CarbonProfileInput,
   CarbonProfileRecord,
   CarbonSoilProfileInput,
   CarbonSoilProfileRecord,
+  createCarbonActivity,
   createCarbonFarmPlot,
   createCarbonProfile,
   createCarbonSoilProfile,
+  listCarbonActivities,
+  listCarbonActivityCategories,
   listCarbonFarmPlots,
   listCarbonProfiles,
   listCarbonSoilProfiles,
+  updateCarbonActivity,
   updateCarbonFarmPlot,
   updateCarbonProfile,
-  updateCarbonSoilProfile
+  updateCarbonSoilProfile,
+  uploadCarbonSoilReport
 } from "../data/carbonProfileStore";
 
 type CarbonProfileAdminPanelProps = {
   onProfilesLoaded?: (profiles: CarbonProfileRecord[]) => void;
 };
 
-type ActiveEnrollmentForm = "profile" | "plot" | "soil" | null;
+type ActiveEnrollmentForm = "activity" | "profile" | "plot" | "soil" | null;
 
 export function CarbonProfileAdminPanel({
   onProfilesLoaded
 }: CarbonProfileAdminPanelProps) {
   const [activeForm, setActiveForm] = useState<ActiveEnrollmentForm>(null);
+  const [activities, setActivities] = useState<CarbonActivityRecord[]>([]);
+  const [activityCategories, setActivityCategories] = useState<
+    CarbonActivityCategoryRecord[]
+  >([]);
+  const [editingActivity, setEditingActivity] = useState<CarbonActivityRecord | null>(
+    null
+  );
   const [editingPlot, setEditingPlot] = useState<CarbonFarmPlotRecord | null>(null);
   const [editingProfile, setEditingProfile] = useState<CarbonProfileRecord | null>(
     null
@@ -58,6 +74,7 @@ export function CarbonProfileAdminPanel({
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const [soilProfiles, setSoilProfiles] = useState<CarbonSoilProfileRecord[]>([]);
+  const [uploadingReportId, setUploadingReportId] = useState<string | null>(null);
 
   const selectedProfile = useMemo(
     () => profiles.find((profile) => profile.id === selectedProfileId) ?? null,
@@ -80,6 +97,7 @@ export function CarbonProfileAdminPanel({
     if (selectedProfileId) {
       loadProfileDetails(selectedProfileId);
     } else {
+      setActivities([]);
       setPlots([]);
       setSoilProfiles([]);
     }
@@ -90,9 +108,13 @@ export function CarbonProfileAdminPanel({
     setError("");
 
     try {
-      const nextProfiles = await listCarbonProfiles();
+      const [nextProfiles, nextCategories] = await Promise.all([
+        listCarbonProfiles(),
+        listCarbonActivityCategories()
+      ]);
 
       setProfiles(nextProfiles);
+      setActivityCategories(nextCategories);
       onProfilesLoaded?.(nextProfiles);
       setSelectedProfileId((current) => current ?? nextProfiles[0]?.id ?? null);
     } catch (loadError) {
@@ -107,11 +129,13 @@ export function CarbonProfileAdminPanel({
     setError("");
 
     try {
-      const [nextPlots, nextSoilProfiles] = await Promise.all([
+      const [nextActivities, nextPlots, nextSoilProfiles] = await Promise.all([
+        listCarbonActivities(profileId),
         listCarbonFarmPlots(profileId),
         listCarbonSoilProfiles(profileId)
       ]);
 
+      setActivities(nextActivities);
       setPlots(nextPlots);
       setSoilProfiles(nextSoilProfiles);
     } catch (loadError) {
@@ -197,8 +221,65 @@ export function CarbonProfileAdminPanel({
     }
   }
 
+  async function handleActivitySubmit(input: CarbonActivityInput) {
+    if (!selectedProfile) {
+      setError("Select a Carbon profile before saving an activity.");
+      return false;
+    }
+
+    setSavingKey("activity");
+    setError("");
+
+    try {
+      const saved = editingActivity
+        ? await updateCarbonActivity(editingActivity.id, input)
+        : await createCarbonActivity(selectedProfile.id, input);
+
+      setActivities((current) => upsertById(current, saved));
+      setEditingActivity(null);
+      setActiveForm(null);
+      return true;
+    } catch (saveError) {
+      setError(getErrorMessage(saveError, "Unable to save Carbon activity."));
+      return false;
+    } finally {
+      setSavingKey(null);
+    }
+  }
+
+  async function handleSoilReportUpload(soilProfile: CarbonSoilProfileRecord) {
+    setUploadingReportId(soilProfile.id);
+    setError("");
+
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        copyToCacheDirectory: true,
+        multiple: false,
+        type: ["application/pdf", "image/*"]
+      });
+
+      if (result.canceled) {
+        return;
+      }
+
+      const asset = result.assets[0];
+      const saved = await uploadCarbonSoilReport(soilProfile.id, {
+        name: asset.name,
+        type: asset.mimeType,
+        uri: asset.uri
+      });
+
+      setSoilProfiles((current) => upsertById(current, saved));
+    } catch (uploadError) {
+      setError(getErrorMessage(uploadError, "Unable to upload Carbon soil report."));
+    } finally {
+      setUploadingReportId(null);
+    }
+  }
+
   function handleSelectProfile(profile: CarbonProfileRecord) {
     setSelectedProfileId(profile.id);
+    setEditingActivity(null);
     setEditingPlot(null);
     setEditingSoilProfile(null);
     setActiveForm((current) => (current === "profile" ? current : null));
@@ -206,6 +287,7 @@ export function CarbonProfileAdminPanel({
 
   function openProfileForm(profile: CarbonProfileRecord | null = null) {
     setEditingProfile(profile);
+    setEditingActivity(null);
     setEditingPlot(null);
     setEditingSoilProfile(null);
     setActiveForm("profile");
@@ -213,6 +295,7 @@ export function CarbonProfileAdminPanel({
 
   function openPlotForm(plot: CarbonFarmPlotRecord | null = null) {
     setEditingPlot(plot);
+    setEditingActivity(null);
     setEditingProfile(null);
     setEditingSoilProfile(null);
     setActiveForm("plot");
@@ -220,13 +303,23 @@ export function CarbonProfileAdminPanel({
 
   function openSoilForm(profile: CarbonSoilProfileRecord | null = null) {
     setEditingSoilProfile(profile);
+    setEditingActivity(null);
     setEditingProfile(null);
     setEditingPlot(null);
     setActiveForm("soil");
   }
 
+  function openActivityForm(activity: CarbonActivityRecord | null = null) {
+    setEditingActivity(activity);
+    setEditingProfile(null);
+    setEditingPlot(null);
+    setEditingSoilProfile(null);
+    setActiveForm("activity");
+  }
+
   function closeActiveForm() {
     setActiveForm(null);
+    setEditingActivity(null);
     setEditingProfile(null);
     setEditingPlot(null);
     setEditingSoilProfile(null);
@@ -234,14 +327,16 @@ export function CarbonProfileAdminPanel({
 
   const modalTitle = getEnrollmentModalTitle(
     activeForm,
-    Boolean(editingProfile || editingPlot || editingSoilProfile)
+    Boolean(editingActivity || editingProfile || editingPlot || editingSoilProfile)
   );
   const modalSubtitle =
     activeForm === "profile"
       ? "Capture the participant details needed for carbon enrollment."
-      : selectedProfile
-        ? `${selectedProfile.displayName} - ${selectedProfile.carbonIdentityId}`
-        : "Select a Carbon profile before adding records.";
+      : activeForm === "activity"
+        ? "Record a regenerative practice against the selected farm profile."
+        : selectedProfile
+          ? `${selectedProfile.displayName} - ${selectedProfile.carbonIdentityId}`
+          : "Select a Carbon profile before adding records.";
 
   return (
     <View style={styles.panel}>
@@ -310,6 +405,7 @@ export function CarbonProfileAdminPanel({
           {selectedProfile ? (
             <>
               <SelectedProfileSummary
+                activities={activities}
                 plots={plots}
                 profile={selectedProfile}
                 soilProfiles={soilProfiles}
@@ -328,8 +424,18 @@ export function CarbonProfileAdminPanel({
                 isFormOpen={activeForm === "soil"}
                 onAdd={() => openSoilForm()}
                 onEdit={(soilProfile) => openSoilForm(soilProfile)}
+                onUploadReport={handleSoilReportUpload}
                 plots={plots}
                 soilProfiles={soilProfiles}
+                uploadingReportId={uploadingReportId}
+              />
+
+              <ActivityList
+                activities={activities}
+                editingActivityId={editingActivity?.id}
+                isFormOpen={activeForm === "activity"}
+                onAdd={() => openActivityForm()}
+                onEdit={(activity) => openActivityForm(activity)}
               />
             </>
           ) : (
@@ -372,16 +478,27 @@ export function CarbonProfileAdminPanel({
             plots={plots}
           />
         ) : null}
+        {activeForm === "activity" ? (
+          <CarbonActivityForm
+            activityCategories={activityCategories}
+            editingActivity={editingActivity}
+            isSubmitting={savingKey === "activity"}
+            onSubmit={handleActivitySubmit}
+            plots={plots}
+          />
+        ) : null}
       </EnrollmentFormModal>
     </View>
   );
 }
 
 function SelectedProfileSummary({
+  activities,
   plots,
   profile,
   soilProfiles
 }: {
+  activities: CarbonActivityRecord[];
   plots: CarbonFarmPlotRecord[];
   profile: CarbonProfileRecord;
   soilProfiles: CarbonSoilProfileRecord[];
@@ -414,6 +531,10 @@ function SelectedProfileSummary({
             <Text style={styles.summaryPillValue}>{soilProfiles.length}</Text>
             <Text style={styles.summaryPillLabel}>Soil tests</Text>
           </View>
+          <View style={styles.summaryPill}>
+            <Text style={styles.summaryPillValue}>{activities.length}</Text>
+            <Text style={styles.summaryPillLabel}>Activities</Text>
+          </View>
         </View>
       </View>
       <StatusBadge label={profile.status} tone="neutral" />
@@ -421,10 +542,7 @@ function SelectedProfileSummary({
   );
 }
 
-function getEnrollmentModalTitle(
-  activeForm: ActiveEnrollmentForm,
-  isEditing: boolean
-) {
+function getEnrollmentModalTitle(activeForm: ActiveEnrollmentForm, isEditing: boolean) {
   if (activeForm === "profile") {
     return isEditing ? "Edit Carbon profile" : "Add Carbon profile";
   }
@@ -435,6 +553,10 @@ function getEnrollmentModalTitle(
 
   if (activeForm === "soil") {
     return isEditing ? "Edit soil profile" : "Add soil profile";
+  }
+
+  if (activeForm === "activity") {
+    return isEditing ? "Edit Carbon activity" : "Add Carbon activity";
   }
 
   return "Enrollment";
@@ -454,12 +576,7 @@ function EnrollmentFormModal({
   onClose: () => void;
 }) {
   return (
-    <Modal
-      animationType="fade"
-      transparent
-      visible={visible}
-      onRequestClose={onClose}
-    >
+    <Modal animationType="fade" transparent visible={visible} onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
         <Pressable
           accessibilityLabel="Close enrollment form"
@@ -1013,21 +1130,15 @@ function CarbonSoilProfileForm({
           />
           <FormField label="Texture" value={texture} onChange={setTexture} />
           <FormField
-            label="Report file"
+            label="Report filename"
             value={reportFileName}
             onChange={setReportFileName}
           />
           <FormField
-            label="Content type"
-            value={reportContentType}
-            onChange={setReportContentType}
+            label="External report URL"
+            value={reportUrl}
+            onChange={setReportUrl}
           />
-          <FormField
-            label="Storage key"
-            value={reportStorageKey}
-            onChange={setReportStorageKey}
-          />
-          <FormField label="Report URL" value={reportUrl} onChange={setReportUrl} />
         </View>
         <OptionGroup
           label="Status"
@@ -1044,6 +1155,161 @@ function CarbonSoilProfileForm({
             : editingSoilProfile
               ? "Update soil profile"
               : "Add soil profile"
+        }
+        onPress={handleSubmit}
+      />
+    </View>
+  );
+}
+
+function CarbonActivityForm({
+  activityCategories,
+  editingActivity,
+  isSubmitting,
+  onSubmit,
+  plots
+}: {
+  activityCategories: CarbonActivityCategoryRecord[];
+  editingActivity: CarbonActivityRecord | null;
+  isSubmitting: boolean;
+  onSubmit: (input: CarbonActivityInput) => Promise<boolean>;
+  plots: CarbonFarmPlotRecord[];
+}) {
+  const [activityDate, setActivityDate] = useState(toInputDate(new Date()));
+  const [carbonFarmPlotId, setCarbonFarmPlotId] = useState("");
+  const [categoryId, setCategoryId] = useState(activityCategories[0]?.id ?? "");
+  const [cropName, setCropName] = useState("");
+  const [inputUsed, setInputUsed] = useState("");
+  const [localError, setLocalError] = useState("");
+  const [quantityUnit, setQuantityUnit] = useState("");
+  const [quantityValue, setQuantityValue] = useState("");
+  const [remarks, setRemarks] = useState("");
+  const [showAdvanced, setShowAdvanced] = useState(Boolean(editingActivity));
+  const [status, setStatus] = useState(CARBON_RECORD_STATUSES[0]);
+
+  useEffect(() => {
+    setActivityDate(editingActivity?.activityDate ?? toInputDate(new Date()));
+    setCarbonFarmPlotId(editingActivity?.carbonFarmPlotId ?? "");
+    setCategoryId(editingActivity?.categoryId ?? activityCategories[0]?.id ?? "");
+    setCropName(editingActivity?.cropName ?? "");
+    setInputUsed(editingActivity?.inputUsed ?? "");
+    setQuantityUnit(editingActivity?.quantityUnit ?? "");
+    setQuantityValue(toInputNumber(editingActivity?.quantityValue));
+    setRemarks(editingActivity?.remarks ?? "");
+    setShowAdvanced(Boolean(editingActivity));
+    setStatus(editingActivity?.status ?? CARBON_RECORD_STATUSES[0]);
+    setLocalError("");
+  }, [activityCategories, editingActivity]);
+
+  async function handleSubmit() {
+    if (!categoryId) {
+      setLocalError("Activity category is required.");
+      return;
+    }
+
+    if (!activityDate.trim()) {
+      setLocalError("Activity date is required.");
+      return;
+    }
+
+    if (!cropName.trim()) {
+      setLocalError("Crop name is required.");
+      return;
+    }
+
+    const success = await onSubmit({
+      activityDate,
+      carbonFarmPlotId,
+      categoryId,
+      cropName,
+      inputUsed,
+      quantityUnit,
+      quantityValue,
+      remarks,
+      status
+    });
+
+    if (success && !editingActivity) {
+      setActivityDate(toInputDate(new Date()));
+      setCarbonFarmPlotId("");
+      setCropName("");
+      setInputUsed("");
+      setQuantityUnit("");
+      setQuantityValue("");
+      setRemarks("");
+      setShowAdvanced(false);
+    }
+  }
+
+  return (
+    <View style={styles.formBlock}>
+      {localError ? <Text style={styles.formError}>{localError}</Text> : null}
+
+      <OptionGroup
+        label="Activity category"
+        options={activityCategories.map((category) => category.id)}
+        value={categoryId}
+        renderLabel={(value) =>
+          activityCategories.find((category) => category.id === value)?.name ?? value
+        }
+        onChange={setCategoryId}
+      />
+
+      {plots.length ? (
+        <OptionGroup
+          label="Farm plot"
+          options={["", ...plots.map((plot) => plot.id)]}
+          value={carbonFarmPlotId}
+          renderLabel={(value) =>
+            value
+              ? (plots.find((plot) => plot.id === value)?.farmName ?? value)
+              : "Profile level"
+          }
+          onChange={setCarbonFarmPlotId}
+        />
+      ) : null}
+
+      <View style={styles.formGrid}>
+        <FormField
+          label="Activity date"
+          value={activityDate}
+          onChange={setActivityDate}
+        />
+        <FormField label="Crop" value={cropName} onChange={setCropName} />
+        <FormField label="Input used" value={inputUsed} onChange={setInputUsed} />
+        <FormField
+          label="Quantity"
+          keyboardType="decimal-pad"
+          value={quantityValue}
+          onChange={setQuantityValue}
+        />
+        <FormField label="Unit" value={quantityUnit} onChange={setQuantityUnit} />
+      </View>
+
+      <AdvancedSection
+        isOpen={showAdvanced}
+        label="More activity details"
+        onToggle={() => setShowAdvanced((current) => !current)}
+      >
+        <View style={styles.formGrid}>
+          <FormField label="Remarks" value={remarks} onChange={setRemarks} />
+        </View>
+        <OptionGroup
+          label="Status"
+          options={CARBON_RECORD_STATUSES}
+          value={status}
+          onChange={setStatus}
+        />
+      </AdvancedSection>
+
+      <PrimaryButton
+        disabled={isSubmitting}
+        label={
+          isSubmitting
+            ? "Saving..."
+            : editingActivity
+              ? "Update activity"
+              : "Add activity"
         }
         onPress={handleSubmit}
       />
@@ -1175,15 +1441,19 @@ function SoilProfileList({
   isFormOpen,
   onAdd,
   onEdit,
+  onUploadReport,
   plots,
-  soilProfiles
+  soilProfiles,
+  uploadingReportId
 }: {
   editingSoilProfileId?: string;
   isFormOpen: boolean;
   onAdd: () => void;
   onEdit: (profile: CarbonSoilProfileRecord) => void;
+  onUploadReport: (profile: CarbonSoilProfileRecord) => void;
   plots: CarbonFarmPlotRecord[];
   soilProfiles: CarbonSoilProfileRecord[];
+  uploadingReportId: string | null;
 }) {
   return (
     <View style={styles.listBlock}>
@@ -1223,13 +1493,31 @@ function SoilProfileList({
                     .join(" - ") || "Lab values not entered"}
                 </Text>
                 <Text style={styles.rowMeta}>
-                  {[profile.labName, profile.reportFileName]
+                  {[
+                    profile.labName,
+                    profile.reportFileName
+                      ? profile.reportStorageKey
+                        ? `Uploaded ${profile.reportFileName}`
+                        : profile.reportFileName
+                      : null
+                  ]
                     .filter(Boolean)
                     .join(" - ") || "Report metadata not set"}
                 </Text>
               </View>
               <View style={styles.actionColumn}>
                 <StatusBadge label={profile.status} tone="neutral" />
+                <ActionButton
+                  disabled={uploadingReportId === profile.id}
+                  label={
+                    uploadingReportId === profile.id
+                      ? "Uploading"
+                      : profile.reportStorageKey
+                        ? "Replace report"
+                        : "Upload report"
+                  }
+                  onPress={() => onUploadReport(profile)}
+                />
                 <ActionButton
                   label={editingSoilProfileId === profile.id ? "Editing" : "Edit"}
                   onPress={() => onEdit(profile)}
@@ -1240,6 +1528,75 @@ function SoilProfileList({
         })
       ) : (
         <Text style={styles.emptyText}>No soil profiles saved for this profile.</Text>
+      )}
+    </View>
+  );
+}
+
+function ActivityList({
+  activities,
+  editingActivityId,
+  isFormOpen,
+  onAdd,
+  onEdit
+}: {
+  activities: CarbonActivityRecord[];
+  editingActivityId?: string;
+  isFormOpen: boolean;
+  onAdd: () => void;
+  onEdit: (activity: CarbonActivityRecord) => void;
+}) {
+  return (
+    <View style={styles.listBlock}>
+      <View style={styles.sectionHeaderRow}>
+        <View>
+          <Text style={styles.sectionLabel}>Saved Carbon activities</Text>
+          <Text style={styles.panelMeta}>
+            {activities.length} {activities.length === 1 ? "activity" : "activities"}
+          </Text>
+        </View>
+        <ActionButton
+          label={isFormOpen && !editingActivityId ? "Adding" : "Add activity"}
+          onPress={onAdd}
+        />
+      </View>
+      {activities.length ? (
+        activities.map((activity) => (
+          <View key={activity.id} style={styles.recordRow}>
+            <View style={styles.rowText}>
+              <Text style={styles.rowTitle}>{activity.categoryName}</Text>
+              <Text style={styles.rowMeta}>
+                {[
+                  activity.cropName,
+                  activity.farmName,
+                  formatDate(activity.activityDate)
+                ]
+                  .filter(Boolean)
+                  .join(" - ")}
+              </Text>
+              <Text style={styles.rowMeta}>
+                {[activity.inputUsed, formatActivityQuantity(activity)]
+                  .filter(Boolean)
+                  .join(" - ") || "Input details not set"}
+              </Text>
+              <Text style={styles.rowMeta}>
+                Evidence {activity.evidenceCount} -{" "}
+                {formatVerificationStatus(activity.verificationStatus)}
+              </Text>
+            </View>
+            <View style={styles.actionColumn}>
+              <StatusBadge label={activity.status} tone="neutral" />
+              <ActionButton
+                label={editingActivityId === activity.id ? "Editing" : "Edit"}
+                onPress={() => onEdit(activity)}
+              />
+            </View>
+          </View>
+        ))
+      ) : (
+        <Text style={styles.emptyText}>
+          No Carbon activities saved for this profile.
+        </Text>
       )}
     </View>
   );
@@ -1362,9 +1719,22 @@ function PrimaryButton({
   );
 }
 
-function ActionButton({ label, onPress }: { label: string; onPress: () => void }) {
+function ActionButton({
+  disabled,
+  label,
+  onPress
+}: {
+  disabled?: boolean;
+  label: string;
+  onPress: () => void;
+}) {
   return (
-    <Pressable accessibilityRole="button" style={styles.actionButton} onPress={onPress}>
+    <Pressable
+      accessibilityRole="button"
+      disabled={disabled}
+      style={[styles.actionButton, disabled && styles.disabledButton]}
+      onPress={onPress}
+    >
       <Text style={styles.actionButtonText}>{label}</Text>
     </Pressable>
   );
@@ -1378,8 +1748,42 @@ function toInputNumber(value: number | undefined) {
   return value === undefined ? "" : String(value);
 }
 
+function toInputDate(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
 function formatNumber(value: number) {
   return Number.isInteger(value) ? String(value) : value.toFixed(2);
+}
+
+function formatActivityQuantity(activity: CarbonActivityRecord) {
+  if (activity.quantityValue === undefined) {
+    return "";
+  }
+
+  return [formatNumber(activity.quantityValue), activity.quantityUnit]
+    .filter(Boolean)
+    .join(" ");
+}
+
+function formatDate(value: string) {
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric"
+  });
+}
+
+function formatVerificationStatus(status: CarbonActivityRecord["verificationStatus"]) {
+  return status
+    .split("_")
+    .map((part) => part.charAt(0) + part.slice(1).toLowerCase())
+    .join(" ");
 }
 
 const styles = StyleSheet.create({

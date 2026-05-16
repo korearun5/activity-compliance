@@ -1,8 +1,13 @@
 import { apiClient, ApiClientError } from "../../../core/api/client";
 import { PageResponse } from "../../../core/api/contracts";
 import { endpoints } from "../../../core/api/endpoints";
+import { appendUploadFile, UploadFileInput } from "../../../core/api/uploadFile";
 import { AppError } from "../../../core/errors/AppError";
 import {
+  CarbonActivityCategoryResponse,
+  CarbonActivityRecordRequest,
+  CarbonActivityRecordResponse,
+  CarbonActivityVerificationStatus,
   CarbonFarmPlotRequest,
   CarbonFarmPlotResponse,
   CarbonParticipantType,
@@ -32,15 +37,8 @@ export const CARBON_TILLAGE_STATUSES = [
   "No tillage"
 ] as const;
 export const CARBON_BANK_STATUSES = ["Linked", "Pending", "Not required"] as const;
-export const CARBON_AADHAAR_STATUSES = [
-  "Provided",
-  "Optional not captured"
-] as const;
-export const CARBON_DOCUMENT_STATUSES = [
-  "Not started",
-  "Partial",
-  "Ready"
-] as const;
+export const CARBON_AADHAAR_STATUSES = ["Provided", "Optional not captured"] as const;
+export const CARBON_DOCUMENT_STATUSES = ["Not started", "Partial", "Ready"] as const;
 
 export type CarbonProfileRecord = {
   aadhaarStatus?: string;
@@ -147,6 +145,38 @@ export type CarbonSoilProfileRecord = {
   updatedAt: string;
 };
 
+export type CarbonActivityCategoryRecord = {
+  code: string;
+  description: string;
+  evidenceRequired: boolean;
+  id: string;
+  name: string;
+  sortOrder: number;
+  status: CarbonRecordStatus;
+};
+
+export type CarbonActivityRecord = {
+  activityDate: string;
+  carbonFarmPlotId?: string;
+  carbonProfileId: string;
+  categoryCode: string;
+  categoryId: string;
+  categoryName: string;
+  cropName: string;
+  evidenceCount: number;
+  evidenceRequired: boolean;
+  farmName?: string;
+  id: string;
+  inputUsed?: string;
+  quantityUnit?: string;
+  quantityValue?: number;
+  remarks?: string;
+  status: CarbonRecordStatus;
+  tenantId: string;
+  updatedAt: string;
+  verificationStatus: CarbonActivityVerificationStatus;
+};
+
 export type CarbonSoilProfileInput = {
   bulkDensityGmCm3?: string;
   carbonFarmPlotId?: string;
@@ -166,6 +196,20 @@ export type CarbonSoilProfileInput = {
   texture?: string;
 };
 
+export type CarbonActivityInput = {
+  activityDate: string;
+  carbonFarmPlotId?: string;
+  categoryId: string;
+  cropName: string;
+  inputUsed?: string;
+  quantityUnit?: string;
+  quantityValue?: string;
+  remarks?: string;
+  status?: CarbonRecordStatus;
+};
+
+export type CarbonSoilReportFile = UploadFileInput;
+
 export async function listCarbonProfiles(): Promise<CarbonProfileRecord[]> {
   try {
     const page = await apiClient.getPaginated<PageResponse<CarbonProfileResponse>>(
@@ -176,6 +220,20 @@ export async function listCarbonProfiles(): Promise<CarbonProfileRecord[]> {
     return page.content.map(toCarbonProfile);
   } catch (error) {
     throw toCarbonError(error, "Unable to load Carbon profiles.");
+  }
+}
+
+export async function listCarbonActivityCategories(): Promise<
+  CarbonActivityCategoryRecord[]
+> {
+  try {
+    const response = await apiClient.get<CarbonActivityCategoryResponse[]>(
+      endpoints.carbon.activityCategories.list
+    );
+
+    return response.map(toCarbonActivityCategory);
+  } catch (error) {
+    throw toCarbonError(error, "Unable to load Carbon activity categories.");
   }
 }
 
@@ -312,6 +370,71 @@ export async function updateCarbonSoilProfile(
   }
 }
 
+export async function uploadCarbonSoilReport(
+  soilProfileId: string,
+  file: CarbonSoilReportFile
+): Promise<CarbonSoilProfileRecord> {
+  try {
+    const formData = new FormData();
+    await appendUploadFile(formData, "file", file, `soil-report-${Date.now()}.pdf`);
+
+    return toCarbonSoilProfile(
+      await apiClient.postFormData<CarbonSoilProfileResponse>(
+        endpoints.carbon.soilProfiles.report(soilProfileId),
+        formData
+      )
+    );
+  } catch (error) {
+    throw toCarbonError(error, "Unable to upload Carbon soil report.");
+  }
+}
+
+export async function listCarbonActivities(
+  profileId: string
+): Promise<CarbonActivityRecord[]> {
+  try {
+    const response = await apiClient.get<CarbonActivityRecordResponse[]>(
+      endpoints.carbon.activities.listByProfile(profileId)
+    );
+
+    return response.map(toCarbonActivity);
+  } catch (error) {
+    throw toCarbonError(error, "Unable to load Carbon activities.");
+  }
+}
+
+export async function createCarbonActivity(
+  profileId: string,
+  input: CarbonActivityInput
+): Promise<CarbonActivityRecord> {
+  try {
+    return toCarbonActivity(
+      await apiClient.post<CarbonActivityRecordRequest, CarbonActivityRecordResponse>(
+        endpoints.carbon.activities.createForProfile(profileId),
+        toCarbonActivityRequest(input)
+      )
+    );
+  } catch (error) {
+    throw toCarbonError(error, "Unable to save Carbon activity.");
+  }
+}
+
+export async function updateCarbonActivity(
+  activityId: string,
+  input: CarbonActivityInput
+): Promise<CarbonActivityRecord> {
+  try {
+    return toCarbonActivity(
+      await apiClient.put<CarbonActivityRecordRequest, CarbonActivityRecordResponse>(
+        endpoints.carbon.activities.byId(activityId),
+        toCarbonActivityRequest(input)
+      )
+    );
+  } catch (error) {
+    throw toCarbonError(error, "Unable to update Carbon activity.");
+  }
+}
+
 function toCarbonProfile(response: CarbonProfileResponse): CarbonProfileRecord {
   return {
     aadhaarStatus: response.aadhaarStatus ?? undefined,
@@ -389,6 +512,46 @@ function toCarbonSoilProfile(
   };
 }
 
+function toCarbonActivityCategory(
+  response: CarbonActivityCategoryResponse
+): CarbonActivityCategoryRecord {
+  return {
+    code: response.code,
+    description: response.description,
+    evidenceRequired: response.evidenceRequired,
+    id: response.id,
+    name: response.name,
+    sortOrder: response.sortOrder,
+    status: response.status
+  };
+}
+
+function toCarbonActivity(
+  response: CarbonActivityRecordResponse
+): CarbonActivityRecord {
+  return {
+    activityDate: response.activityDate,
+    carbonFarmPlotId: response.carbonFarmPlotId ?? undefined,
+    carbonProfileId: response.carbonProfileId,
+    categoryCode: response.categoryCode,
+    categoryId: response.categoryId,
+    categoryName: response.categoryName,
+    cropName: response.cropName,
+    evidenceCount: response.evidenceCount,
+    evidenceRequired: response.evidenceRequired,
+    farmName: response.farmName ?? undefined,
+    id: response.id,
+    inputUsed: response.inputUsed ?? undefined,
+    quantityUnit: response.quantityUnit ?? undefined,
+    quantityValue: response.quantityValue ?? undefined,
+    remarks: response.remarks ?? undefined,
+    status: response.status,
+    tenantId: response.tenantId,
+    updatedAt: response.updatedAt,
+    verificationStatus: response.verificationStatus
+  };
+}
+
 function toCarbonProfileRequest(input: CarbonProfileInput): CarbonProfileRequest {
   const gpsLatitude = parseOptionalNumber(input.gpsLatitude, "Latitude");
   const gpsLongitude = parseOptionalNumber(input.gpsLongitude, "Longitude");
@@ -431,9 +594,7 @@ function toCarbonProfileRequest(input: CarbonProfileInput): CarbonProfileRequest
   });
 }
 
-function toCarbonFarmPlotRequest(
-  input: CarbonFarmPlotInput
-): CarbonFarmPlotRequest {
+function toCarbonFarmPlotRequest(input: CarbonFarmPlotInput): CarbonFarmPlotRequest {
   const latitude = parseRequiredNumber(input.latitude, "Latitude");
   const longitude = parseRequiredNumber(input.longitude, "Longitude");
 
@@ -482,10 +643,7 @@ function toCarbonSoilProfileRequest(
     labName: cleanOptional(input.labName),
     nitrogenKgHa: parseOptionalNonNegativeNumber(input.nitrogenKgHa, "Nitrogen"),
     ph,
-    phosphorusKgHa: parseOptionalNonNegativeNumber(
-      input.phosphorusKgHa,
-      "Phosphorus"
-    ),
+    phosphorusKgHa: parseOptionalNonNegativeNumber(input.phosphorusKgHa, "Phosphorus"),
     potassiumKgHa: parseOptionalNonNegativeNumber(input.potassiumKgHa, "Potassium"),
     reportContentType: cleanOptional(input.reportContentType),
     reportFileName: cleanOptional(input.reportFileName),
@@ -498,6 +656,32 @@ function toCarbonSoilProfileRequest(
     status: input.status ?? "ACTIVE",
     testDate: cleanOptional(input.testDate),
     texture: cleanOptional(input.texture)
+  });
+}
+
+function toCarbonActivityRequest(
+  input: CarbonActivityInput
+): CarbonActivityRecordRequest {
+  const quantityValue = parseOptionalNonNegativeNumber(input.quantityValue, "Quantity");
+  const quantityUnit = cleanOptional(input.quantityUnit);
+
+  if (quantityValue !== undefined && !quantityUnit) {
+    throw new AppError(
+      "VALIDATION_FAILED",
+      "Quantity unit is required when quantity is entered."
+    );
+  }
+
+  return removeUndefined({
+    activityDate: requiredText(input.activityDate, "Activity date"),
+    carbonFarmPlotId: cleanOptional(input.carbonFarmPlotId),
+    categoryId: requiredText(input.categoryId, "Activity category"),
+    cropName: requiredText(input.cropName, "Crop name"),
+    inputUsed: cleanOptional(input.inputUsed),
+    quantityUnit,
+    quantityValue,
+    remarks: cleanOptional(input.remarks),
+    status: input.status ?? "ACTIVE"
   });
 }
 

@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,7 +20,9 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/v1/carbon")
@@ -39,6 +42,15 @@ public class CarbonProfileController {
   ) {
     return ApiResponse.success(PageResponse.from(
         carbonProfileService.list(CurrentUser.from(authentication), status, pageable)));
+  }
+
+  @GetMapping("/activity-categories")
+  ApiResponse<List<CarbonActivityCategoryResponse>> listActivityCategories(
+      Authentication authentication
+  ) {
+    return ApiResponse.success(carbonProfileService.listActivityCategories(
+        CurrentUser.from(authentication)
+    ));
   }
 
   @GetMapping("/profiles/me")
@@ -157,6 +169,60 @@ public class CarbonProfileController {
     return ApiResponse.success(carbonProfileService.updateSoilProfile(
         CurrentUser.from(authentication),
         soilProfileId,
+        request
+    ));
+  }
+
+  @PostMapping(
+      value = "/soil-profiles/{soilProfileId}/report",
+      consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+  )
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER','FIELD_COORDINATOR')")
+  ApiResponse<CarbonSoilProfileResponse> uploadSoilReport(
+      Authentication authentication,
+      @PathVariable UUID soilProfileId,
+      @RequestPart MultipartFile file
+  ) {
+    return ApiResponse.success(carbonProfileService.uploadSoilReport(
+        CurrentUser.from(authentication),
+        soilProfileId,
+        file
+    ));
+  }
+
+  @GetMapping("/profiles/{profileId}/activities")
+  ApiResponse<List<CarbonActivityRecordResponse>> listActivities(
+      Authentication authentication,
+      @PathVariable UUID profileId
+  ) {
+    return ApiResponse.success(carbonProfileService.listActivities(
+        CurrentUser.from(authentication),
+        profileId
+    ));
+  }
+
+  @PostMapping("/profiles/{profileId}/activities")
+  ApiResponse<CarbonActivityRecordResponse> createActivity(
+      Authentication authentication,
+      @PathVariable UUID profileId,
+      @Valid @RequestBody CarbonActivityRecordRequest request
+  ) {
+    return ApiResponse.success(carbonProfileService.createActivity(
+        CurrentUser.from(authentication),
+        profileId,
+        request
+    ));
+  }
+
+  @PutMapping("/activities/{activityId}")
+  ApiResponse<CarbonActivityRecordResponse> updateActivity(
+      Authentication authentication,
+      @PathVariable UUID activityId,
+      @Valid @RequestBody CarbonActivityRecordRequest request
+  ) {
+    return ApiResponse.success(carbonProfileService.updateActivity(
+        CurrentUser.from(authentication),
+        activityId,
         request
     ));
   }

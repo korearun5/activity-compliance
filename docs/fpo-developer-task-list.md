@@ -7,6 +7,10 @@ Use [Modular Platform Strategy](modular-platform-strategy.md) before building
 module guards, packaging rules, or future service boundaries.
 Use [Project Status And Gap Register](project-status-and-gap-register.md) for
 live completion percentages and go-live gaps.
+Use [Foundation Hardening Roadmap](foundation-hardening-roadmap.md) for
+cross-cutting UI, backend, TDD, E2E, load-test, observability, backup/restore,
+and reusable-code alignment tasks that should not be mixed into FPO Phase 1
+scope.
 
 ## Task Status Legend
 
@@ -22,61 +26,61 @@ live completion percentages and go-live gaps.
 
 These are already implemented and should be reused instead of rebuilt.
 
-| ID       | Status | Area                 | What Exists                                   | Developer Note                                                       |
-| -------- | ------ | -------------------- | --------------------------------------------- | -------------------------------------------------------------------- |
-| CORE-001 | Done   | Backend foundation   | Spring Boot, PostgreSQL, Flyway, JPA          | Add new FPO schema via Flyway only.                                  |
-| CORE-002 | Done   | Auth                 | JWT login, refresh, current user              | OTP can be added later without replacing JWT.                        |
-| CORE-003 | Done    | Roles                | JWT role infrastructure and role APIs          | Phase 1 roles are aligned to `ADMIN`, `FPO_MANAGER`, `FIELD_COORDINATOR`, and `FARMER`. |
-| CORE-004 | Done   | User management      | Admin/FPO manager can create coordinator users; member APIs create farmer users | Extend with FPO member profile table. |
-| CORE-005 | Done   | Workflow definitions | Configurable workflow/task templates          | Reuse for crop activity schedules.                                   |
-| CORE-006 | Done   | Activities           | Activity start and task timeline APIs         | Link FPO crop plans to activities later.                             |
-| CORE-007 | Done   | Evidence             | Proof upload, storage, review                 | Reuse for field photos and plot/crop proof.                          |
-| CORE-008 | Done   | Audit                | Audit event service and table                 | Add FPO-specific audit actions as needed.                            |
-| CORE-009 | Done   | Reporting            | Generic summary, PDF, XLSX export foundation  | Add FPO-specific report sheets and summary fields.                   |
-| CORE-010 | Done   | Notifications        | Notification event/status foundation          | Add advisory semantics on top.                                       |
-| CORE-011 | Done   | Storage              | Local and MinIO providers                     | Reuse for photos, reports, future documents.                         |
-| CORE-012 | Done   | DevOps               | Docker, production config, CI, security scan  | Add FPO tests to existing CI.                                        |
+| ID       | Status | Area                 | What Exists                                                                     | Developer Note                                                                          |
+| -------- | ------ | -------------------- | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| CORE-001 | Done   | Backend foundation   | Spring Boot, PostgreSQL, Flyway, JPA                                            | Add new FPO schema via Flyway only.                                                     |
+| CORE-002 | Done   | Auth                 | JWT login, refresh, current user                                                | OTP can be added later without replacing JWT.                                           |
+| CORE-003 | Done   | Roles                | JWT role infrastructure and role APIs                                           | Phase 1 roles are aligned to `ADMIN`, `FPO_MANAGER`, `FIELD_COORDINATOR`, and `FARMER`. |
+| CORE-004 | Done   | User management      | Admin/FPO manager can create coordinator users; member APIs create farmer users | Extend with FPO member profile table.                                                   |
+| CORE-005 | Done   | Workflow definitions | Configurable workflow/task templates                                            | Reuse for crop activity schedules.                                                      |
+| CORE-006 | Done   | Activities           | Activity start and task timeline APIs                                           | Link FPO crop plans to activities later.                                                |
+| CORE-007 | Done   | Evidence             | Proof upload, storage, review                                                   | Reuse for field photos and plot/crop proof.                                             |
+| CORE-008 | Done   | Audit                | Audit event service and table                                                   | Add FPO-specific audit actions as needed.                                               |
+| CORE-009 | Done   | Reporting            | Generic summary, PDF, XLSX export foundation                                    | Add FPO-specific report sheets and summary fields.                                      |
+| CORE-010 | Done   | Notifications        | Notification event/status foundation                                            | Add advisory semantics on top.                                                          |
+| CORE-011 | Done   | Storage              | Local and MinIO providers                                                       | Reuse for photos, reports, future documents.                                            |
+| CORE-012 | Done   | DevOps               | Docker, production config, CI, security scan                                    | Add FPO tests to existing CI.                                                           |
 
 ## Immediate Next Sprint
 
 These are the next tasks once we start FPO MVP development. Complete in this
 order unless the product scope changes.
 
-| Priority | Task ID       | Title                                                    | Owner Area          | Depends On      | Status  |
-| -------: | ------------- | -------------------------------------------------------- | ------------------- | --------------- | ------- |
-|        1 | FPO-000       | Freeze Phase 1 data dictionary and report formats        | Product/Tech Lead   | Client input    | Done    |
-|        2 | FPO-101       | Add FPO base schema migration                            | Backend             | FPO-000         | Done    |
-|        3 | FPO-102       | Add FPO member profile backend APIs                      | Backend             | FPO-101         | Done    |
-|        4 | FPO-FE-101    | Replace generic participant list with farmer profile/login list | Frontend            | FPO-102         | Done    |
-|        5 | FPO-201       | Add landholding and farm plot backend APIs               | Backend             | FPO-102         | Done    |
-|        6 | FPO-FE-201    | Add landholding and plot UI with GPS fields              | Frontend            | FPO-201         | Done    |
-|        7 | FPO-301       | Add crop catalog, season, history, and crop plan APIs    | Backend             | FPO-201         | Done    |
-|        8 | FPO-FE-301    | Add crop planning UI                                     | Frontend            | FPO-301         | Done    |
-|        9 | FPO-401       | Add input catalog, input rules, and demand calculation   | Backend             | FPO-301         | Done    |
-|       10 | FPO-FE-401    | Add demand summary UI                                    | Frontend            | FPO-401         | Done    |
-|       11 | FPO-501       | Add FPO dashboard summary API                            | Backend             | FPO-401         | Done    |
-|       12 | FPO-502       | Add FPO Excel export sheets                              | Backend             | FPO-501         | Done    |
-|       13 | FPO-FE-601    | Add advisory UI                                          | Frontend            | FPO-601         | Done    |
-|       14 | CARBON-FE-001 | Add dummy carbon app-flow UI foundation                  | Frontend/Docs       | Client app flow | Done    |
-|       15 | FPO-QA-001    | Add Phase 1 UAT and API smoke tests                      | QA/Backend/Frontend | FPO-502         | Done    |
+| Priority | Task ID       | Title                                                           | Owner Area          | Depends On      | Status |
+| -------: | ------------- | --------------------------------------------------------------- | ------------------- | --------------- | ------ |
+|        1 | FPO-000       | Freeze Phase 1 data dictionary and report formats               | Product/Tech Lead   | Client input    | Done   |
+|        2 | FPO-101       | Add FPO base schema migration                                   | Backend             | FPO-000         | Done   |
+|        3 | FPO-102       | Add FPO member profile backend APIs                             | Backend             | FPO-101         | Done   |
+|        4 | FPO-FE-101    | Replace generic participant list with farmer profile/login list | Frontend            | FPO-102         | Done   |
+|        5 | FPO-201       | Add landholding and farm plot backend APIs                      | Backend             | FPO-102         | Done   |
+|        6 | FPO-FE-201    | Add landholding and plot UI with GPS fields                     | Frontend            | FPO-201         | Done   |
+|        7 | FPO-301       | Add crop catalog, season, history, and crop plan APIs           | Backend             | FPO-201         | Done   |
+|        8 | FPO-FE-301    | Add crop planning UI                                            | Frontend            | FPO-301         | Done   |
+|        9 | FPO-401       | Add input catalog, input rules, and demand calculation          | Backend             | FPO-301         | Done   |
+|       10 | FPO-FE-401    | Add demand summary UI                                           | Frontend            | FPO-401         | Done   |
+|       11 | FPO-501       | Add FPO dashboard summary API                                   | Backend             | FPO-401         | Done   |
+|       12 | FPO-502       | Add FPO Excel export sheets                                     | Backend             | FPO-501         | Done   |
+|       13 | FPO-FE-601    | Add advisory UI                                                 | Frontend            | FPO-601         | Done   |
+|       14 | CARBON-FE-001 | Add dummy carbon app-flow UI foundation                         | Frontend/Docs       | Client app flow | Done   |
+|       15 | FPO-QA-001    | Add Phase 1 UAT and API smoke tests                             | QA/Backend/Frontend | FPO-502         | Done   |
 
 ## Phase 1 Scope Alignment Sprint
 
 These are the next implementation tasks after the client decision lock. Pick
 them in this order unless a production defect interrupts the work.
 
-| Priority | Task ID | Title | Owner Area | Status |
-| -------: | ------- | ----- | ---------- | ------ |
-| 1 | FPO-ALIGN-001 | Replace legacy FPO role assumptions with `ADMIN`, `FPO_MANAGER`, and `FIELD_COORDINATOR` | Backend/Frontend/QA | Done |
-| 2 | FPO-ALIGN-002 | Add FPO ownership, scoped access, farmer login, centralized frontend role visibility, and role isolation tests | Backend/Frontend/QA | Done |
-| 3 | FPO-ALIGN-003 | Align farmer profile fields: taluka/state, Aadhaar optional, status `Suspended`, category labels | Backend/Frontend/QA | Done |
-| 4 | FPO-ALIGN-004 | Add soil profile entry and optional report attachment without carbon calculation | Backend/Frontend/QA | Done |
-| 5 | FPO-ALIGN-005 | Align land/GPS labels and approved ownership/irrigation options | Backend/Frontend/QA | Done |
-| 6 | FPO-ALIGN-006 | Add crop plan `confirmed_at`, crop year string, and optional expected yield | Backend/Frontend/QA | Done |
-| 7 | FPO-ALIGN-007 | Apply input demand 5% buffer, round-up, and confirmed-only report filtering | Backend/Frontend/QA | Done |
-| 8 | FPO-ALIGN-008 | Refactor FPO Excel export to the approved three-sheet workbook | Backend/Frontend/QA | Done |
-| 9 | FPO-ALIGN-009 | Add advisory crop targeting and multiple image attachments through storage | Backend/Frontend/QA | Done |
-| 10 | FPO-ALIGN-010 | Convert UAT guide scenarios into smoke/integration coverage where practical | QA/Backend/Frontend | Done |
+| Priority | Task ID       | Title                                                                                                          | Owner Area          | Status |
+| -------: | ------------- | -------------------------------------------------------------------------------------------------------------- | ------------------- | ------ |
+|        1 | FPO-ALIGN-001 | Replace legacy FPO role assumptions with `ADMIN`, `FPO_MANAGER`, and `FIELD_COORDINATOR`                       | Backend/Frontend/QA | Done   |
+|        2 | FPO-ALIGN-002 | Add FPO ownership, scoped access, farmer login, centralized frontend role visibility, and role isolation tests | Backend/Frontend/QA | Done   |
+|        3 | FPO-ALIGN-003 | Align farmer profile fields: taluka/state, Aadhaar optional, status `Suspended`, category labels               | Backend/Frontend/QA | Done   |
+|        4 | FPO-ALIGN-004 | Add soil profile entry and optional report attachment without carbon calculation                               | Backend/Frontend/QA | Done   |
+|        5 | FPO-ALIGN-005 | Align land/GPS labels and approved ownership/irrigation options                                                | Backend/Frontend/QA | Done   |
+|        6 | FPO-ALIGN-006 | Add crop plan `confirmed_at`, crop year string, and optional expected yield                                    | Backend/Frontend/QA | Done   |
+|        7 | FPO-ALIGN-007 | Apply input demand 5% buffer, round-up, and confirmed-only report filtering                                    | Backend/Frontend/QA | Done   |
+|        8 | FPO-ALIGN-008 | Refactor FPO Excel export to the approved three-sheet workbook                                                 | Backend/Frontend/QA | Done   |
+|        9 | FPO-ALIGN-009 | Add advisory crop targeting and multiple image attachments through storage                                     | Backend/Frontend/QA | Done   |
+|       10 | FPO-ALIGN-010 | Convert UAT guide scenarios into smoke/integration coverage where practical                                    | QA/Backend/Frontend | Done   |
 
 ## Module Platform Tasks
 
@@ -100,19 +104,19 @@ before selling multiple independent packages or handing over any private build.
 Do not start schema work until these tasks are answered. Without this, the team
 will guess fields and formulas.
 
-| ID      | Status  | Task                               | Output                                                   |
-| ------- | ------- | ---------------------------------- | -------------------------------------------------------- |
-| FPO-000 | Done | Freeze Phase 1 MVP scope           | Locked in the Phase 1 Client Decision Register.          |
-| FPO-001 | Done | Confirm user roles                 | `ADMIN`, `FPO_MANAGER`, `FIELD_COORDINATOR`, and `FARMER`; OTP remains Phase 2. |
-| FPO-002 | Done | Confirm farmer/member fields       | Final member profile data dictionary is approved.        |
-| FPO-003 | Done | Confirm land and plot fields       | GPS point-only land data dictionary is approved.         |
-| FPO-004 | Done | Confirm crop list and season names | Crop catalog and season master list are approved.        |
-| FPO-005 | Done | Confirm input catalog              | Seeds and fertilizers required; later types optional.    |
-| FPO-006 | Done | Confirm input formulas             | Fixed per-acre, confirmed plans only, 5% buffer, round-up. |
-| FPO-007 | Done | Confirm report formats             | Excel sheets, columns, filters, branding, and footer approved. |
-| FPO-008 | Future | Confirm OTP/SMS provider          | Explicitly excluded from Phase 1.                        |
-| FPO-009 | Done | Confirm map/GPS expectations       | GPS point capture only; no polygon/offline in Phase 1.   |
-| FPO-010 | Done | Confirm first release language     | English only for Phase 1.                                |
+| ID      | Status | Task                               | Output                                                                          |
+| ------- | ------ | ---------------------------------- | ------------------------------------------------------------------------------- |
+| FPO-000 | Done   | Freeze Phase 1 MVP scope           | Locked in the Phase 1 Client Decision Register.                                 |
+| FPO-001 | Done   | Confirm user roles                 | `ADMIN`, `FPO_MANAGER`, `FIELD_COORDINATOR`, and `FARMER`; OTP remains Phase 2. |
+| FPO-002 | Done   | Confirm farmer/member fields       | Final member profile data dictionary is approved.                               |
+| FPO-003 | Done   | Confirm land and plot fields       | GPS point-only land data dictionary is approved.                                |
+| FPO-004 | Done   | Confirm crop list and season names | Crop catalog and season master list are approved.                               |
+| FPO-005 | Done   | Confirm input catalog              | Seeds and fertilizers required; later types optional.                           |
+| FPO-006 | Done   | Confirm input formulas             | Fixed per-acre, confirmed plans only, 5% buffer, round-up.                      |
+| FPO-007 | Done   | Confirm report formats             | Excel sheets, columns, filters, branding, and footer approved.                  |
+| FPO-008 | Future | Confirm OTP/SMS provider           | Explicitly excluded from Phase 1.                                               |
+| FPO-009 | Done   | Confirm map/GPS expectations       | GPS point capture only; no polygon/offline in Phase 1.                          |
+| FPO-010 | Done   | Confirm first release language     | English only for Phase 1.                                                       |
 
 Acceptance criteria:
 
@@ -1029,27 +1033,29 @@ Acceptance criteria:
 
 ## QA And Testing Tasks
 
-| ID         | Status  | Task                         | Expected Output                                                                                                    |
-| ---------- | ------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| FPO-QA-001 | Done    | FPO API integration tests    | Testcontainers coverage exists for member, land/GPS, soil, crop plan, demand, reports, advisories, and Phase 1 UAT smoke. |
-| FPO-QA-002 | Done    | FPO service unit tests       | Calculation and validation tests for current FPO modules.                                                          |
-| FPO-QA-003 | Done    | Frontend type/lint checks    | `npm run typecheck` and `npm run lint` are the required Phase 1 frontend checks.                                    |
-| FPO-QA-004 | Done    | Excel export verification    | Workbook unit checks and controller export checks verify approved sheets, columns, filters, and branding.           |
-| FPO-QA-005 | Done    | Role access matrix tests     | Backend role smoke covers `ADMIN`, `FPO_MANAGER`, `FIELD_COORDINATOR`, and `FARMER`; frontend role visibility is centralized in `roleAccess.ts`. |
-| FPO-QA-006 | Done    | UAT test catalog             | UAT guide contains manual scenarios, pilot data, API smoke checks, and automated coverage notes.                    |
-| FPO-QA-007 | Done    | Seed/demo data cleanup check | Active FPO fallback/demo records now use Phase 1-approved Paddy/Wheat/Wagholi-style data; Carbon demo data is controlled by the Carbon/FPO package toggles. |
-| FPO-QA-008 | Done    | Pre-UAT technical rehearsal  | Docker compose config, default ports, PostgreSQL credentials, full Docker stack startup, frontend type/lint/audit, backend unit tests, integration tests, and Phase 1 UAT smoke passed locally on 2026-05-15. |
+| ID         | Status  | Task                                  | Expected Output                                                                                                                                                                                               |
+| ---------- | ------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| FPO-QA-001 | Done    | FPO API integration tests             | Testcontainers coverage exists for member, land/GPS, soil, crop plan, demand, reports, advisories, and Phase 1 UAT smoke.                                                                                     |
+| FPO-QA-002 | Done    | FPO service unit tests                | Calculation and validation tests for current FPO modules.                                                                                                                                                     |
+| FPO-QA-003 | Done    | Frontend type/lint checks             | `npm run typecheck` and `npm run lint` are the required Phase 1 frontend checks.                                                                                                                              |
+| FPO-QA-004 | Done    | Excel export verification             | Workbook unit checks and controller export checks verify approved sheets, columns, filters, and branding.                                                                                                     |
+| FPO-QA-005 | Done    | Role access matrix tests              | Backend role smoke covers `ADMIN`, `FPO_MANAGER`, `FIELD_COORDINATOR`, and `FARMER`; frontend role visibility is centralized in `roleAccess.ts`.                                                              |
+| FPO-QA-006 | Done    | UAT test catalog                      | UAT guide contains manual scenarios, pilot data, API smoke checks, and automated coverage notes.                                                                                                              |
+| FPO-QA-007 | Done    | Seed/demo data cleanup check          | Active FPO fallback/demo records now use Phase 1-approved Paddy/Wheat/Wagholi-style data; Carbon demo data is controlled by the Carbon/FPO package toggles.                                                   |
+| FPO-QA-008 | Done    | Pre-UAT technical rehearsal           | Docker compose config, default ports, PostgreSQL credentials, full Docker stack startup, frontend type/lint/audit, backend unit tests, integration tests, and Phase 1 UAT smoke passed locally on 2026-05-15. |
+| FPO-QA-009 | Pending | Playwright FPO browser smoke coverage | Future hardening task; automate login, role visibility, FPO manager, field coordinator, farmer profile/workflow, and report export happy paths.                                                               |
+| FPO-QA-010 | Pending | FPO load/performance smoke coverage   | Future hardening task; add API load tests for member list/create, crop planning, input demand, and report export paths once target volume/SLOs are agreed.                                                    |
 
 ## Documentation Tasks
 
-| ID          | Status  | Task                         | Expected Output                           |
-| ----------- | ------- | ---------------------------- | ----------------------------------------- |
-| FPO-DOC-001 | Done    | Add FPO architecture diagram | Component/data model docs include FPO tables and ownership. |
-| FPO-DOC-002 | Done    | Add FPO database guide       | Database guide includes FPO relationships and module pattern. |
-| FPO-DOC-003 | Done    | Add admin user guide         | Admin workflows are covered in the client admin workflow guide and related docs. |
-| FPO-DOC-004 | Done    | Add UAT guide                | Step-by-step acceptance script exists.    |
-| FPO-DOC-005 | Done    | Add deployment runbook       | Clean start, deployment, and security docs exist; target cloud values remain an operations input. |
-| FPO-DOC-006 | Done    | Add pre-UAT handoff status   | Project status and clean-start runbook include the latest local verification results and remaining production-only gaps. |
+| ID          | Status | Task                         | Expected Output                                                                                                          |
+| ----------- | ------ | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| FPO-DOC-001 | Done   | Add FPO architecture diagram | Component/data model docs include FPO tables and ownership.                                                              |
+| FPO-DOC-002 | Done   | Add FPO database guide       | Database guide includes FPO relationships and module pattern.                                                            |
+| FPO-DOC-003 | Done   | Add admin user guide         | Admin workflows are covered in the client admin workflow guide and related docs.                                         |
+| FPO-DOC-004 | Done   | Add UAT guide                | Step-by-step acceptance script exists.                                                                                   |
+| FPO-DOC-005 | Done   | Add deployment runbook       | Clean start, deployment, and security docs exist; target cloud values remain an operations input.                        |
+| FPO-DOC-006 | Done   | Add pre-UAT handoff status   | Project status and clean-start runbook include the latest local verification results and remaining production-only gaps. |
 
 ## Future Phase Tasks
 
@@ -1087,3 +1093,5 @@ These are not Phase 1 MVP tasks.
 - Update this task list after each completed slice.
 - Do not add WhatsApp, AI, IoT, payment gateway, marketplace, or satellite
   integration inside Phase 1 unless contract scope changes.
+- Use modal/drawer/wizard/detail-page patterns for dense add/edit flows instead
+  of filling operational dashboards with every input at once.

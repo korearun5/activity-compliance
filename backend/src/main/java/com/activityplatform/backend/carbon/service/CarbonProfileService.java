@@ -9,15 +9,22 @@ import com.activityplatform.backend.audit.domain.AuditAction;
 import com.activityplatform.backend.audit.service.AuditEventService;
 import com.activityplatform.backend.carbon.api.CarbonFarmPlotRequest;
 import com.activityplatform.backend.carbon.api.CarbonFarmPlotResponse;
+import com.activityplatform.backend.carbon.api.CarbonActivityCategoryResponse;
+import com.activityplatform.backend.carbon.api.CarbonActivityRecordRequest;
+import com.activityplatform.backend.carbon.api.CarbonActivityRecordResponse;
 import com.activityplatform.backend.carbon.api.CarbonProfileRequest;
 import com.activityplatform.backend.carbon.api.CarbonProfileResponse;
 import com.activityplatform.backend.carbon.api.CarbonSoilProfileRequest;
 import com.activityplatform.backend.carbon.api.CarbonSoilProfileResponse;
+import com.activityplatform.backend.carbon.domain.CarbonActivityCategoryEntity;
+import com.activityplatform.backend.carbon.domain.CarbonActivityRecordEntity;
 import com.activityplatform.backend.carbon.domain.CarbonFarmPlotEntity;
 import com.activityplatform.backend.carbon.domain.CarbonParticipantType;
 import com.activityplatform.backend.carbon.domain.CarbonProfileEntity;
 import com.activityplatform.backend.carbon.domain.CarbonRecordStatus;
 import com.activityplatform.backend.carbon.domain.CarbonSoilProfileEntity;
+import com.activityplatform.backend.carbon.repository.CarbonActivityCategoryRepository;
+import com.activityplatform.backend.carbon.repository.CarbonActivityRecordRepository;
 import com.activityplatform.backend.carbon.repository.CarbonFarmPlotRepository;
 import com.activityplatform.backend.carbon.repository.CarbonProfileRepository;
 import com.activityplatform.backend.carbon.repository.CarbonSoilProfileRepository;
@@ -29,6 +36,10 @@ import com.activityplatform.backend.platform.domain.ModuleCode;
 import com.activityplatform.backend.platform.service.TenantModuleService;
 import com.activityplatform.backend.security.CurrentUser;
 import com.activityplatform.backend.security.Role;
+import com.activityplatform.backend.storage.FileStorageRequest;
+import com.activityplatform.backend.storage.FileStorageService;
+import com.activityplatform.backend.storage.StoredFile;
+import java.io.IOException;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
@@ -38,13 +49,17 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class CarbonProfileService {
   private static final String CARBON_PREFIX = "CAR-";
 
   private final AuditEventService auditEventService;
+  private final CarbonActivityCategoryRepository activityCategoryRepository;
+  private final CarbonActivityRecordRepository activityRecordRepository;
   private final CarbonFarmPlotRepository farmPlotRepository;
+  private final FileStorageService fileStorageService;
   private final CarbonProfileRepository profileRepository;
   private final CarbonSoilProfileRepository soilProfileRepository;
   private final FpoMemberProfileRepository fpoMemberProfileRepository;
@@ -54,7 +69,10 @@ public class CarbonProfileService {
 
   public CarbonProfileService(
       AuditEventService auditEventService,
+      CarbonActivityCategoryRepository activityCategoryRepository,
+      CarbonActivityRecordRepository activityRecordRepository,
       CarbonFarmPlotRepository farmPlotRepository,
+      FileStorageService fileStorageService,
       CarbonProfileRepository profileRepository,
       CarbonSoilProfileRepository soilProfileRepository,
       FpoMemberProfileRepository fpoMemberProfileRepository,
@@ -63,7 +81,10 @@ public class CarbonProfileService {
       UserRepository userRepository
   ) {
     this.auditEventService = auditEventService;
+    this.activityCategoryRepository = activityCategoryRepository;
+    this.activityRecordRepository = activityRecordRepository;
     this.farmPlotRepository = farmPlotRepository;
+    this.fileStorageService = fileStorageService;
     this.profileRepository = profileRepository;
     this.soilProfileRepository = soilProfileRepository;
     this.fpoMemberProfileRepository = fpoMemberProfileRepository;
@@ -420,6 +441,169 @@ public class CarbonProfileService {
     return CarbonSoilProfileResponse.from(saved);
   }
 
+  @Transactional
+  public CarbonSoilProfileResponse uploadSoilReport(
+      CurrentUser currentUser,
+      UUID soilProfileId,
+      MultipartFile file
+  ) {
+    requireCarbonModule(currentUser);
+    if (file == null || file.isEmpty()) {
+      throw validation("Soil report file is required.");
+    }
+
+    CarbonSoilProfileEntity soilProfile = requireSoilProfile(currentUser, soilProfileId);
+    CarbonAccessPolicy.requireProfileMutationAccess(
+        currentUser,
+        soilProfile.getCarbonProfile(),
+        "You do not have permission to upload this Carbon soil report."
+    );
+
+    StoredFile storedFile;
+    try {
+      storedFile = fileStorageService.store(new FileStorageRequest(
+          currentUser.tenantId(),
+          "carbon-soil-report",
+          soilProfile.getId(),
+          file.getOriginalFilename(),
+          file.getContentType(),
+          file.getSize(),
+          file.getInputStream()
+      ));
+    } catch (IOException exception) {
+      throw new ApplicationException(
+          ErrorCode.FILE_STORAGE_FAILED,
+          "Unable to read uploaded soil report.",
+          HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+
+    soilProfile.attachReport(
+        storedFile.originalFilename(),
+        storedFile.contentType(),
+        storedFile.storageKey(),
+        Instant.now()
+    );
+    CarbonSoilProfileEntity saved = soilProfileRepository.save(soilProfile);
+    auditEventService.record(
+        saved.getTenant(),
+        actor(currentUser),
+        "CARBON_SOIL_PROFILE",
+        saved.getId(),
+        AuditAction.CARBON_SOIL_REPORT_UPLOADED,
+        Map.of(
+            "profileId", saved.getCarbonProfile().getId().toString(),
+            "storageKey", storedFile.storageKey()
+        )
+    );
+    return CarbonSoilProfileResponse.from(saved);
+  }
+
+  @Transactional(readOnly = true)
+  public java.util.List<CarbonActivityCategoryResponse> listActivityCategories(
+      CurrentUser currentUser
+  ) {
+    requireCarbonModule(currentUser);
+    return activityCategoryRepository
+        .findByStatusOrderBySortOrderAsc(CarbonRecordStatus.ACTIVE)
+        .stream()
+        .map(CarbonActivityCategoryResponse::from)
+        .toList();
+  }
+
+  @Transactional(readOnly = true)
+  public java.util.List<CarbonActivityRecordResponse> listActivities(
+      CurrentUser currentUser,
+      UUID profileId
+  ) {
+    requireCarbonModule(currentUser);
+    CarbonProfileEntity profile = requireAccessibleProfile(currentUser, profileId);
+    return activityRecordRepository
+        .findByTenantIdAndCarbonProfileIdOrderByActivityDateDescCreatedAtDesc(
+            currentUser.tenantId(),
+            profile.getId()
+        )
+        .stream()
+        .map(CarbonActivityRecordResponse::from)
+        .toList();
+  }
+
+  @Transactional
+  public CarbonActivityRecordResponse createActivity(
+      CurrentUser currentUser,
+      UUID profileId,
+      CarbonActivityRecordRequest request
+  ) {
+    requireCarbonModule(currentUser);
+    CarbonProfileEntity profile = requireProfile(currentUser, profileId);
+    CarbonAccessPolicy.requireActivityRecordAccess(
+        currentUser,
+        profile,
+        "You do not have permission to add Carbon activities for this profile."
+    );
+
+    CarbonActivityCategoryEntity category = requireActiveActivityCategory(request.categoryId());
+    CarbonFarmPlotEntity plot = resolvePlot(currentUser, profile, request.carbonFarmPlotId());
+    validateActivityQuantity(request);
+    Instant now = Instant.now();
+    CarbonActivityRecordEntity record = new CarbonActivityRecordEntity(
+        UUID.randomUUID(),
+        profile.getTenant(),
+        profile,
+        plot,
+        category,
+        request.activityDate(),
+        CarbonProfileRules.normalizeRequiredText(request.cropName(), "Crop name"),
+        CarbonProfileRules.normalizeOptionalText(request.inputUsed()),
+        request.quantityValue(),
+        CarbonProfileRules.normalizeOptionalText(request.quantityUnit()),
+        CarbonProfileRules.normalizeOptionalText(request.remarks()),
+        statusOrActive(request.status()),
+        now
+    );
+    CarbonActivityRecordEntity saved = activityRecordRepository.save(record);
+    auditActivity(currentUser, saved, AuditAction.CARBON_ACTIVITY_RECORDED);
+    return CarbonActivityRecordResponse.from(saved);
+  }
+
+  @Transactional
+  public CarbonActivityRecordResponse updateActivity(
+      CurrentUser currentUser,
+      UUID activityId,
+      CarbonActivityRecordRequest request
+  ) {
+    requireCarbonModule(currentUser);
+    CarbonActivityRecordEntity record = requireActivityRecord(currentUser, activityId);
+    CarbonAccessPolicy.requireActivityRecordAccess(
+        currentUser,
+        record.getCarbonProfile(),
+        "You do not have permission to update this Carbon activity."
+    );
+
+    CarbonActivityCategoryEntity category = requireActiveActivityCategory(request.categoryId());
+    CarbonFarmPlotEntity plot = resolvePlot(
+        currentUser,
+        record.getCarbonProfile(),
+        request.carbonFarmPlotId()
+    );
+    validateActivityQuantity(request);
+    record.updateDetails(
+        plot,
+        category,
+        request.activityDate(),
+        CarbonProfileRules.normalizeRequiredText(request.cropName(), "Crop name"),
+        CarbonProfileRules.normalizeOptionalText(request.inputUsed()),
+        request.quantityValue(),
+        CarbonProfileRules.normalizeOptionalText(request.quantityUnit()),
+        CarbonProfileRules.normalizeOptionalText(request.remarks()),
+        statusOrActive(request.status()),
+        Instant.now()
+    );
+    CarbonActivityRecordEntity saved = activityRecordRepository.save(record);
+    auditActivity(currentUser, saved, AuditAction.CARBON_ACTIVITY_UPDATED);
+    return CarbonActivityRecordResponse.from(saved);
+  }
+
   private void requireCarbonModule(CurrentUser currentUser) {
     tenantModuleService.requireEnabled(currentUser.tenantId(), ModuleCode.SUSTAINABILITY);
   }
@@ -457,6 +641,23 @@ public class CarbonProfileService {
   private CarbonSoilProfileEntity requireSoilProfile(CurrentUser currentUser, UUID soilProfileId) {
     return soilProfileRepository.findByIdAndTenantId(soilProfileId, currentUser.tenantId())
         .orElseThrow(() -> notFound("Carbon soil profile not found."));
+  }
+
+  private CarbonActivityRecordEntity requireActivityRecord(
+      CurrentUser currentUser,
+      UUID activityId
+  ) {
+    return activityRecordRepository.findByIdAndTenantId(activityId, currentUser.tenantId())
+        .orElseThrow(() -> notFound("Carbon activity not found."));
+  }
+
+  private CarbonActivityCategoryEntity requireActiveActivityCategory(UUID categoryId) {
+    CarbonActivityCategoryEntity category = activityCategoryRepository.findById(categoryId)
+        .orElseThrow(() -> notFound("Carbon activity category not found."));
+    if (category.getStatus() != CarbonRecordStatus.ACTIVE) {
+      throw validation("Carbon activity category is not active.");
+    }
+    return category;
   }
 
   private TenantEntity requireTenant(UUID tenantId) {
@@ -545,6 +746,13 @@ public class CarbonProfileService {
         && user != null
         && !hasRole(user, Role.FARMER)) {
       throw validation("Farmer Carbon profiles must be linked to farmer users.");
+    }
+  }
+
+  private void validateActivityQuantity(CarbonActivityRecordRequest request) {
+    String quantityUnit = CarbonProfileRules.normalizeOptionalText(request.quantityUnit());
+    if (request.quantityValue() != null && quantityUnit == null) {
+      throw validation("Quantity unit is required when quantity value is entered.");
     }
   }
 
@@ -652,6 +860,25 @@ public class CarbonProfileService {
         Map.of(
             "profileId", profile.getCarbonProfile().getId().toString(),
             "status", profile.getStatus().name()
+        )
+    );
+  }
+
+  private void auditActivity(
+      CurrentUser currentUser,
+      CarbonActivityRecordEntity record,
+      AuditAction action
+  ) {
+    auditEventService.record(
+        record.getTenant(),
+        actor(currentUser),
+        "CARBON_ACTIVITY",
+        record.getId(),
+        action,
+        Map.of(
+            "profileId", record.getCarbonProfile().getId().toString(),
+            "category", record.getCategory().getCode(),
+            "status", record.getStatus().name()
         )
     );
   }

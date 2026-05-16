@@ -36,6 +36,11 @@ final class CarbonAccessPolicy {
         && isAssignedCoordinator(currentUser, profile);
   }
 
+  static boolean canRecordActivity(CurrentUser currentUser, CarbonProfileEntity profile) {
+    return canMutateProfile(currentUser, profile)
+        || (currentUser.hasAnyRole(Role.FARMER) && isLinkedFarmer(currentUser, profile));
+  }
+
   static void requireCarbonStaff(CurrentUser currentUser, String message) {
     if (!isCarbonStaff(currentUser)) {
       throw accessDenied(message);
@@ -58,6 +63,16 @@ final class CarbonAccessPolicy {
       String message
   ) {
     if (!canMutateProfile(currentUser, profile)) {
+      throw accessDenied(message);
+    }
+  }
+
+  static void requireActivityRecordAccess(
+      CurrentUser currentUser,
+      CarbonProfileEntity profile,
+      String message
+  ) {
+    if (!canRecordActivity(currentUser, profile)) {
       throw accessDenied(message);
     }
   }

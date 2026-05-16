@@ -252,4 +252,17 @@ public class CarbonSoilProfileEntity {
     this.status = status;
     this.updatedAt = now;
   }
+
+  public void attachReport(
+      String reportFileName,
+      String reportContentType,
+      String reportStorageKey,
+      Instant now
+  ) {
+    this.reportFileName = reportFileName;
+    this.reportContentType = reportContentType;
+    this.reportStorageKey = reportStorageKey;
+    this.reportUrl = null;
+    this.updatedAt = now;
+  }
 }
