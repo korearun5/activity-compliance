@@ -7,37 +7,37 @@ role; use `FIELD_COORDINATOR` for field staff.
 
 ## Phase 1 Role Model
 
-| Role | Scope |
-| ---- | ----- |
-| `ADMIN` | Platform super user. Can see all FPOs, all farmers, all coordinators, all FPO managers, and future platform modules. |
-| `FPO_MANAGER` | One-FPO manager. Can manage only assigned FPO farmers, field coordinators, crop plans, input demand, reports, advisories, and soil records. |
-| `FIELD_COORDINATOR` | Field staff. Can manage assigned villages/farmers and enter farmer, land, GPS, soil, and crop plan data on behalf of farmers. |
-| `FARMER` | Farmer/member login. Can use username/password in Phase 1 for own workflow/self-view access only. OTP remains Phase 2. |
+| Role                | Scope                                                                                                                                       |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ADMIN`             | Platform super user. Can see all FPOs, all farmers, all coordinators, all FPO managers, and future platform modules.                        |
+| `FPO_MANAGER`       | One-FPO manager. Can manage only assigned FPO farmers, field coordinators, crop plans, input demand, reports, advisories, and soil records. |
+| `FIELD_COORDINATOR` | Field staff. Can manage assigned villages/farmers and enter farmer, land, GPS, soil, and crop plan data on behalf of farmers.               |
+| `FARMER`            | Farmer/member login. Can use username/password in Phase 1 for own workflow/self-view access only. OTP remains Phase 2.                      |
 
 Data entry remains admin/coordinator-first, but farmers can login with
 username/password in Phase 1 for their own workflow area.
 
 ## Permission Defaults
 
-| Capability | `ADMIN` | `FPO_MANAGER` | `FIELD_COORDINATOR` | `FARMER` |
-| ---------- | ------- | ------------- | ------------------- | -------- |
-| Create FPO | Yes | No | No | No |
-| Create FPO manager login | Yes | No | No | No |
-| Create field coordinator login | Yes | Yes, own FPO | No | No |
-| Change staff roles | Yes | No | No | No |
-| View all FPOs | Yes | No | No | No |
-| View assigned FPO | Yes | Yes | Yes | Own records only |
-| Create/edit farmers | Yes | Yes, own FPO | Yes, assigned scope | No |
-| Create/edit land/GPS records | Yes | Yes, own FPO | Yes, assigned scope | View own only |
-| Enter soil profile values | Yes | Yes, own FPO | Yes, assigned scope | View own only |
-| Create/edit crop plans | Yes | Yes, own FPO | Yes, assigned scope | View own only |
-| Confirm crop plans | Yes | Yes, own FPO | Yes, assigned scope unless restricted later | No |
-| Run input demand | Yes | Yes, own FPO | No Phase 1 UI | No |
-| Export compliance reports | Yes | Yes, own FPO | No | No |
-| View/export FPO report summary | Yes | Yes, own FPO | Assigned scope if backend permits | No |
-| Create advisory | Yes | Yes, own FPO | No by default | No |
-| View advisory | Yes | Yes, own FPO | Yes, assigned scope | Own relevant advisories |
-| Start/update own workflow activity | Yes, for any allowed field coordinator or farmer | Yes, own FPO | Own activity | Own activity |
+| Capability                         | `ADMIN`                                          | `FPO_MANAGER` | `FIELD_COORDINATOR`                         | `FARMER`                |
+| ---------------------------------- | ------------------------------------------------ | ------------- | ------------------------------------------- | ----------------------- |
+| Create FPO                         | Yes                                              | No            | No                                          | No                      |
+| Create FPO manager login           | Yes                                              | No            | No                                          | No                      |
+| Create field coordinator login     | Yes                                              | Yes, own FPO  | No                                          | No                      |
+| Change staff roles                 | Yes                                              | No            | No                                          | No                      |
+| View all FPOs                      | Yes                                              | No            | No                                          | No                      |
+| View assigned FPO                  | Yes                                              | Yes           | Yes                                         | Own records only        |
+| Create/edit farmers                | Yes                                              | Yes, own FPO  | Yes, assigned scope                         | No                      |
+| Create/edit land/GPS records       | Yes                                              | Yes, own FPO  | Yes, assigned scope                         | View own only           |
+| Enter soil profile values          | Yes                                              | Yes, own FPO  | Yes, assigned scope                         | View own only           |
+| Create/edit crop plans             | Yes                                              | Yes, own FPO  | Yes, assigned scope                         | View own only           |
+| Confirm crop plans                 | Yes                                              | Yes, own FPO  | Yes, assigned scope unless restricted later | No                      |
+| Run input demand                   | Yes                                              | Yes, own FPO  | No Phase 1 UI                               | No                      |
+| Export compliance reports          | Yes                                              | Yes, own FPO  | No                                          | No                      |
+| View/export FPO report summary     | Yes                                              | Yes, own FPO  | Assigned scope if backend permits           | No                      |
+| Create advisory                    | Yes                                              | Yes, own FPO  | No by default                               | No                      |
+| View advisory                      | Yes                                              | Yes, own FPO  | Yes, assigned scope                         | Own relevant advisories |
+| Start/update own workflow activity | Yes, for any allowed field coordinator or farmer | Yes, own FPO  | Own activity                                | Own activity            |
 
 ## Frontend Page And Action Policy
 
@@ -45,19 +45,19 @@ The React app uses [roleAccess.ts](../src/auth/roleAccess.ts) as the frontend
 equivalent of a Mendix role-page map. Keep new Phase 1 pages and buttons wired
 through that policy instead of scattering one-off role checks across screens.
 
-| Dashboard area | `ADMIN` | `FPO_MANAGER` | `FIELD_COORDINATOR` | `FARMER` |
-| -------------- | ------- | ------------- | ------------------- | -------- |
-| Staff dashboard shell | Yes | Yes | Yes | No |
-| Farmer workflow shell | No | No | No | Yes |
-| Farmers tab | Yes | Yes | Yes | Own profile only |
-| Crop Planning tab | Yes | Yes | Yes | No |
-| Crop/season master-data actions | Yes | Yes | Read-only | No |
-| Input Demand tab | Yes | Yes | Hidden | No |
-| Roles tab | Yes | Yes, create coordinators only | Hidden | No |
-| Workflow definition tab | Yes | Yes | Hidden | Farmer workflow screen only |
-| Advisory tab | Yes | Yes | Read-only list | Relevant advisories later |
-| Generic compliance export | Yes | Yes | Disabled | No |
-| Carbon screens | Visible when Carbon client module and `SUSTAINABILITY` backend module are enabled | Visible when enabled | Hidden unless later enabled | Visible when enabled |
+| Dashboard area                  | `ADMIN`                                                                           | `FPO_MANAGER`                 | `FIELD_COORDINATOR`                                                 | `FARMER`                    |
+| ------------------------------- | --------------------------------------------------------------------------------- | ----------------------------- | ------------------------------------------------------------------- | --------------------------- |
+| Staff dashboard shell           | Yes                                                                               | Yes                           | Yes                                                                 | No                          |
+| Farmer workflow shell           | No                                                                                | No                            | No                                                                  | Yes                         |
+| Farmers tab                     | Yes                                                                               | Yes                           | Yes                                                                 | Own profile only            |
+| Crop Planning tab               | Yes                                                                               | Yes                           | Yes                                                                 | No                          |
+| Crop/season master-data actions | Yes                                                                               | Yes                           | Read-only                                                           | No                          |
+| Input Demand tab                | Yes                                                                               | Yes                           | Hidden                                                              | No                          |
+| Roles tab                       | Yes                                                                               | Yes, create coordinators only | Hidden                                                              | No                          |
+| Workflow definition tab         | Yes                                                                               | Yes                           | Hidden                                                              | Farmer workflow screen only |
+| Advisory tab                    | Yes                                                                               | Yes                           | Read-only list                                                      | Relevant advisories later   |
+| Generic compliance export       | Yes                                                                               | Yes                           | Disabled                                                            | No                          |
+| Carbon screens                  | Visible when Carbon client module and `SUSTAINABILITY` backend module are enabled | Visible when enabled          | Visible when enabled; can manage assigned Carbon farmer enrollments | Visible when enabled        |
 
 ## Account Setup Flow
 

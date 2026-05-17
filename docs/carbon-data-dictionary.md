@@ -16,14 +16,14 @@ Use with:
 
 ## Implementation Status
 
-| Area                     | Status              | Notes                                                                                                                                                                                               |
-| ------------------------ | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Carbon profile identity  | API/UI ready        | `carbon_profiles` stores the Carbon identity and participant/farmer profile foundation; backend APIs are verified by `CarbonProfileControllerIT` and frontend forms are wired.                      |
-| Carbon farm/plot         | API/UI ready        | `carbon_farm_plots` stores GPS point capture and optional boundary JSON for later map work; backend APIs are verified by `CarbonProfileControllerIT` and frontend forms are wired.                  |
-| Carbon soil profile      | API/UI upload ready | `carbon_soil_profiles` stores SOC, pH, EC, NPK, bulk density, texture, and report metadata; backend APIs, frontend forms, and direct PDF/image report upload through the storage adapter are wired. |
-| Carbon activity records  | API/UI ready        | `carbon_activity_categories` stores App Flow activity categories and `carbon_activity_records` stores farmer/staff-entered activity logs; direct evidence upload/review remains the next slice.     |
-| Carbon score/calculation | Not implemented     | Methodology, eligibility, buffer, leakage, and verification rules must be approved before implementation.                                                                                           |
-| Provider integrations    | Not implemented     | OTP, map boundary drawing, AI verification, satellite layers, weather API, and payment integrations remain future/provider-dependent.                                                               |
+| Area                     | Status              | Notes                                                                                                                                                                                                                            |
+| ------------------------ | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Carbon profile identity  | API/UI ready        | `carbon_profiles` stores the Carbon identity and participant/farmer profile foundation; backend APIs are verified by `CarbonProfileControllerIT` and frontend forms are wired with client-facing "Add farmer" enrollment labels. |
+| Carbon farm/plot         | API/UI ready        | `carbon_farm_plots` stores GPS point capture and optional boundary JSON for later map work; backend APIs are verified by `CarbonProfileControllerIT` and frontend forms are wired.                                               |
+| Carbon soil profile      | API/UI upload ready | `carbon_soil_profiles` stores SOC, pH, EC, NPK, bulk density, texture, and report metadata; backend APIs, frontend forms, and direct PDF/image report upload through the storage adapter are wired.                              |
+| Carbon activity records  | API/UI ready        | `carbon_activity_categories` stores App Flow activity categories and `carbon_activity_records` stores farmer/staff-entered activity logs; direct evidence upload/review remains the next slice.                                  |
+| Carbon score/calculation | Not implemented     | Methodology, eligibility, buffer, leakage, and verification rules must be approved before implementation.                                                                                                                        |
+| Provider integrations    | Not implemented     | OTP, map boundary drawing, AI verification, satellite layers, weather API, and payment integrations remain future/provider-dependent.                                                                                            |
 
 ## Module And Package Rules
 
@@ -48,6 +48,16 @@ Table: `carbon_profiles`
 Purpose: create a Carbon identity record for a farmer or Carbon-program
 participant. This is separate from FPO member profile so Carbon can be sold as a
 standalone app package.
+
+UI naming rule: client-facing Carbon screens should call this "farmer
+enrollment" or "Add farmer". The database/API name remains `carbon_profiles` so
+the Carbon module can also support non-FPO participants later without another
+schema rename.
+
+Known UX gap: the durable model already supports `userId` and
+`fpoMemberProfileId` links, but the normal Carbon "Add farmer" flow still needs
+a friendly farmer account/member picker or create-login action
+(`CARBON-PROFILE-004`) so staff do not manage raw UUIDs.
 
 | Field                   | Required | Validation / Values                             | Notes                                                                        |
 | ----------------------- | -------- | ----------------------------------------------- | ---------------------------------------------------------------------------- |

@@ -68,7 +68,7 @@ export function AdminCarbonOverviewTab() {
         value: String(snapshot?.nearbyDealerCount ?? 0)
       },
       {
-        label: "Carbon profiles",
+        label: "Farmers enrolled",
         value: String(liveProfiles.length || snapshot?.farmerParticipation || 0)
       }
     ],
@@ -78,7 +78,7 @@ export function AdminCarbonOverviewTab() {
   const journeySteps = useMemo(
     () => [
       {
-        meta: `${profileCount} profile${profileCount === 1 ? "" : "s"}`,
+        meta: `${profileCount} farmer${profileCount === 1 ? "" : "s"}`,
         status: profileCount ? "Ready" : "Needs data",
         title: "1. Enroll farmers"
       },
@@ -117,12 +117,21 @@ export function AdminCarbonOverviewTab() {
   return (
     <View style={styles.section}>
       <View style={styles.panel}>
-        <View>
-          <Text style={styles.title}>Carbon workspace</Text>
-          <Text style={styles.copy}>
-            Enroll farmers, capture farm and soil records, track carbon activities, and
-            prepare advisory and marketplace support.
-          </Text>
+        <View style={styles.workspaceHeader}>
+          <View style={styles.headerText}>
+            <Text style={styles.title}>Carbon workspace</Text>
+            <Text style={styles.copy}>
+              Enroll farmers, capture farm and soil records, track carbon activities,
+              and prepare advisory and marketplace support.
+            </Text>
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            style={styles.primaryAction}
+            onPress={() => setActiveSection("enrollment")}
+          >
+            <Text style={styles.primaryActionText}>Add farmer</Text>
+          </Pressable>
         </View>
 
         <SectionTabs
@@ -172,7 +181,7 @@ export function AdminCarbonOverviewTab() {
 
         {activeSection === "enrollment" ? (
           <Text style={styles.copy}>
-            Carbon identity, farm plots, GPS points, soil reports, and profile
+            Farmer carbon identity, farm plots, GPS points, soil reports, and enrollment
             readiness.
           </Text>
         ) : null}
@@ -382,6 +391,24 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20
   },
+  headerText: {
+    flex: 1
+  },
+  primaryAction: {
+    alignItems: "center",
+    alignSelf: "flex-start",
+    backgroundColor: "#1f6f73",
+    borderRadius: 8,
+    justifyContent: "center",
+    minHeight: 40,
+    paddingHorizontal: 14,
+    paddingVertical: 9
+  },
+  primaryActionText: {
+    color: "#ffffff",
+    fontSize: 13,
+    fontWeight: "800"
+  },
   summaryGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -465,6 +492,13 @@ const styles = StyleSheet.create({
     gap: 12,
     justifyContent: "space-between",
     padding: 12
+  },
+  workspaceHeader: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+    justifyContent: "space-between"
   },
   row: {
     alignItems: "flex-start",

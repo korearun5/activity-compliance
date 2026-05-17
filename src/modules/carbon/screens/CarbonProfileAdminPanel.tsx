@@ -118,7 +118,7 @@ export function CarbonProfileAdminPanel({
       onProfilesLoaded?.(nextProfiles);
       setSelectedProfileId((current) => current ?? nextProfiles[0]?.id ?? null);
     } catch (loadError) {
-      setError(getErrorMessage(loadError, "Unable to load Carbon profiles."));
+      setError(getErrorMessage(loadError, "Unable to load farmers."));
     } finally {
       setIsLoading(false);
     }
@@ -162,7 +162,7 @@ export function CarbonProfileAdminPanel({
       setActiveForm(null);
       return true;
     } catch (saveError) {
-      setError(getErrorMessage(saveError, "Unable to save Carbon profile."));
+      setError(getErrorMessage(saveError, "Unable to save farmer enrollment."));
       return false;
     } finally {
       setSavingKey(null);
@@ -171,7 +171,7 @@ export function CarbonProfileAdminPanel({
 
   async function handlePlotSubmit(input: CarbonFarmPlotInput) {
     if (!selectedProfile) {
-      setError("Select a Carbon profile before saving a farm plot.");
+      setError("Select a farmer before saving a farm plot.");
       return false;
     }
 
@@ -197,7 +197,7 @@ export function CarbonProfileAdminPanel({
 
   async function handleSoilSubmit(input: CarbonSoilProfileInput) {
     if (!selectedProfile) {
-      setError("Select a Carbon profile before saving a soil profile.");
+      setError("Select a farmer before saving a soil profile.");
       return false;
     }
 
@@ -214,7 +214,7 @@ export function CarbonProfileAdminPanel({
       setActiveForm(null);
       return true;
     } catch (saveError) {
-      setError(getErrorMessage(saveError, "Unable to save Carbon soil profile."));
+      setError(getErrorMessage(saveError, "Unable to save soil profile."));
       return false;
     } finally {
       setSavingKey(null);
@@ -223,7 +223,7 @@ export function CarbonProfileAdminPanel({
 
   async function handleActivitySubmit(input: CarbonActivityInput) {
     if (!selectedProfile) {
-      setError("Select a Carbon profile before saving an activity.");
+      setError("Select a farmer before saving an activity.");
       return false;
     }
 
@@ -333,10 +333,10 @@ export function CarbonProfileAdminPanel({
     activeForm === "profile"
       ? "Capture the participant details needed for carbon enrollment."
       : activeForm === "activity"
-        ? "Record a regenerative practice against the selected farm profile."
+        ? "Record a regenerative practice against the selected farmer."
         : selectedProfile
           ? `${selectedProfile.displayName} - ${selectedProfile.carbonIdentityId}`
-          : "Select a Carbon profile before adding records.";
+          : "Select a farmer before adding records.";
 
   return (
     <View style={styles.panel}>
@@ -344,8 +344,7 @@ export function CarbonProfileAdminPanel({
         <View>
           <Text style={styles.subsectionTitle}>Enrollment workspace</Text>
           <Text style={styles.panelMeta}>
-            Select a profile first, then manage that farmer's farm plots and soil
-            records.
+            Select a farmer first, then manage farm plots, soil records, and activities.
           </Text>
         </View>
         <Pressable
@@ -366,9 +365,9 @@ export function CarbonProfileAdminPanel({
         <View style={styles.profileColumn}>
           <View style={styles.columnHeader}>
             <View>
-              <Text style={styles.columnTitle}>1. Carbon profiles</Text>
+              <Text style={styles.columnTitle}>1. Farmers</Text>
               <Text style={styles.panelMeta}>
-                {profiles.length} profile{profiles.length === 1 ? "" : "s"} saved
+                {profiles.length} farmer{profiles.length === 1 ? "" : "s"} enrolled
               </Text>
             </View>
             <View style={styles.headerActions}>
@@ -377,7 +376,11 @@ export function CarbonProfileAdminPanel({
                 tone="neutral"
               />
               <ActionButton
-                label={activeForm === "profile" && !editingProfile ? "Adding" : "Add"}
+                label={
+                  activeForm === "profile" && !editingProfile
+                    ? "Adding farmer"
+                    : "Add farmer"
+                }
                 onPress={() => openProfileForm()}
               />
             </View>
@@ -395,9 +398,10 @@ export function CarbonProfileAdminPanel({
         <View style={styles.detailColumn}>
           <View style={styles.columnHeader}>
             <View>
-              <Text style={styles.columnTitle}>2. Selected profile workspace</Text>
+              <Text style={styles.columnTitle}>2. Selected farmer workspace</Text>
               <Text style={styles.panelMeta}>
-                Farm plots and soil profiles are attached to the selected profile.
+                Farm plots, soil profiles, and activities are attached to the selected
+                farmer.
               </Text>
             </View>
           </View>
@@ -440,10 +444,10 @@ export function CarbonProfileAdminPanel({
             </>
           ) : (
             <View style={styles.emptyStatePanel}>
-              <Text style={styles.emptyTitle}>No profile selected</Text>
+              <Text style={styles.emptyTitle}>No farmer selected</Text>
               <Text style={styles.emptyText}>
-                Select a profile from the left side to view and manage its farm plots
-                and soil records.
+                Select a farmer from the left side to view and manage farm plots, soil
+                records, and activities.
               </Text>
             </View>
           )}
@@ -510,7 +514,7 @@ function SelectedProfileSummary({
   return (
     <View style={styles.selectedHeader}>
       <View style={styles.rowText}>
-        <Text style={styles.selectedEyebrow}>Selected profile</Text>
+        <Text style={styles.selectedEyebrow}>Selected farmer</Text>
         <Text style={styles.selectedTitle}>{profile.displayName}</Text>
         <Text style={styles.panelMeta}>
           {profile.carbonIdentityId} -{" "}
@@ -544,7 +548,7 @@ function SelectedProfileSummary({
 
 function getEnrollmentModalTitle(activeForm: ActiveEnrollmentForm, isEditing: boolean) {
   if (activeForm === "profile") {
-    return isEditing ? "Edit Carbon profile" : "Add Carbon profile";
+    return isEditing ? "Edit farmer enrollment" : "Add farmer";
   }
 
   if (activeForm === "plot") {
@@ -832,7 +836,7 @@ function CarbonProfileForm({
       <PrimaryButton
         disabled={isSubmitting}
         label={
-          isSubmitting ? "Saving..." : editingProfile ? "Update profile" : "Add profile"
+          isSubmitting ? "Saving..." : editingProfile ? "Update farmer" : "Add farmer"
         }
         onPress={handleSubmit}
       />
@@ -1331,7 +1335,7 @@ function ProfileList({
   selectedProfileId: string | null;
 }) {
   if (!profiles.length) {
-    return <Text style={styles.emptyText}>No Carbon profiles saved yet.</Text>;
+    return <Text style={styles.emptyText}>No farmers enrolled yet.</Text>;
   }
 
   return (
@@ -1398,7 +1402,7 @@ function PlotList({
         <View>
           <Text style={styles.sectionLabel}>Saved farm plots</Text>
           <Text style={styles.panelMeta}>
-            {plots.length} plot{plots.length === 1 ? "" : "s"} for this profile
+            {plots.length} plot{plots.length === 1 ? "" : "s"} for this farmer
           </Text>
         </View>
         <ActionButton
@@ -1430,7 +1434,7 @@ function PlotList({
           </View>
         ))
       ) : (
-        <Text style={styles.emptyText}>No farm plots saved for this profile.</Text>
+        <Text style={styles.emptyText}>No farm plots saved for this farmer.</Text>
       )}
     </View>
   );
@@ -1527,7 +1531,7 @@ function SoilProfileList({
           );
         })
       ) : (
-        <Text style={styles.emptyText}>No soil profiles saved for this profile.</Text>
+        <Text style={styles.emptyText}>No soil profiles saved for this farmer.</Text>
       )}
     </View>
   );
@@ -1595,7 +1599,7 @@ function ActivityList({
         ))
       ) : (
         <Text style={styles.emptyText}>
-          No Carbon activities saved for this profile.
+          No Carbon activities saved for this farmer.
         </Text>
       )}
     </View>

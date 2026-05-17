@@ -33,75 +33,261 @@ export type RoleAction =
   | "reviewEvidence"
   | "viewReportSummary";
 
-type TabAccess<TTab extends string> = {
+export type VisibilityScope = "common" | ClientModuleId;
+
+export type VisibilityContext = {
+  enabledModules: PlatformModuleCode[] | null;
+  features: UiFeatureFlags;
+};
+
+type VisibilityRule<TId extends string, TRole extends UserRole> = {
+  id: TId;
   clientModule?: ClientModuleId;
+  kind: "action" | "adminTab" | "farmerTab";
   label: string;
   module?: PlatformModuleCode;
-  roles?: StaffRole[];
+  roles?: readonly TRole[];
+  scope: VisibilityScope;
+};
+
+type TabAccess<TTab extends string> = VisibilityRule<TTab, UserRole> & {
   tab: TTab;
 };
 
-const adminAndFpoRoles: StaffRole[] = ["admin", "fpoManager"];
-const allStaffRoles: StaffRole[] = ["admin", "fpoManager", "fieldCoordinator"];
-
-export const adminTabAccess: Record<AdminTabId, TabAccess<AdminTabId>> = {
-  advisories: {
-    label: "Advisories",
-    module: "ADVISORY",
-    roles: allStaffRoles,
-    tab: "advisories"
-  },
-  carbon: {
-    clientModule: "carbon",
-    label: "Carbon",
-    module: "SUSTAINABILITY",
-    roles: adminAndFpoRoles,
-    tab: "carbon"
-  },
-  cropPlanning: {
-    clientModule: "fpo",
-    label: "Crop Planning",
-    module: "CROP_PLANNING",
-    roles: allStaffRoles,
-    tab: "cropPlanning"
-  },
-  inputDemand: {
-    clientModule: "fpo",
-    label: "Input Demand",
-    module: "INPUT_DEMAND",
-    roles: adminAndFpoRoles,
-    tab: "inputDemand"
-  },
-  overview: {
-    label: "Overview",
-    roles: allStaffRoles,
-    tab: "overview"
-  },
-  participants: {
-    clientModule: "fpo",
-    label: "Farmers",
-    module: "MEMBER_DATA",
-    roles: allStaffRoles,
-    tab: "participants"
-  },
-  reports: {
-    label: "Reports",
-    module: "REPORT_EXPORT",
-    roles: allStaffRoles,
-    tab: "reports"
-  },
-  roles: {
-    label: "Roles",
-    roles: adminAndFpoRoles,
-    tab: "roles"
-  },
-  workflows: {
-    label: "Workflows",
-    module: "ACTIVITY_COMPLIANCE",
-    roles: adminAndFpoRoles,
-    tab: "workflows"
-  }
+type AdminTabAccess = TabAccess<AdminTabId> & {
+  kind: "adminTab";
+  roles: readonly StaffRole[];
 };
+
+type FarmerTabAccess = TabAccess<FarmerTabId> & {
+  kind: "farmerTab";
+};
+
+type ActionAccess = VisibilityRule<RoleAction, UserRole> & {
+  kind: "action";
+};
+
+const adminAndFpoRoles = ["admin", "fpoManager"] as const;
+const allStaffRoles = ["admin", "fpoManager", "fieldCoordinator"] as const;
+const allUserRoles = ["admin", "fpoManager", "fieldCoordinator", "farmer"] as const;
+
+export const moduleVisibilityRegistry = {
+  actions: {
+    createFieldCoordinator: {
+      id: "createFieldCoordinator",
+      kind: "action",
+      label: "Create field coordinator",
+      roles: adminAndFpoRoles,
+      scope: "common"
+    },
+    createFpoManager: {
+      id: "createFpoManager",
+      kind: "action",
+      label: "Create FPO manager",
+      roles: ["admin"],
+      scope: "common"
+    },
+    exportComplianceReport: {
+      id: "exportComplianceReport",
+      kind: "action",
+      label: "Export compliance report",
+      module: "REPORT_EXPORT",
+      roles: adminAndFpoRoles,
+      scope: "common"
+    },
+    manageAdvisories: {
+      id: "manageAdvisories",
+      kind: "action",
+      label: "Manage advisories",
+      module: "ADVISORY",
+      roles: adminAndFpoRoles,
+      scope: "common"
+    },
+    manageCropMasterData: {
+      clientModule: "fpo",
+      id: "manageCropMasterData",
+      kind: "action",
+      label: "Manage crop master data",
+      module: "CROP_PLANNING",
+      roles: adminAndFpoRoles,
+      scope: "fpo"
+    },
+    manageInputDemand: {
+      clientModule: "fpo",
+      id: "manageInputDemand",
+      kind: "action",
+      label: "Manage input demand",
+      module: "INPUT_DEMAND",
+      roles: adminAndFpoRoles,
+      scope: "fpo"
+    },
+    manageStaffRoles: {
+      id: "manageStaffRoles",
+      kind: "action",
+      label: "Manage staff roles",
+      roles: ["admin"],
+      scope: "common"
+    },
+    manageWorkflowDefinitions: {
+      id: "manageWorkflowDefinitions",
+      kind: "action",
+      label: "Manage workflow definitions",
+      module: "ACTIVITY_COMPLIANCE",
+      roles: adminAndFpoRoles,
+      scope: "common"
+    },
+    reviewEvidence: {
+      id: "reviewEvidence",
+      kind: "action",
+      label: "Review evidence",
+      module: "EVIDENCE_REVIEW",
+      roles: adminAndFpoRoles,
+      scope: "common"
+    },
+    viewReportSummary: {
+      id: "viewReportSummary",
+      kind: "action",
+      label: "View report summary",
+      module: "REPORT_EXPORT",
+      roles: adminAndFpoRoles,
+      scope: "common"
+    }
+  } satisfies Record<RoleAction, ActionAccess>,
+  adminTabs: {
+    advisories: {
+      id: "advisories",
+      kind: "adminTab",
+      label: "Advisories",
+      module: "ADVISORY",
+      roles: allStaffRoles,
+      scope: "common",
+      tab: "advisories"
+    },
+    carbon: {
+      clientModule: "carbon",
+      id: "carbon",
+      kind: "adminTab",
+      label: "Carbon",
+      module: "SUSTAINABILITY",
+      roles: allStaffRoles,
+      scope: "carbon",
+      tab: "carbon"
+    },
+    cropPlanning: {
+      clientModule: "fpo",
+      id: "cropPlanning",
+      kind: "adminTab",
+      label: "Crop Planning",
+      module: "CROP_PLANNING",
+      roles: allStaffRoles,
+      scope: "fpo",
+      tab: "cropPlanning"
+    },
+    inputDemand: {
+      clientModule: "fpo",
+      id: "inputDemand",
+      kind: "adminTab",
+      label: "Input Demand",
+      module: "INPUT_DEMAND",
+      roles: adminAndFpoRoles,
+      scope: "fpo",
+      tab: "inputDemand"
+    },
+    overview: {
+      id: "overview",
+      kind: "adminTab",
+      label: "Overview",
+      roles: allStaffRoles,
+      scope: "common",
+      tab: "overview"
+    },
+    participants: {
+      clientModule: "fpo",
+      id: "participants",
+      kind: "adminTab",
+      label: "Farmers",
+      module: "MEMBER_DATA",
+      roles: allStaffRoles,
+      scope: "fpo",
+      tab: "participants"
+    },
+    reports: {
+      id: "reports",
+      kind: "adminTab",
+      label: "Reports",
+      module: "REPORT_EXPORT",
+      roles: allStaffRoles,
+      scope: "common",
+      tab: "reports"
+    },
+    roles: {
+      id: "roles",
+      kind: "adminTab",
+      label: "Roles",
+      roles: adminAndFpoRoles,
+      scope: "common",
+      tab: "roles"
+    },
+    workflows: {
+      id: "workflows",
+      kind: "adminTab",
+      label: "Workflows",
+      module: "ACTIVITY_COMPLIANCE",
+      roles: adminAndFpoRoles,
+      scope: "common",
+      tab: "workflows"
+    }
+  } satisfies Record<AdminTabId, AdminTabAccess>,
+  farmerTabs: {
+    carbon: {
+      clientModule: "carbon",
+      id: "carbon",
+      kind: "farmerTab",
+      label: "Carbon",
+      module: "SUSTAINABILITY",
+      scope: "carbon",
+      tab: "carbon"
+    },
+    cycles: {
+      clientModule: "fpo",
+      id: "cycles",
+      kind: "farmerTab",
+      label: "Cycles",
+      module: "ACTIVITY_COMPLIANCE",
+      scope: "fpo",
+      tab: "cycles"
+    },
+    dashboard: {
+      clientModule: "fpo",
+      id: "dashboard",
+      kind: "farmerTab",
+      label: "Dashboard",
+      module: "ACTIVITY_COMPLIANCE",
+      scope: "fpo",
+      tab: "dashboard"
+    },
+    history: {
+      clientModule: "fpo",
+      id: "history",
+      kind: "farmerTab",
+      label: "History",
+      module: "ACTIVITY_COMPLIANCE",
+      scope: "fpo",
+      tab: "history"
+    },
+    profile: {
+      clientModule: "fpo",
+      id: "profile",
+      kind: "farmerTab",
+      label: "Profile",
+      module: "MEMBER_DATA",
+      scope: "fpo",
+      tab: "profile"
+    }
+  } satisfies Record<FarmerTabId, FarmerTabAccess>
+} as const;
+
+export const adminTabAccess = moduleVisibilityRegistry.adminTabs;
 
 export const adminTabOrder: AdminTabId[] = [
   "overview",
@@ -115,30 +301,7 @@ export const adminTabOrder: AdminTabId[] = [
   "carbon"
 ];
 
-export const farmerTabAccess: Record<FarmerTabId, TabAccess<FarmerTabId>> = {
-  carbon: {
-    clientModule: "carbon",
-    label: "Carbon",
-    module: "SUSTAINABILITY",
-    tab: "carbon"
-  },
-  cycles: {
-    label: "Cycles",
-    tab: "cycles"
-  },
-  dashboard: {
-    label: "Dashboard",
-    tab: "dashboard"
-  },
-  history: {
-    label: "History",
-    tab: "history"
-  },
-  profile: {
-    label: "Profile",
-    tab: "profile"
-  }
-};
+export const farmerTabAccess = moduleVisibilityRegistry.farmerTabs;
 
 export const farmerTabOrder: FarmerTabId[] = [
   "cycles",
@@ -148,21 +311,13 @@ export const farmerTabOrder: FarmerTabId[] = [
   "carbon"
 ];
 
-const actionAccess: Record<RoleAction, UserRole[]> = {
-  createFieldCoordinator: ["admin", "fpoManager"],
-  createFpoManager: ["admin"],
-  exportComplianceReport: ["admin", "fpoManager"],
-  manageAdvisories: ["admin", "fpoManager"],
-  manageCropMasterData: ["admin", "fpoManager"],
-  manageInputDemand: ["admin", "fpoManager"],
-  manageStaffRoles: ["admin"],
-  manageWorkflowDefinitions: ["admin", "fpoManager"],
-  reviewEvidence: ["admin", "fpoManager"],
-  viewReportSummary: ["admin", "fpoManager"]
-};
-
-export function canRolePerform(role: UserRole, action: RoleAction) {
-  return actionAccess[action].includes(role);
+export function canRolePerform(
+  role: UserRole,
+  action: RoleAction,
+  context?: VisibilityContext
+) {
+  const rule = moduleVisibilityRegistry.actions[action];
+  return isRuleVisibleForRole(rule, role, context);
 }
 
 export function getVisibleAdminTabs(
@@ -172,12 +327,7 @@ export function getVisibleAdminTabs(
 ) {
   return adminTabOrder
     .map((tab) => adminTabAccess[tab])
-    .filter(
-      (item) =>
-        (!item.roles || item.roles.includes(role)) &&
-        isTabFeatureAvailable(item, features) &&
-        isTabModuleAvailable(item.module, enabledModules)
-    );
+    .filter((item) => isRuleVisibleForRole(item, role, { enabledModules, features }));
 }
 
 export function getVisibleFarmerTabs(
@@ -186,23 +336,47 @@ export function getVisibleFarmerTabs(
 ) {
   return farmerTabOrder
     .map((tab) => farmerTabAccess[tab])
-    .filter(
-      (item) =>
-        isTabFeatureAvailable(item, features) &&
-        isTabModuleAvailable(item.module, enabledModules)
+    .filter((item) =>
+      isRuleVisibleForRole(item, "farmer", { enabledModules, features })
     );
 }
 
-function isTabFeatureAvailable<TTab extends string>(
-  item: TabAccess<TTab>,
-  features: UiFeatureFlags
+function isRuleVisibleForRole<TId extends string, TRole extends UserRole>(
+  item: VisibilityRule<TId, TRole>,
+  role: UserRole,
+  context?: VisibilityContext
 ) {
+  const roles = item.roles ?? allUserRoles;
+  const roleAllowed = roles.includes(role as TRole);
+
+  if (!roleAllowed) {
+    return false;
+  }
+
+  if (!context) {
+    return true;
+  }
+
   return (
-    !item.clientModule || features.enabledClientModules.includes(item.clientModule)
+    isClientModuleAvailable(getRuleClientModule(item), context.features) &&
+    isBackendModuleAvailable(item.module, context.enabledModules)
   );
 }
 
-function isTabModuleAvailable(
+function getRuleClientModule<TId extends string, TRole extends UserRole>(
+  item: VisibilityRule<TId, TRole>
+): ClientModuleId | undefined {
+  return item.scope === "common" ? item.clientModule : item.scope;
+}
+
+function isClientModuleAvailable(
+  clientModule: ClientModuleId | undefined,
+  features: UiFeatureFlags
+) {
+  return !clientModule || features.enabledClientModules.includes(clientModule);
+}
+
+function isBackendModuleAvailable(
   moduleCode: PlatformModuleCode | undefined,
   enabledModules: PlatformModuleCode[] | null
 ) {

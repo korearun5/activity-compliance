@@ -233,11 +233,38 @@ Phase 2 frontend rules:
   by a module.
 - Every tab must check the frontend module flag and the backend
   `enabledModules` result before appearing.
+- Navigation/action ownership must be added to `moduleVisibilityRegistry` in
+  `src/auth/roleAccess.ts`; do not scatter one-off role/module checks in
+  screens.
 - Every store action must handle backend `MODULE_NOT_ENABLED` gracefully.
 - Disabled modules should leave no dead tabs, broken empty states, or confusing
   call-to-action buttons.
 - When Carbon is disabled for an FPO-only package, show a clear upsell path
   such as "Get Carbon Credits" instead of showing Carbon screens.
+
+## Central Visibility Registry
+
+The frontend visibility source of truth is `moduleVisibilityRegistry` in
+`src/auth/roleAccess.ts`.
+
+Each tab or action must declare:
+
+- `scope`: `common`, `carbon`, `fpo`, or a future client module.
+- `roles`: which roles can see or perform it.
+- `module`: required backend tenant module, when applicable.
+- `label`: user-facing navigation/action label.
+
+Rules:
+
+- `scope: "carbon"` requires the Carbon frontend package flag and the backend
+  module named on the rule.
+- `scope: "fpo"` requires the FPO frontend package flag and the backend module
+  named on the rule.
+- `scope: "common"` is shared shell/platform behavior and may still require a
+  backend module such as `REPORT_EXPORT`.
+- Farmer workflow tabs are FPO-scoped; Carbon-only farmer users should land on
+  the Carbon tab without seeing FPO crop-cycle tabs.
+- Run `npm run test:module-visibility` whenever this registry changes.
 
 ## Delivery Models
 
@@ -381,21 +408,21 @@ Until then, keep the system as a modular monolith.
 
 ## Developer Tasks For Module Foundation
 
-| ID      | Status  | Task                                              | Notes                                                                                                                                       |
-| ------- | ------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| MOD-001 | Done    | Add module code enum                              | Includes Phase 1 and future module codes.                                                                                                   |
-| MOD-002 | Done    | Add `platform_modules` migration                  | Seeds known modules through Flyway.                                                                                                         |
-| MOD-003 | Done    | Add `tenant_module_subscriptions` migration       | Tenant/module/status relationship.                                                                                                          |
-| MOD-004 | Done    | Add tenant module repository/service              | Queries enabled modules by tenant.                                                                                                          |
-| MOD-005 | Done    | Add backend module guard                          | Explicit `TenantModuleService.requireEnabled` check.                                                                                        |
-| MOD-006 | Done    | Add `MODULE_NOT_ENABLED` error code               | Uses standard API envelope.                                                                                                                 |
-| MOD-007 | Done    | Add endpoint to list enabled modules              | `GET /api/v1/platform/modules/enabled`.                                                                                                     |
-| MOD-008 | Done    | Add admin-only module management API              | `GET/PUT /api/v1/platform/module-subscriptions`.                                                                                            |
-| MOD-009 | Done    | Add frontend enabled-module store                 | Loads after login and caches with session.                                                                                                  |
-| MOD-010 | Done    | Guard frontend navigation tabs                    | Hides disabled admin tabs.                                                                                                                  |
-| MOD-011 | Done    | Add tests for disabled module access              | Targeted integration tests added; require Docker/Testcontainers to run.                                                                     |
-| MOD-012 | Pending | Document source-handover packaging process        | Required before any source delivery.                                                                                                        |
-| MOD-013 | Pending | Align existing code with module-boundary standard | Tracked as `HARDEN-003` and `HARDEN-005` in the Foundation Hardening Roadmap; move FPO/Carbon/UI/backend boundaries gradually when touched. |
+| ID      | Status  | Task                                              | Notes                                                                                                                                            |
+| ------- | ------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| MOD-001 | Done    | Add module code enum                              | Includes Phase 1 and future module codes.                                                                                                        |
+| MOD-002 | Done    | Add `platform_modules` migration                  | Seeds known modules through Flyway.                                                                                                              |
+| MOD-003 | Done    | Add `tenant_module_subscriptions` migration       | Tenant/module/status relationship.                                                                                                               |
+| MOD-004 | Done    | Add tenant module repository/service              | Queries enabled modules by tenant.                                                                                                               |
+| MOD-005 | Done    | Add backend module guard                          | Explicit `TenantModuleService.requireEnabled` check.                                                                                             |
+| MOD-006 | Done    | Add `MODULE_NOT_ENABLED` error code               | Uses standard API envelope.                                                                                                                      |
+| MOD-007 | Done    | Add endpoint to list enabled modules              | `GET /api/v1/platform/modules/enabled`.                                                                                                          |
+| MOD-008 | Done    | Add admin-only module management API              | `GET/PUT /api/v1/platform/module-subscriptions`.                                                                                                 |
+| MOD-009 | Done    | Add frontend enabled-module store                 | Loads after login and caches with session.                                                                                                       |
+| MOD-010 | Done    | Guard frontend navigation tabs                    | Central `moduleVisibilityRegistry` hides disabled admin/farmer tabs and gates role actions by scope, role, frontend package, and backend module. |
+| MOD-011 | Done    | Add tests for disabled module access              | Targeted integration tests added; require Docker/Testcontainers to run.                                                                          |
+| MOD-012 | Pending | Document source-handover packaging process        | Required before any source delivery.                                                                                                             |
+| MOD-013 | Pending | Align existing code with module-boundary standard | Tracked as `HARDEN-003` and `HARDEN-005` in the Foundation Hardening Roadmap; move FPO/Carbon/UI/backend boundaries gradually when touched.      |
 
 ## Implemented Module API Surface
 

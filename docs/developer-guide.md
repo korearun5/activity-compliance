@@ -497,6 +497,8 @@ Implemented foundation:
 - FPO advisory backend and admin UI.
 - Carbon app-flow screens backed by dummy frontend data and Carbon/FPO package
   toggles, with Carbon screens/data exported from `src/modules/carbon`.
+- Central frontend visibility registry for admin/farmer tabs and role actions
+  in `src/auth/roleAccess.ts`.
 - Durable Carbon foundation schema for profiles, farm plots, soil profiles, and
   activity categories.
 
@@ -512,6 +514,15 @@ Current production-readiness coverage:
   tests, Docker Compose config validation, npm audit, and OWASP Dependency
   Check. Run `npm run test:module-visibility` locally when touching module
   packaging or role-to-tab visibility.
+
+Visibility rule for new work:
+
+- Add new navigation tabs and role actions to `moduleVisibilityRegistry` in
+  `src/auth/roleAccess.ts`.
+- Give every rule a `scope` (`common`, `carbon`, `fpo`, or a future module), the
+  allowed roles, and any required backend module code.
+- Avoid local `if role && module` checks in screens unless they are rendering
+  detail inside a tab already admitted by the registry.
 
 Remaining before a client production handoff:
 

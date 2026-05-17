@@ -22,8 +22,10 @@ Module._extensions[".ts"] = function loadTypeScript(module, filename) {
 };
 
 const {
+  moduleVisibilityRegistry,
   getVisibleAdminTabs,
-  getVisibleFarmerTabs
+  getVisibleFarmerTabs,
+  canRolePerform
 } = require("../src/auth/roleAccess.ts");
 
 const coreModules = [
@@ -46,6 +48,22 @@ function tabIds(tabs) {
   return tabs.map((tab) => tab.tab);
 }
 
+assert.deepEqual(Object.keys(moduleVisibilityRegistry.adminTabs).sort(), [
+  "advisories",
+  "carbon",
+  "cropPlanning",
+  "inputDemand",
+  "overview",
+  "participants",
+  "reports",
+  "roles",
+  "workflows"
+]);
+assert.equal(moduleVisibilityRegistry.adminTabs.carbon.scope, "carbon");
+assert.equal(moduleVisibilityRegistry.adminTabs.participants.scope, "fpo");
+assert.equal(moduleVisibilityRegistry.farmerTabs.carbon.scope, "carbon");
+assert.equal(moduleVisibilityRegistry.farmerTabs.cycles.scope, "fpo");
+
 const carbonAdminTabs = tabIds(
   getVisibleAdminTabs("admin", carbonModules, {
     enabledClientModules: ["carbon"]
@@ -55,6 +73,14 @@ assert.ok(carbonAdminTabs.includes("carbon"));
 assert.ok(!carbonAdminTabs.includes("participants"));
 assert.ok(!carbonAdminTabs.includes("cropPlanning"));
 assert.ok(!carbonAdminTabs.includes("inputDemand"));
+
+const carbonCoordinatorTabs = tabIds(
+  getVisibleAdminTabs("fieldCoordinator", carbonModules, {
+    enabledClientModules: ["carbon"]
+  })
+);
+assert.ok(carbonCoordinatorTabs.includes("carbon"));
+assert.ok(!carbonCoordinatorTabs.includes("roles"));
 
 const carbonWithoutSubscriptionTabs = tabIds(
   getVisibleAdminTabs("admin", coreModules, {
@@ -86,7 +112,28 @@ const farmerCarbonTabs = tabIds(
     enabledClientModules: ["carbon"]
   })
 );
+assert.deepEqual(farmerCarbonTabs, ["carbon"]);
 assert.ok(farmerCarbonTabs.includes("carbon"));
+
+const farmerFpoTabs = tabIds(
+  getVisibleFarmerTabs(fpoModules, {
+    enabledClientModules: ["fpo"]
+  })
+);
+assert.deepEqual(farmerFpoTabs, ["cycles", "dashboard", "profile", "history"]);
+
+const farmerFullPackageTabs = tabIds(
+  getVisibleFarmerTabs([...fpoModules, "SUSTAINABILITY"], {
+    enabledClientModules: ["carbon", "fpo"]
+  })
+);
+assert.deepEqual(farmerFullPackageTabs, [
+  "cycles",
+  "dashboard",
+  "profile",
+  "history",
+  "carbon"
+]);
 
 const farmerWithoutSubscriptionTabs = tabIds(
   getVisibleFarmerTabs(coreModules, {
@@ -94,5 +141,14 @@ const farmerWithoutSubscriptionTabs = tabIds(
   })
 );
 assert.ok(!farmerWithoutSubscriptionTabs.includes("carbon"));
+
+assert.equal(canRolePerform("fpoManager", "manageInputDemand"), true);
+assert.equal(
+  canRolePerform("fpoManager", "manageInputDemand", {
+    enabledModules: carbonModules,
+    features: { enabledClientModules: ["carbon"] }
+  }),
+  false
+);
 
 console.log("Module visibility smoke passed.");
