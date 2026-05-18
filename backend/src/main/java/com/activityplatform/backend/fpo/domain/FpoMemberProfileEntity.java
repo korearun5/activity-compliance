@@ -2,6 +2,7 @@ package com.activityplatform.backend.fpo.domain;
 
 import com.activityplatform.backend.auth.domain.TenantEntity;
 import com.activityplatform.backend.auth.domain.UserEntity;
+import com.activityplatform.backend.farmer.domain.FarmerProfileEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -28,6 +29,10 @@ public class FpoMemberProfileEntity {
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
   @JoinColumn(name = "user_id", nullable = false)
   private UserEntity user;
+
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "farmer_profile_id")
+  private FarmerProfileEntity farmerProfile;
 
   @Column(name = "member_number", nullable = false)
   private String memberNumber;
@@ -139,6 +144,14 @@ public class FpoMemberProfileEntity {
     return user;
   }
 
+  public FarmerProfileEntity getFarmerProfile() {
+    return farmerProfile;
+  }
+
+  public UUID getFarmerProfileId() {
+    return farmerProfile == null ? null : farmerProfile.getId();
+  }
+
   public String getMemberNumber() {
     return memberNumber;
   }
@@ -245,6 +258,11 @@ public class FpoMemberProfileEntity {
 
   public void updateStatus(FpoMemberStatus status, Instant now) {
     this.status = status;
+    this.updatedAt = now;
+  }
+
+  public void linkFarmerProfile(FarmerProfileEntity farmerProfile, Instant now) {
+    this.farmerProfile = farmerProfile;
     this.updatedAt = now;
   }
 }

@@ -39,9 +39,11 @@ export const CARBON_TILLAGE_STATUSES = [
 export const CARBON_BANK_STATUSES = ["Linked", "Pending", "Not required"] as const;
 export const CARBON_AADHAAR_STATUSES = ["Provided", "Optional not captured"] as const;
 export const CARBON_DOCUMENT_STATUSES = ["Not started", "Partial", "Ready"] as const;
-
 export type CarbonProfileRecord = {
+  aadhaarNumber?: string;
   aadhaarStatus?: string;
+  age?: number;
+  alternateMobileNumber?: string;
   bankStatus?: string;
   carbonIdentityId: string;
   coordinatorUserId?: string;
@@ -50,11 +52,14 @@ export type CarbonProfileRecord = {
   displayName: string;
   districtName?: string;
   documentStatus?: string;
+  farmerCategory?: string;
   fpoMemberProfileId?: string;
+  gender?: string;
   gpsLatitude?: number;
   gpsLongitude?: number;
   id: string;
   livestockCount?: number;
+  memberNumber?: string;
   mobileNumber?: string;
   participantType: CarbonParticipantType;
   stateName?: string;
@@ -65,11 +70,15 @@ export type CarbonProfileRecord = {
   totalLandHoldingAcres?: number;
   updatedAt: string;
   userId?: string;
+  username?: string;
   village?: string;
 };
 
 export type CarbonProfileInput = {
+  aadhaarNumber?: string;
   aadhaarStatus?: string;
+  age?: string;
+  alternateMobileNumber?: string;
   bankStatus?: string;
   carbonIdentityId?: string;
   coordinatorUserId?: string;
@@ -77,18 +86,23 @@ export type CarbonProfileInput = {
   displayName: string;
   districtName?: string;
   documentStatus?: string;
+  farmerCategory?: string;
   fpoMemberProfileId?: string;
+  gender?: string;
   gpsLatitude?: string;
   gpsLongitude?: string;
   livestockCount?: string;
+  memberNumber?: string;
   mobileNumber?: string;
   participantType: CarbonParticipantType;
+  password?: string;
   stateName?: string;
   status?: CarbonRecordStatus;
   taluka?: string;
   tillageStatus?: string;
   totalLandHoldingAcres?: string;
   userId?: string;
+  username?: string;
   village?: string;
 };
 
@@ -437,7 +451,10 @@ export async function updateCarbonActivity(
 
 function toCarbonProfile(response: CarbonProfileResponse): CarbonProfileRecord {
   return {
+    aadhaarNumber: response.aadhaarNumber ?? undefined,
     aadhaarStatus: response.aadhaarStatus ?? undefined,
+    age: response.age ?? undefined,
+    alternateMobileNumber: response.alternateMobileNumber ?? undefined,
     bankStatus: response.bankStatus ?? undefined,
     carbonIdentityId: response.carbonIdentityId,
     coordinatorUserId: response.coordinatorUserId ?? undefined,
@@ -446,11 +463,14 @@ function toCarbonProfile(response: CarbonProfileResponse): CarbonProfileRecord {
     displayName: response.displayName,
     districtName: response.districtName ?? undefined,
     documentStatus: response.documentStatus ?? undefined,
+    farmerCategory: response.farmerCategory ?? undefined,
     fpoMemberProfileId: response.fpoMemberProfileId ?? undefined,
+    gender: response.gender ?? undefined,
     gpsLatitude: response.gpsLatitude ?? undefined,
     gpsLongitude: response.gpsLongitude ?? undefined,
     id: response.id,
     livestockCount: response.livestockCount ?? undefined,
+    memberNumber: response.memberNumber ?? undefined,
     mobileNumber: response.mobileNumber ?? undefined,
     participantType: response.participantType,
     stateName: response.stateName ?? undefined,
@@ -461,6 +481,7 @@ function toCarbonProfile(response: CarbonProfileResponse): CarbonProfileRecord {
     totalLandHoldingAcres: response.totalLandHoldingAcres ?? undefined,
     updatedAt: response.updatedAt,
     userId: response.userId ?? undefined,
+    username: response.username ?? undefined,
     village: response.village ?? undefined
   };
 }
@@ -567,7 +588,10 @@ function toCarbonProfileRequest(input: CarbonProfileInput): CarbonProfileRequest
   validateCoordinate(gpsLongitude, -180, 180, "Longitude");
 
   return removeUndefined({
+    aadhaarNumber: cleanOptional(input.aadhaarNumber),
     aadhaarStatus: cleanOptional(input.aadhaarStatus),
+    age: parseOptionalInteger(input.age, "Age"),
+    alternateMobileNumber: cleanOptional(input.alternateMobileNumber),
     bankStatus: cleanOptional(input.bankStatus),
     carbonIdentityId: cleanOptional(input.carbonIdentityId),
     coordinatorUserId: cleanOptional(input.coordinatorUserId),
@@ -575,12 +599,16 @@ function toCarbonProfileRequest(input: CarbonProfileInput): CarbonProfileRequest
     displayName: requiredText(input.displayName, "Display name"),
     districtName: cleanOptional(input.districtName),
     documentStatus: cleanOptional(input.documentStatus),
+    farmerCategory: cleanOptional(input.farmerCategory),
     fpoMemberProfileId: cleanOptional(input.fpoMemberProfileId),
+    gender: cleanOptional(input.gender),
     gpsLatitude,
     gpsLongitude,
     livestockCount: parseOptionalInteger(input.livestockCount, "Livestock count"),
+    memberNumber: cleanOptional(input.memberNumber),
     mobileNumber: cleanOptional(input.mobileNumber),
     participantType: input.participantType,
+    password: input.password || undefined,
     stateName: cleanOptional(input.stateName),
     status: input.status ?? "ACTIVE",
     taluka: cleanOptional(input.taluka),
@@ -590,6 +618,7 @@ function toCarbonProfileRequest(input: CarbonProfileInput): CarbonProfileRequest
       "Total land holding"
     ),
     userId: cleanOptional(input.userId),
+    username: cleanOptional(input.username),
     village: cleanOptional(input.village)
   });
 }

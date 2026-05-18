@@ -30,6 +30,10 @@ import com.activityplatform.backend.carbon.repository.CarbonProfileRepository;
 import com.activityplatform.backend.carbon.repository.CarbonSoilProfileRepository;
 import com.activityplatform.backend.common.error.ApplicationException;
 import com.activityplatform.backend.common.error.ErrorCode;
+import com.activityplatform.backend.farmer.domain.FarmerProfileEntity;
+import com.activityplatform.backend.farmer.domain.FarmerProfileStatus;
+import com.activityplatform.backend.farmer.service.FarmerProfileCommand;
+import com.activityplatform.backend.farmer.service.FarmerService;
 import com.activityplatform.backend.fpo.domain.FpoMemberProfileEntity;
 import com.activityplatform.backend.fpo.repository.FpoMemberProfileRepository;
 import com.activityplatform.backend.platform.domain.ModuleCode;
@@ -39,6 +43,9 @@ import com.activityplatform.backend.security.Role;
 import com.activityplatform.backend.storage.FileStorageRequest;
 import com.activityplatform.backend.storage.FileStorageService;
 import com.activityplatform.backend.storage.StoredFile;
+import com.activityplatform.backend.user.api.CreateUserRequest;
+import com.activityplatform.backend.user.api.UserResponse;
+import com.activityplatform.backend.user.service.UserService;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.Map;
@@ -66,6 +73,8 @@ public class CarbonProfileService {
   private final TenantModuleService tenantModuleService;
   private final TenantRepository tenantRepository;
   private final UserRepository userRepository;
+  private final UserService userService;
+  private final FarmerService farmerService;
 
   public CarbonProfileService(
       AuditEventService auditEventService,
@@ -78,7 +87,9 @@ public class CarbonProfileService {
       FpoMemberProfileRepository fpoMemberProfileRepository,
       TenantModuleService tenantModuleService,
       TenantRepository tenantRepository,
-      UserRepository userRepository
+      UserRepository userRepository,
+      UserService userService,
+      FarmerService farmerService
   ) {
     this.auditEventService = auditEventService;
     this.activityCategoryRepository = activityCategoryRepository;
@@ -91,6 +102,8 @@ public class CarbonProfileService {
     this.tenantModuleService = tenantModuleService;
     this.tenantRepository = tenantRepository;
     this.userRepository = userRepository;
+    this.userService = userService;
+    this.farmerService = farmerService;
   }
 
   @Transactional(readOnly = true)
@@ -171,14 +184,52 @@ public class CarbonProfileService {
 
     TenantEntity tenant = requireTenant(currentUser.tenantId());
     FpoMemberProfileEntity member = resolveFpoMember(currentUser, request.fpoMemberProfileId());
-    UserEntity user = resolveProfileUser(currentUser, request.userId(), member);
+    UserEntity user = resolveProfileUserForCreate(currentUser, request, member);
     UserEntity coordinator = resolveCoordinatorForCreate(currentUser, request.coordinatorUserId());
     CarbonParticipantType participantType = participantType(request.participantType());
     validateParticipantUser(participantType, user);
+    validateFarmerEnrollmentFields(participantType, request, member);
     String carbonIdentityId = normalizeCarbonIdentityId(
         currentUser.tenantId(),
         request.carbonIdentityId(),
         null
+    );
+    String username = resolveUsername(request.username(), user);
+    String memberNumber = resolveMemberNumber(request.memberNumber(), member);
+    String displayName = resolveDisplayName(request.displayName(), user, member);
+    String mobileNumber = resolveMobileNumber(request.mobileNumber(), member);
+    String alternateMobileNumber = resolveAlternateMobileNumber(
+        request.alternateMobileNumber(),
+        member
+    );
+    String aadhaarNumber = resolveAadhaarNumber(request.aadhaarNumber(), member);
+    String village = resolveVillage(request.village(), member);
+    String taluka = resolveTaluka(request.taluka(), member);
+    String districtName = resolveDistrictName(request.districtName(), member);
+    String stateName = resolveStateName(request.stateName(), member);
+    String gender = resolveGender(request.gender(), member);
+    Integer age = resolveAge(request.age(), member);
+    String farmerCategory = resolveFarmerCategory(request.farmerCategory(), member);
+    CarbonRecordStatus status = statusOrActive(request.status());
+    FarmerProfileEntity farmerProfile = resolveFarmerProfile(
+        currentUser,
+        null,
+        participantType,
+        user,
+        farmerProfileCommand(
+            displayName,
+            mobileNumber,
+            alternateMobileNumber,
+            aadhaarNumber,
+            village,
+            taluka,
+            districtName,
+            stateName,
+            gender,
+            age,
+            farmerCategory,
+            FarmerProfileStatus.ACTIVE
+        )
     );
     Instant now = Instant.now();
 
@@ -189,14 +240,21 @@ public class CarbonProfileService {
         user,
         member,
         coordinator,
+        username,
+        memberNumber,
         carbonIdentityId,
         participantType,
-        resolveDisplayName(request.displayName(), user, member),
-        CarbonProfileRules.normalizeOptionalIndianMobile(request.mobileNumber()),
-        CarbonProfileRules.normalizeOptionalText(request.village()),
-        CarbonProfileRules.normalizeOptionalText(request.taluka()),
-        CarbonProfileRules.normalizeOptionalText(request.districtName()),
-        CarbonProfileRules.normalizeOptionalText(request.stateName()),
+        displayName,
+        mobileNumber,
+        alternateMobileNumber,
+        aadhaarNumber,
+        village,
+        taluka,
+        districtName,
+        stateName,
+        gender,
+        age,
+        farmerCategory,
         request.gpsLatitude(),
         request.gpsLongitude(),
         request.totalLandHoldingAcres(),
@@ -206,9 +264,10 @@ public class CarbonProfileService {
         CarbonProfileRules.normalizeBankStatus(request.bankStatus()),
         CarbonProfileRules.normalizeAadhaarStatus(request.aadhaarStatus()),
         CarbonProfileRules.normalizeDocumentStatus(request.documentStatus()),
-        statusOrActive(request.status()),
+        status,
         now
     );
+    profile.linkFarmerProfile(farmerProfile, now);
 
     CarbonProfileEntity saved = saveProfile(profile);
     auditProfile(currentUser, saved, AuditAction.CARBON_PROFILE_CREATED);
@@ -230,30 +289,77 @@ public class CarbonProfileService {
     );
 
     FpoMemberProfileEntity member = resolveFpoMember(currentUser, request.fpoMemberProfileId());
-    UserEntity user = resolveProfileUser(currentUser, request.userId(), member);
+    UserEntity user = resolveProfileUserForUpdate(currentUser, request, profile, member);
     UserEntity coordinator = resolveCoordinatorForUpdate(currentUser, request.coordinatorUserId());
     CarbonParticipantType participantType = participantType(request.participantType());
     validateParticipantUser(participantType, user);
+    validateFarmerEnrollmentFields(participantType, request, member, profile);
     String requestedIdentityId = CarbonProfileRules.normalizeOptionalText(request.carbonIdentityId());
     String carbonIdentityId = normalizeCarbonIdentityId(
         currentUser.tenantId(),
         requestedIdentityId == null ? profile.getCarbonIdentityId() : requestedIdentityId,
         profile.getId()
     );
+    String username = resolveUsername(request.username(), user, profile);
+    String memberNumber = resolveMemberNumber(request.memberNumber(), member, profile);
+    String displayName = resolveDisplayName(request.displayName(), user, member);
+    String mobileNumber = resolveMobileNumber(request.mobileNumber(), member, profile);
+    String alternateMobileNumber = resolveAlternateMobileNumber(
+        request.alternateMobileNumber(),
+        member,
+        profile
+    );
+    String aadhaarNumber = resolveAadhaarNumber(request.aadhaarNumber(), member, profile);
+    String village = resolveVillage(request.village(), member, profile);
+    String taluka = resolveTaluka(request.taluka(), member, profile);
+    String districtName = resolveDistrictName(request.districtName(), member, profile);
+    String stateName = resolveStateName(request.stateName(), member, profile);
+    String gender = resolveGender(request.gender(), member, profile);
+    Integer age = resolveAge(request.age(), member, profile);
+    String farmerCategory = resolveFarmerCategory(request.farmerCategory(), member, profile);
+    CarbonRecordStatus status = statusOrActive(request.status());
+    FarmerProfileEntity farmerProfile = resolveFarmerProfile(
+        currentUser,
+        profile,
+        participantType,
+        user,
+        farmerProfileCommand(
+            displayName,
+            mobileNumber,
+            alternateMobileNumber,
+            aadhaarNumber,
+            village,
+            taluka,
+            districtName,
+            stateName,
+            gender,
+            age,
+            farmerCategory,
+            FarmerProfileStatus.ACTIVE
+        )
+    );
+    Instant now = Instant.now();
 
     CarbonProfileRules.validateOptionalGpsPair(request.gpsLatitude(), request.gpsLongitude());
     profile.updateDetails(
         user,
         member,
         coordinator,
+        username,
+        memberNumber,
         carbonIdentityId,
         participantType,
-        resolveDisplayName(request.displayName(), user, member),
-        CarbonProfileRules.normalizeOptionalIndianMobile(request.mobileNumber()),
-        CarbonProfileRules.normalizeOptionalText(request.village()),
-        CarbonProfileRules.normalizeOptionalText(request.taluka()),
-        CarbonProfileRules.normalizeOptionalText(request.districtName()),
-        CarbonProfileRules.normalizeOptionalText(request.stateName()),
+        displayName,
+        mobileNumber,
+        alternateMobileNumber,
+        aadhaarNumber,
+        village,
+        taluka,
+        districtName,
+        stateName,
+        gender,
+        age,
+        farmerCategory,
         request.gpsLatitude(),
         request.gpsLongitude(),
         request.totalLandHoldingAcres(),
@@ -263,9 +369,10 @@ public class CarbonProfileService {
         CarbonProfileRules.normalizeBankStatus(request.bankStatus()),
         CarbonProfileRules.normalizeAadhaarStatus(request.aadhaarStatus()),
         CarbonProfileRules.normalizeDocumentStatus(request.documentStatus()),
-        statusOrActive(request.status()),
-        Instant.now()
+        status,
+        now
     );
+    profile.linkFarmerProfile(farmerProfile, now);
 
     CarbonProfileEntity saved = saveProfile(profile);
     auditProfile(currentUser, saved, AuditAction.CARBON_PROFILE_UPDATED);
@@ -679,20 +786,357 @@ public class CarbonProfileService {
         .orElseThrow(() -> notFound("FPO member profile not found."));
   }
 
-  private UserEntity resolveProfileUser(
+  private UserEntity resolveProfileUserForCreate(
+      CurrentUser currentUser,
+      CarbonProfileRequest request,
+      FpoMemberProfileEntity member
+  ) {
+    if (request.userId() != null) {
+      return resolveExistingProfileUser(currentUser, request.userId(), member);
+    }
+
+    if (member != null) {
+      return member.getUser();
+    }
+
+    if (!hasText(request.username()) && !hasText(request.password())) {
+      return null;
+    }
+
+    if (!hasText(request.username()) || !hasText(request.password())) {
+      throw validation("Provide both username and password to create farmer login.");
+    }
+
+    UserResponse user = userService.createFarmer(
+        currentUser,
+        new CreateUserRequest(
+            CarbonProfileRules.normalizeRequiredUsername(request.username()),
+            request.password(),
+            CarbonProfileRules.normalizeRequiredText(request.displayName(), "Full name"),
+            CarbonProfileRules.normalizeRequiredIndianMobile(request.mobileNumber()),
+            CarbonProfileRules.normalizeRequiredText(request.village(), "Village"),
+            CarbonProfileRules.normalizeRequiredText(request.taluka(), "Taluka"),
+            Role.FARMER
+        )
+    );
+
+    return requireUser(currentUser, user.id());
+  }
+
+  private UserEntity resolveProfileUserForUpdate(
+      CurrentUser currentUser,
+      CarbonProfileRequest request,
+      CarbonProfileEntity profile,
+      FpoMemberProfileEntity member
+  ) {
+    if (request.userId() != null) {
+      return resolveExistingProfileUser(currentUser, request.userId(), member);
+    }
+
+    if (member != null) {
+      return member.getUser();
+    }
+
+    if (profile.getUser() != null) {
+      return profile.getUser();
+    }
+
+    if (!hasText(request.username()) && !hasText(request.password())) {
+      return null;
+    }
+
+    return resolveProfileUserForCreate(currentUser, request, member);
+  }
+
+  private UserEntity resolveExistingProfileUser(
       CurrentUser currentUser,
       UUID userId,
       FpoMemberProfileEntity member
   ) {
-    if (userId == null) {
-      return member == null ? null : member.getUser();
-    }
-
     UserEntity user = requireUser(currentUser, userId);
     if (member != null && !member.getUser().getId().equals(user.getId())) {
       throw validation("Linked user must match the selected FPO member profile user.");
     }
     return user;
+  }
+
+  private void validateFarmerEnrollmentFields(
+      CarbonParticipantType participantType,
+      CarbonProfileRequest request,
+      FpoMemberProfileEntity member
+  ) {
+    validateFarmerEnrollmentFields(participantType, request, member, null);
+  }
+
+  private void validateFarmerEnrollmentFields(
+      CarbonParticipantType participantType,
+      CarbonProfileRequest request,
+      FpoMemberProfileEntity member,
+      CarbonProfileEntity profile
+  ) {
+    if (participantType != CarbonParticipantType.FARMER) {
+      return;
+    }
+
+    resolveMemberNumber(request.memberNumber(), member, profile);
+    CarbonProfileRules.normalizeRequiredText(request.displayName(), "Full name");
+    resolveMobileNumber(request.mobileNumber(), member, profile);
+    resolveVillage(request.village(), member, profile);
+    resolveTaluka(request.taluka(), member, profile);
+    resolveDistrictName(request.districtName(), member, profile);
+    resolveStateName(request.stateName(), member, profile);
+    resolveGender(request.gender(), member, profile);
+    resolveFarmerCategory(request.farmerCategory(), member, profile);
+
+    if (profile == null
+        && member == null
+        && request.userId() == null
+        && (!hasText(request.username()) || !hasText(request.password()))) {
+      throw validation("Username and password are required to create farmer login.");
+    }
+  }
+
+  private String resolveUsername(String requestedUsername, UserEntity user) {
+    String normalized = CarbonProfileRules.normalizeOptionalUsername(requestedUsername);
+    if (normalized != null) {
+      return normalized;
+    }
+    return user == null ? null : user.getUsername();
+  }
+
+  private String resolveUsername(
+      String requestedUsername,
+      UserEntity user,
+      CarbonProfileEntity profile
+  ) {
+    String normalized = resolveUsername(requestedUsername, user);
+    if (normalized != null) {
+      return normalized;
+    }
+    return profile == null ? null : profile.getUsername();
+  }
+
+  private String resolveMemberNumber(
+      String requestedValue,
+      FpoMemberProfileEntity member
+  ) {
+    return resolveMemberNumber(requestedValue, member, null);
+  }
+
+  private String resolveMemberNumber(
+      String requestedValue,
+      FpoMemberProfileEntity member,
+      CarbonProfileEntity profile
+  ) {
+    String normalized = CarbonProfileRules.normalizeOptionalText(requestedValue);
+    if (normalized != null) {
+      return normalized;
+    }
+    if (member != null) {
+      return member.getMemberNumber();
+    }
+    if (profile != null && hasText(profile.getMemberNumber())) {
+      return profile.getMemberNumber();
+    }
+    throw validation("Member number is required.");
+  }
+
+  private String resolveMobileNumber(String requestedValue, FpoMemberProfileEntity member) {
+    return resolveMobileNumber(requestedValue, member, null);
+  }
+
+  private String resolveMobileNumber(
+      String requestedValue,
+      FpoMemberProfileEntity member,
+      CarbonProfileEntity profile
+  ) {
+    String candidate = firstText(
+        requestedValue,
+        member == null ? null : member.getMobileNumber(),
+        profile == null ? null : profile.getMobileNumber()
+    );
+    return CarbonProfileRules.normalizeRequiredIndianMobile(candidate);
+  }
+
+  private String resolveAlternateMobileNumber(
+      String requestedValue,
+      FpoMemberProfileEntity member
+  ) {
+    return resolveAlternateMobileNumber(requestedValue, member, null);
+  }
+
+  private String resolveAlternateMobileNumber(
+      String requestedValue,
+      FpoMemberProfileEntity member,
+      CarbonProfileEntity profile
+  ) {
+    return CarbonProfileRules.normalizeOptionalIndianMobile(
+        firstText(
+            requestedValue,
+            member == null ? null : member.getAlternateMobileNumber(),
+            profile == null ? null : profile.getAlternateMobileNumber()
+        )
+    );
+  }
+
+  private String resolveAadhaarNumber(String requestedValue, FpoMemberProfileEntity member) {
+    return resolveAadhaarNumber(requestedValue, member, null);
+  }
+
+  private String resolveAadhaarNumber(
+      String requestedValue,
+      FpoMemberProfileEntity member,
+      CarbonProfileEntity profile
+  ) {
+    return CarbonProfileRules.normalizeOptionalAadhaarNumber(
+        firstText(
+            requestedValue,
+            member == null ? null : member.getAadhaarNumber(),
+            profile == null ? null : profile.getAadhaarNumber()
+        )
+    );
+  }
+
+  private String resolveVillage(String requestedValue, FpoMemberProfileEntity member) {
+    return resolveVillage(requestedValue, member, null);
+  }
+
+  private String resolveVillage(
+      String requestedValue,
+      FpoMemberProfileEntity member,
+      CarbonProfileEntity profile
+  ) {
+    return resolveRequiredFarmerText(
+        "Village",
+        requestedValue,
+        member == null ? null : member.getVillage(),
+        profile == null ? null : profile.getVillage()
+    );
+  }
+
+  private String resolveTaluka(String requestedValue, FpoMemberProfileEntity member) {
+    return resolveTaluka(requestedValue, member, null);
+  }
+
+  private String resolveTaluka(
+      String requestedValue,
+      FpoMemberProfileEntity member,
+      CarbonProfileEntity profile
+  ) {
+    return resolveRequiredFarmerText(
+        "Taluka",
+        requestedValue,
+        member == null ? null : member.getTaluka(),
+        profile == null ? null : profile.getTaluka()
+    );
+  }
+
+  private String resolveDistrictName(String requestedValue, FpoMemberProfileEntity member) {
+    return resolveDistrictName(requestedValue, member, null);
+  }
+
+  private String resolveDistrictName(
+      String requestedValue,
+      FpoMemberProfileEntity member,
+      CarbonProfileEntity profile
+  ) {
+    return resolveRequiredFarmerText(
+        "District",
+        requestedValue,
+        member == null ? null : member.getDistrictName(),
+        profile == null ? null : profile.getDistrictName()
+    );
+  }
+
+  private String resolveStateName(String requestedValue, FpoMemberProfileEntity member) {
+    return resolveStateName(requestedValue, member, null);
+  }
+
+  private String resolveStateName(
+      String requestedValue,
+      FpoMemberProfileEntity member,
+      CarbonProfileEntity profile
+  ) {
+    return resolveRequiredFarmerText(
+        "State",
+        requestedValue,
+        member == null ? null : member.getStateName(),
+        profile == null ? null : profile.getStateName()
+    );
+  }
+
+  private String resolveGender(String requestedValue, FpoMemberProfileEntity member) {
+    return resolveGender(requestedValue, member, null);
+  }
+
+  private String resolveGender(
+      String requestedValue,
+      FpoMemberProfileEntity member,
+      CarbonProfileEntity profile
+  ) {
+    return CarbonProfileRules.normalizeGender(
+        firstText(
+            requestedValue,
+            member == null ? null : member.getGender(),
+            profile == null ? null : profile.getGender()
+        )
+    );
+  }
+
+  private Integer resolveAge(Integer requestedValue, FpoMemberProfileEntity member) {
+    return resolveAge(requestedValue, member, null);
+  }
+
+  private Integer resolveAge(
+      Integer requestedValue,
+      FpoMemberProfileEntity member,
+      CarbonProfileEntity profile
+  ) {
+    if (requestedValue != null) {
+      return requestedValue;
+    }
+    if (member != null) {
+      return member.getAge();
+    }
+    return profile == null ? null : profile.getAge();
+  }
+
+  private String resolveFarmerCategory(
+      String requestedValue,
+      FpoMemberProfileEntity member
+  ) {
+    return resolveFarmerCategory(requestedValue, member, null);
+  }
+
+  private String resolveFarmerCategory(
+      String requestedValue,
+      FpoMemberProfileEntity member,
+      CarbonProfileEntity profile
+  ) {
+    return CarbonProfileRules.normalizeFarmerCategory(
+        firstText(
+            requestedValue,
+            member == null ? null : member.getFarmerCategory(),
+            profile == null ? null : profile.getFarmerCategory()
+        )
+    );
+  }
+
+  private String resolveRequiredFarmerText(String label, String... values) {
+    return CarbonProfileRules.normalizeRequiredText(firstText(values), label);
+  }
+
+  private String firstText(String... values) {
+    for (String value : values) {
+      if (hasText(value)) {
+        return value;
+      }
+    }
+    return null;
+  }
+
+  private boolean hasText(String value) {
+    return value != null && !value.isBlank();
   }
 
   private UserEntity resolveCoordinatorForCreate(CurrentUser currentUser, UUID coordinatorUserId) {
@@ -747,6 +1191,90 @@ public class CarbonProfileService {
         && !hasRole(user, Role.FARMER)) {
       throw validation("Farmer Carbon profiles must be linked to farmer users.");
     }
+  }
+
+  private FarmerProfileEntity resolveFarmerProfile(
+      CurrentUser currentUser,
+      CarbonProfileEntity profile,
+      CarbonParticipantType participantType,
+      UserEntity user,
+      FarmerProfileCommand command
+  ) {
+    if (participantType != CarbonParticipantType.FARMER) {
+      return null;
+    }
+
+    if (user == null) {
+      throw validation("Farmer Carbon profiles must be linked to farmer users.");
+    }
+
+    if (profile != null && profile.getFarmerProfileId() != null) {
+      FarmerProfileEntity existing = farmerService.requireById(
+          currentUser.tenantId(),
+          profile.getFarmerProfileId()
+      );
+      if (existing.getUser().getId().equals(user.getId())) {
+        return farmerService.updateFarmerProfile(
+            currentUser,
+            existing.getId(),
+            preserveFarmerStatus(command, existing.getStatus())
+        );
+      }
+    }
+
+    return farmerService.ensureFarmerProfileForUser(currentUser, user, command);
+  }
+
+  private FarmerProfileCommand preserveFarmerStatus(
+      FarmerProfileCommand command,
+      FarmerProfileStatus status
+  ) {
+    return new FarmerProfileCommand(
+        command.displayName(),
+        command.mobileNumber(),
+        command.alternateMobileNumber(),
+        command.aadhaarNumber(),
+        command.village(),
+        command.taluka(),
+        command.districtName(),
+        command.stateName(),
+        command.gender(),
+        command.dateOfBirth(),
+        command.age(),
+        command.farmerCategory(),
+        status
+    );
+  }
+
+  private FarmerProfileCommand farmerProfileCommand(
+      String displayName,
+      String mobileNumber,
+      String alternateMobileNumber,
+      String aadhaarNumber,
+      String village,
+      String taluka,
+      String districtName,
+      String stateName,
+      String gender,
+      Integer age,
+      String farmerCategory,
+      FarmerProfileStatus status
+  ) {
+    return new FarmerProfileCommand(
+        displayName,
+        mobileNumber,
+        alternateMobileNumber,
+        aadhaarNumber,
+        village,
+        taluka,
+        districtName,
+        stateName,
+        gender,
+        null,
+        age,
+        farmerCategory,
+        status
+    );
   }
 
   private void validateActivityQuantity(CarbonActivityRecordRequest request) {

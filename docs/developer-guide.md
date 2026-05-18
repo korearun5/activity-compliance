@@ -448,6 +448,34 @@ Database:
 - When introducing a reusable pattern, prefer extracting it into `src/ui` after
   the second real use rather than copying bespoke UI blocks across modules.
 
+## Platform Reuse Rules
+
+Treat roles, login identity, and workflow participants as platform concepts, not
+Carbon or FPO concepts.
+
+- Roles are global and mean the same thing in every module: `ADMIN`,
+  `FPO_MANAGER`, `FIELD_COORDINATOR`, and `FARMER`.
+- Modules decide which screens, records, and module-specific actions are
+  available; modules must not redefine the role model.
+- Farmer identity fields and validation belong in shared code. Frontend flows
+  should use `src/shared/farmers/FarmerIdentityFields.tsx` and
+  `src/shared/farmers/farmerIdentity.ts` instead of copying member/profile
+  forms inside module screens.
+- Backend farmer identity validation belongs in
+  `com.activityplatform.backend.farmer.FarmerProfileRules`. FPO and Carbon
+  services can add module-specific fields, but must reuse shared farmer
+  mobile, Aadhaar, gender, and farmer-category rules.
+- Workflow assignment should use the shared participant registry in
+  `src/data/activityParticipantStore.ts`. Do not pass raw FPO member arrays to
+  common workflow screens because Carbon-only farmers, FPO-only farmers, and
+  future module participants must all resolve through the same contract.
+- Product modules may keep their own durable records, for example
+  `fpo_member_profiles` and `carbon_profiles`, but both must link back to the
+  platform `users` table when the person can log in or receive workflow
+  activity.
+- New modules should add module-owned screens/data under `src/modules/<module>`
+  and expose shared user/participant behavior through platform contracts.
+
 ## Adding A New Backend Feature
 
 1. Add/update Flyway migration if schema is needed.
@@ -499,6 +527,9 @@ Implemented foundation:
   toggles, with Carbon screens/data exported from `src/modules/carbon`.
 - Central frontend visibility registry for admin/farmer tabs and role actions
   in `src/auth/roleAccess.ts`.
+- Shared frontend farmer identity form/validation and shared activity
+  participant registry for Carbon-only, FPO-only, and combined packages.
+- Shared backend farmer profile validation used by both FPO and Carbon.
 - Durable Carbon foundation schema for profiles, farm plots, soil profiles, and
   activity categories.
 

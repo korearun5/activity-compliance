@@ -43,6 +43,7 @@ backend/src/main/java/com/activityplatform/backend/
   tenant/
   module/
   user/
+  farmer/           # canonical farmer identity and participant lookup
   fpo/
     member/
     land/
@@ -92,6 +93,9 @@ Current transition rule:
 - New Phase 2 work should start under `src/modules/<module>/`.
 - FPO and Carbon must be independently loadable through configuration and
   tenant module subscriptions.
+- Farmer identity is not module-owned. All modules resolve farmer users through
+  the canonical `users -> farmer_profiles -> module extension records` contract
+  documented in [Farmer Identity Foundation](farmer-identity-foundation.md).
 - `EXPO_PUBLIC_ENABLED_CLIENT_MODULES=carbon` hides FPO operations UI while
   keeping the backend foundation in the codebase.
 - `EXPO_PUBLIC_ENABLED_CLIENT_MODULES=fpo` hides Carbon UI cleanly; if FPO is
@@ -380,14 +384,36 @@ Do:
 - Add tenant module checks to backend APIs.
 - Hide disabled modules in frontend navigation.
 - Keep shared utilities in `core`/`common`.
+- Keep platform roles, farmer identity, login, and workflow participant
+  selection shared. Product modules extend these concepts; they do not copy or
+  redefine them.
 - Add tests for module-enabled and module-disabled cases.
 
 Avoid:
 
 - Large hardcoded if/else blocks scattered across screens.
+- Module-specific copies of farmer identity forms, role checks, or participant
+  pickers.
 - Shipping future modules in source handover builds.
 - Using frontend-only hiding as licensing control.
 - Splitting into microservices before a module has real operational pressure.
+
+## Shared Platform Contracts
+
+These contracts are intentionally common across Carbon, FPO, and future modules:
+
+| Contract                         | Owner                                    | Rule                                                                                                                                                    |
+| -------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Platform roles                   | Backend `Role` / frontend `roleAccess`   | `ADMIN`, `FPO_MANAGER`, `FIELD_COORDINATOR`, and `FARMER` keep the same meaning in every module.                                                        |
+| Farmer login identity            | `users` table                            | A farmer who can log in is always a platform `FARMER` user, even when enrolled through Carbon only.                                                      |
+| Farmer identity fields           | Shared frontend/backend farmer utilities | Mobile, Aadhaar, gender, category, name, location, member number, username, and password rules are shared; module screens must compose the shared form. |
+| Module profile records           | Owning module                            | FPO keeps FPO member records; Carbon keeps Carbon profiles; future modules keep their own records but link to the platform user when relevant.          |
+| Workflow activity participants   | Shared participant registry              | Workflow assignment reads a merged participant list so Carbon-only, FPO-only, combined, and future-module users can be assigned through one UI.         |
+| Navigation and action visibility | `moduleVisibilityRegistry`               | Pages/buttons are admitted by role, frontend package module, backend tenant module, and scope from one registry.                                         |
+
+This prevents the bug class where a person created in one module is invisible
+to a shared workflow, report, or role-based page because another module owned a
+private copy of the same concept.
 
 ## When To Split Into Microservices Later
 
@@ -422,7 +448,7 @@ Until then, keep the system as a modular monolith.
 | MOD-010 | Done    | Guard frontend navigation tabs                    | Central `moduleVisibilityRegistry` hides disabled admin/farmer tabs and gates role actions by scope, role, frontend package, and backend module. |
 | MOD-011 | Done    | Add tests for disabled module access              | Targeted integration tests added; require Docker/Testcontainers to run.                                                                          |
 | MOD-012 | Pending | Document source-handover packaging process        | Required before any source delivery.                                                                                                             |
-| MOD-013 | Pending | Align existing code with module-boundary standard | Tracked as `HARDEN-003` and `HARDEN-005` in the Foundation Hardening Roadmap; move FPO/Carbon/UI/backend boundaries gradually when touched.      |
+| MOD-013 | In progress | Align existing code with module-boundary standard | Shared farmer identity and activity participant registry are extracted; remaining FPO folder relocation and broader boundary cleanup are tracked in `HARDEN-003` and `HARDEN-005`. |
 
 ## Implemented Module API Surface
 

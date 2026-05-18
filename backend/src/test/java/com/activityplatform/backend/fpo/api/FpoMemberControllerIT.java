@@ -17,6 +17,9 @@ import com.activityplatform.backend.auth.repository.RoleRepository;
 import com.activityplatform.backend.auth.repository.TenantRepository;
 import com.activityplatform.backend.auth.repository.UserRepository;
 import com.activityplatform.backend.auth.service.JwtService;
+import com.activityplatform.backend.farmer.domain.FarmerProfileEntity;
+import com.activityplatform.backend.farmer.domain.FarmerProfileStatus;
+import com.activityplatform.backend.farmer.repository.FarmerProfileRepository;
 import com.activityplatform.backend.fpo.domain.FpoMemberProfileEntity;
 import com.activityplatform.backend.fpo.domain.FpoMemberStatus;
 import com.activityplatform.backend.fpo.repository.FpoMemberProfileRepository;
@@ -60,6 +63,9 @@ class FpoMemberControllerIT {
 
   @Autowired
   private FpoMemberProfileRepository memberRepository;
+
+  @Autowired
+  private FarmerProfileRepository farmerProfileRepository;
 
   @Autowired
   private PlatformModuleRepository platformModuleRepository;
@@ -165,6 +171,14 @@ class FpoMemberControllerIT {
         .isTrue();
     assertThat(createdUser.getRoles()).extracting(RoleEntity::getCode)
         .containsExactly(Role.FARMER.name());
+    FarmerProfileEntity farmerProfile = farmerProfileRepository
+        .findByTenantIdAndUserId(tenant.getId(), createdUser.getId())
+        .orElseThrow();
+    FpoMemberProfileEntity member = memberRepository
+        .findByTenantIdAndUserId(tenant.getId(), createdUser.getId())
+        .orElseThrow();
+    assertThat(member.getFarmerProfileId()).isEqualTo(farmerProfile.getId());
+    assertThat(farmerProfile.getMobileNumber()).isEqualTo("9999900000");
   }
 
   @Test
@@ -188,6 +202,11 @@ class FpoMemberControllerIT {
         jsonMapper.readTree(response).get("data").toString(),
         FpoMemberResponse.class
     );
+    FarmerProfileEntity farmerProfile = farmerProfileRepository
+        .findByTenantIdAndUserId(tenant.getId(), farmerUser.getId())
+        .orElseThrow();
+    FpoMemberProfileEntity savedMember = memberRepository.findById(member.id()).orElseThrow();
+    assertThat(savedMember.getFarmerProfileId()).isEqualTo(farmerProfile.getId());
 
     mockMvc.perform(get("/api/v1/fpo/members/me")
             .header("Authorization", "Bearer " + farmerToken))
@@ -237,6 +256,12 @@ class FpoMemberControllerIT {
         .andExpect(jsonPath("$.data.taluka").value("Updated Taluka"))
         .andExpect(jsonPath("$.data.stateName").value("Maharashtra"))
         .andExpect(jsonPath("$.data.coordinatorUserId").value(FIELD_COORDINATORUser.getId().toString()));
+    FarmerProfileEntity updatedFarmerProfile = farmerProfileRepository
+        .findByTenantIdAndUserId(tenant.getId(), farmerUser.getId())
+        .orElseThrow();
+    assertThat(updatedFarmerProfile.getDisplayName()).isEqualTo("Updated Farmer");
+    assertThat(updatedFarmerProfile.getMobileNumber()).isEqualTo("8888800000");
+    assertThat(updatedFarmerProfile.getStatus()).isEqualTo(FarmerProfileStatus.ACTIVE);
 
     mockMvc.perform(patch("/api/v1/fpo/members/" + member.getId() + "/status")
             .header("Authorization", "Bearer " + adminToken)
@@ -246,6 +271,10 @@ class FpoMemberControllerIT {
             )))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.data.status").value("SUSPENDED"));
+    FarmerProfileEntity suspendedFarmerProfile = farmerProfileRepository
+        .findByTenantIdAndUserId(tenant.getId(), farmerUser.getId())
+        .orElseThrow();
+    assertThat(suspendedFarmerProfile.getStatus()).isEqualTo(FarmerProfileStatus.SUSPENDED);
 
     mockMvc.perform(get("/api/v1/fpo/members/" + member.getId())
             .header("Authorization", "Bearer " + disabledTenantAdminToken))

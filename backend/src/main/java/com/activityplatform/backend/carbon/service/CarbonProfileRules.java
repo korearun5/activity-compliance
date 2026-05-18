@@ -2,6 +2,7 @@ package com.activityplatform.backend.carbon.service;
 
 import com.activityplatform.backend.common.error.ApplicationException;
 import com.activityplatform.backend.common.error.ErrorCode;
+import com.activityplatform.backend.farmer.FarmerProfileRules;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -36,20 +37,31 @@ final class CarbonProfileRules {
   }
 
   static String normalizeOptionalIndianMobile(String value) {
-    if (!hasText(value)) {
-      return null;
-    }
+    return FarmerProfileRules.normalizeOptionalIndianMobile(value);
+  }
 
-    String digits = value.replaceAll("\\D", "");
-    if (digits.length() == 12 && digits.startsWith("91")) {
-      digits = digits.substring(2);
-    }
+  static String normalizeRequiredIndianMobile(String value) {
+    return FarmerProfileRules.normalizeIndianMobile(value);
+  }
 
-    if (!digits.matches("[6-9][0-9]{9}")) {
-      throw validation("Mobile number must be a 10 digit Indian mobile number.");
-    }
+  static String normalizeOptionalAadhaarNumber(String value) {
+    return FarmerProfileRules.normalizeOptionalAadhaar(value);
+  }
 
-    return digits;
+  static String normalizeGender(String value) {
+    return FarmerProfileRules.normalizeGender(value);
+  }
+
+  static String normalizeFarmerCategory(String value) {
+    return FarmerProfileRules.normalizeFarmerCategory(value);
+  }
+
+  static String normalizeOptionalUsername(String value) {
+    return normalizeOptionalText(value);
+  }
+
+  static String normalizeRequiredUsername(String value) {
+    return normalizeRequiredText(value, "Username");
   }
 
   static String normalizeTillageStatus(String value) {

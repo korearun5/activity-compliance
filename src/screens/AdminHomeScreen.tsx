@@ -13,6 +13,13 @@ import { getErrorMessage } from "../core/errors/AppError";
 import { getEnabledClientModuleIds, isClientModuleEnabled } from "../modules";
 import { EvidenceStatus } from "../core/model/types";
 import {
+  ActivityParticipant,
+  getActivityParticipants,
+  mergeActivityParticipants,
+  toActivityParticipantFromCarbonProfile,
+  toActivityParticipantFromFpoMember
+} from "../data/activityParticipantStore";
+import {
   countMemberActivities,
   countMemberProofs,
   createFpoMember,
@@ -55,6 +62,7 @@ import {
 } from "../data/workflowActivityStore";
 import { AdminAdvisoriesTab } from "./AdminAdvisoriesTab";
 import { AdminCarbonOverviewTab } from "../modules/carbon";
+import { CarbonProfileRecord } from "../modules/carbon/data/carbonProfileStore";
 import { AdminCropPlanningTab } from "./AdminCropPlanningTab";
 import { AdminFarmAssetsPanel } from "./AdminFarmAssetsPanel";
 import { AdminFpoReportsPanel } from "./AdminFpoReportsPanel";
@@ -62,6 +70,13 @@ import { AdminInputDemandTab } from "./AdminInputDemandTab";
 import { AdminRolesTab } from "./AdminRolesTab";
 import { AdminWorkflowsTab } from "./AdminWorkflowsTab";
 import { StatusBadge } from "../ui/StatusBadge";
+import { FarmerIdentityFields } from "../shared/farmers/FarmerIdentityFields";
+import {
+  emptyFarmerIdentityInput,
+  FarmerIdentityInput,
+  normalizeFarmerIdentityInput,
+  validateFarmerIdentityInput
+} from "../shared/farmers/farmerIdentity";
 
 type AdminHomeScreenProps = {
   currentRole: StaffRole;
@@ -72,6 +87,9 @@ export function AdminHomeScreen({ currentRole, onLogout }: AdminHomeScreenProps)
   const [activeTab, setActiveTab] = useState<AdminTabId>(
     isClientModuleEnabled("carbon") ? "carbon" : "overview"
   );
+  const [activityParticipants, setActivityParticipants] = useState<
+    ActivityParticipant[]
+  >([]);
   const [members, setMembers] = useState<FpoMember[]>([]);
   const [savedCycles, setSavedCycles] = useState<CropCycle[]>([]);
   const [savedProofs, setSavedProofs] = useState<ProofSubmission[]>([]);
@@ -108,11 +126,13 @@ export function AdminHomeScreen({ currentRole, onLogout }: AdminHomeScreenProps)
   useEffect(() => {
     async function loadAdminData() {
       let participantLoadError = "";
+      let nextFpoMembers: FpoMember[] = [];
+      const hasToken = await hasBackendSession();
 
       if (isClientModuleEnabled("fpo")) {
         try {
-          const fpoMembers = await getFpoMembers();
-          setMembers(fpoMembers);
+          nextFpoMembers = await getFpoMembers();
+          setMembers(nextFpoMembers);
         } catch (error) {
           participantLoadError = getErrorMessage(
             error,
@@ -125,7 +145,31 @@ export function AdminHomeScreen({ currentRole, onLogout }: AdminHomeScreenProps)
       }
 
       try {
-        const hasToken = await hasBackendSession();
+        setActivityParticipants(
+          await getActivityParticipants({
+            fpoMembers: nextFpoMembers,
+            includeCarbon: isClientModuleEnabled("carbon"),
+            includeFpo: isClientModuleEnabled("fpo"),
+            useBackend: hasToken
+          })
+        );
+      } catch (error) {
+        const participantRegistryError = getErrorMessage(
+          error,
+          "Unable to load activity participants."
+        );
+        setActivityParticipants(hasToken
+          ? []
+          : mergeActivityParticipants(
+              nextFpoMembers.map(toActivityParticipantFromFpoMember)
+            ));
+        participantLoadError = participantLoadError
+          ? `${participantLoadError} ${participantRegistryError}`
+          : participantRegistryError;
+        setAdminDataError(participantLoadError);
+      }
+
+      try {
         const [cycles, proofs, summary, workflows] = hasToken
           ? await loadBackendAdminData(currentRole)
           : await loadLocalAdminData();
@@ -349,9 +393,60 @@ export function AdminHomeScreen({ currentRole, onLogout }: AdminHomeScreenProps)
       member,
       ...currentMembers.filter((item) => item.memberId !== member.memberId)
     ]);
+    if (hasBackendAccess) {
+      getActivityParticipants({
+        fpoMembers: [member, ...members.filter((item) => item.memberId !== member.memberId)],
+        includeCarbon: isClientModuleEnabled("carbon"),
+        includeFpo: isClientModuleEnabled("fpo"),
+        useBackend: true
+      })
+        .then(setActivityParticipants)
+        .catch((error) =>
+          setParticipantFormError(
+            getErrorMessage(error, "Unable to refresh activity participants.")
+          )
+        );
+    } else {
+      setActivityParticipants((currentParticipants) =>
+        mergeActivityParticipants([
+          ...currentParticipants,
+          toActivityParticipantFromFpoMember(member)
+        ])
+      );
+    }
+  }
+
+  function handleCarbonProfilesLoaded(profiles: CarbonProfileRecord[]) {
+    if (hasBackendAccess) {
+      getActivityParticipants({
+        fpoMembers: members,
+        includeCarbon: isClientModuleEnabled("carbon"),
+        includeFpo: isClientModuleEnabled("fpo"),
+        useBackend: true
+      })
+        .then(setActivityParticipants)
+        .catch((error) =>
+          setAdminDataError(
+            getErrorMessage(error, "Unable to refresh activity participants.")
+          )
+        );
+      return;
+    }
+
+    setActivityParticipants(
+      mergeActivityParticipants([
+        ...members.map(toActivityParticipantFromFpoMember),
+        ...profiles
+          .map(toActivityParticipantFromCarbonProfile)
+          .filter((participant): participant is ActivityParticipant =>
+            Boolean(participant)
+          )
+      ])
+    );
   }
 
   const participants = members;
+  const workflowParticipants = activityParticipants;
   const allCycles = savedCycles;
   const runningCycles = allCycles.filter((cycle) => cycle.status === "running");
   const completedCycles = allCycles.filter((cycle) => cycle.status === "completed");
@@ -518,7 +613,9 @@ export function AdminHomeScreen({ currentRole, onLogout }: AdminHomeScreenProps)
             />
           ) : null}
 
-          {activeTab === "carbon" ? <AdminCarbonOverviewTab /> : null}
+          {activeTab === "carbon" ? (
+            <AdminCarbonOverviewTab onProfilesLoaded={handleCarbonProfilesLoaded} />
+          ) : null}
 
           {activeTab === "workflows" ? (
             <AdminWorkflowsTab
@@ -533,7 +630,7 @@ export function AdminHomeScreen({ currentRole, onLogout }: AdminHomeScreenProps)
               onCreateWorkflow={handleCreateWorkflow}
               onStartActivity={handleStartActivity}
               onUpdateWorkflowStatus={handleUpdateWorkflowStatus}
-              participants={participants}
+              participants={workflowParticipants}
               startingActivity={isStartingActivity}
               updatingWorkflowId={updatingWorkflowId}
               workflows={workflowDefinitions}
@@ -975,147 +1072,38 @@ function CreateMemberForm({
   isSubmitting: boolean;
   onSubmit: (data: CreateFpoMemberInput) => Promise<boolean>;
 }) {
-  const [aadhaarNumber, setAadhaarNumber] = useState("");
-  const [age, setAge] = useState("");
-  const [alternateMobileNumber, setAlternateMobileNumber] = useState("");
-  const [displayName, setDisplayName] = useState("");
-  const [districtName, setDistrictName] = useState("");
-  const [farmerCategory, setFarmerCategory] = useState("");
-  const [gender, setGender] = useState("");
-  const [memberNumber, setMemberNumber] = useState("");
-  const [mobileNumber, setMobileNumber] = useState("");
-  const [password, setPassword] = useState("");
-  const [stateName, setStateName] = useState("");
-  const [taluka, setTaluka] = useState("");
-  const [username, setUsername] = useState("");
-  const [village, setVillage] = useState("");
+  const [identity, setIdentity] = useState<FarmerIdentityInput>(
+    emptyFarmerIdentityInput()
+  );
   const [localError, setLocalError] = useState("");
 
   async function handleSubmit() {
-    const input: CreateFpoMemberInput = {
-      aadhaarNumber: aadhaarNumber.trim(),
-      age: age.trim(),
-      alternateMobileNumber: alternateMobileNumber.trim(),
-      displayName: displayName.trim(),
-      districtName: districtName.trim(),
-      farmerCategory: farmerCategory.trim(),
-      gender: gender.trim(),
-      memberNumber: memberNumber.trim(),
-      mobileNumber: mobileNumber.trim(),
-      password,
-      stateName: stateName.trim(),
-      taluka: taluka.trim(),
-      username: username.trim(),
-      village: village.trim()
-    };
+    const input = normalizeFarmerIdentityInput(identity);
+    const validationError = validateFarmerIdentityInput(input, {
+      requireLogin: true
+    });
 
-    if (
-      !input.memberNumber ||
-      !input.displayName ||
-      !input.mobileNumber ||
-      !input.village ||
-      !input.taluka ||
-      !input.districtName ||
-      !input.stateName ||
-      !input.gender ||
-      !input.farmerCategory ||
-      !input.username ||
-      !input.password
-    ) {
-      setLocalError(
-        "Enter member number, name, mobile, village, taluka, district, state, gender, category, username, and password."
-      );
-      return;
-    }
-
-    if (!isValidIndianMobile(input.mobileNumber)) {
-      setLocalError("Mobile number must be a 10 digit Indian mobile number.");
-      return;
-    }
-
-    if (!isValidOptionalAadhaar(input.aadhaarNumber)) {
-      setLocalError("Aadhaar number must be 12 digits when provided.");
-      return;
-    }
-
-    if (password.length < 8) {
-      setLocalError("Password must be at least 8 characters.");
-      return;
-    }
-
-    if (!isValidOptionalAge(input.age)) {
-      setLocalError("Age must be a whole number from 0 to 120.");
+    if (validationError) {
+      setLocalError(validationError);
       return;
     }
 
     setLocalError("");
-    const created = await onSubmit(input);
+    const created = await onSubmit(toCreateFpoMemberInput(input));
 
     if (created) {
-      setAadhaarNumber("");
-      setAge("");
-      setAlternateMobileNumber("");
-      setDisplayName("");
-      setDistrictName("");
-      setFarmerCategory("");
-      setGender("");
-      setMemberNumber("");
-      setMobileNumber("");
-      setPassword("");
-      setStateName("");
-      setTaluka("");
-      setUsername("");
-      setVillage("");
+      setIdentity(emptyFarmerIdentityInput());
     }
   }
 
   return (
     <View style={styles.managementCard}>
       <Text style={styles.cardTitle}>Create farmer profile and login</Text>
-      <View style={styles.formGrid}>
-        <AdminField
-          label="Member number"
-          value={memberNumber}
-          onChange={setMemberNumber}
-        />
-        <AdminField label="Full name" value={displayName} onChange={setDisplayName} />
-        <AdminField
-          label="Mobile number"
-          value={mobileNumber}
-          onChange={setMobileNumber}
-          keyboardType="phone-pad"
-        />
-        <AdminField
-          label="Alternate mobile"
-          value={alternateMobileNumber}
-          onChange={setAlternateMobileNumber}
-          keyboardType="phone-pad"
-        />
-        <AdminField
-          label="Aadhaar number"
-          value={aadhaarNumber}
-          onChange={setAadhaarNumber}
-          keyboardType="numeric"
-        />
-        <AdminField label="Village" value={village} onChange={setVillage} />
-        <AdminField label="Taluka" value={taluka} onChange={setTaluka} />
-        <AdminField label="District" value={districtName} onChange={setDistrictName} />
-        <AdminField label="State" value={stateName} onChange={setStateName} />
-        <AdminField label="Gender" value={gender} onChange={setGender} />
-        <AdminField label="Age" value={age} onChange={setAge} keyboardType="numeric" />
-        <AdminField
-          label="Farmer category"
-          value={farmerCategory}
-          onChange={setFarmerCategory}
-        />
-        <AdminField label="Username" value={username} onChange={setUsername} />
-        <AdminField
-          label="Password"
-          value={password}
-          onChange={setPassword}
-          secureTextEntry
-        />
-      </View>
+      <FarmerIdentityFields
+        includeLogin
+        value={identity}
+        onChange={setIdentity}
+      />
 
       {localError || error ? (
         <Text style={styles.formError}>{localError || error}</Text>
@@ -1153,114 +1141,48 @@ function EditMemberForm({
   onCancel: () => void;
   onSubmit: (data: UpdateFpoMemberInput) => Promise<boolean>;
 }) {
-  const [aadhaarNumber, setAadhaarNumber] = useState(member.aadhaarNumber ?? "");
-  const [age, setAge] = useState(member.age?.toString() ?? "");
-  const [alternateMobileNumber, setAlternateMobileNumber] = useState(
-    member.alternateMobileNumber ?? ""
+  const [identity, setIdentity] = useState<FarmerIdentityInput>(
+    emptyFarmerIdentityInput({
+      aadhaarNumber: member.aadhaarNumber ?? "",
+      age: member.age?.toString() ?? "",
+      alternateMobileNumber: member.alternateMobileNumber ?? "",
+      displayName: member.displayName,
+      districtName: member.districtName ?? "",
+      farmerCategory: member.farmerCategory ?? "",
+      gender: member.gender ?? "",
+      memberNumber: member.memberNumber,
+      mobileNumber: member.mobileNumber,
+      stateName: member.stateName,
+      taluka: member.taluka,
+      username: member.username,
+      village: member.village
+    })
   );
-  const [displayName, setDisplayName] = useState(member.displayName);
-  const [districtName, setDistrictName] = useState(member.districtName ?? "");
-  const [farmerCategory, setFarmerCategory] = useState(member.farmerCategory ?? "");
-  const [gender, setGender] = useState(member.gender ?? "");
-  const [memberNumber, setMemberNumber] = useState(member.memberNumber);
-  const [mobileNumber, setMobileNumber] = useState(member.mobileNumber);
-  const [stateName, setStateName] = useState(member.stateName);
-  const [taluka, setTaluka] = useState(member.taluka);
-  const [village, setVillage] = useState(member.village);
   const [localError, setLocalError] = useState("");
 
   async function handleSubmit() {
-    const input: UpdateFpoMemberInput = {
-      aadhaarNumber: aadhaarNumber.trim(),
-      age: age.trim(),
-      alternateMobileNumber: alternateMobileNumber.trim(),
-      displayName: displayName.trim(),
-      districtName: districtName.trim(),
-      farmerCategory: farmerCategory.trim(),
-      gender: gender.trim(),
-      memberNumber: memberNumber.trim(),
-      mobileNumber: mobileNumber.trim(),
-      stateName: stateName.trim(),
-      taluka: taluka.trim(),
-      village: village.trim()
-    };
+    const input = normalizeFarmerIdentityInput(identity);
+    const validationError = validateFarmerIdentityInput(input, {
+      requireLogin: false
+    });
 
-    if (
-      !input.memberNumber ||
-      !input.displayName ||
-      !input.mobileNumber ||
-      !input.village ||
-      !input.taluka ||
-      !input.districtName ||
-      !input.stateName ||
-      !input.gender ||
-      !input.farmerCategory
-    ) {
-      setLocalError(
-        "Enter member number, name, mobile, village, taluka, district, state, gender, and category."
-      );
-      return;
-    }
-
-    if (!isValidIndianMobile(input.mobileNumber)) {
-      setLocalError("Mobile number must be a 10 digit Indian mobile number.");
-      return;
-    }
-
-    if (!isValidOptionalAadhaar(input.aadhaarNumber)) {
-      setLocalError("Aadhaar number must be 12 digits when provided.");
-      return;
-    }
-
-    if (!isValidOptionalAge(input.age)) {
-      setLocalError("Age must be a whole number from 0 to 120.");
+    if (validationError) {
+      setLocalError(validationError);
       return;
     }
 
     setLocalError("");
-    await onSubmit(input);
+    await onSubmit(toUpdateFpoMemberInput(input));
   }
 
   return (
     <View style={styles.inlineEditCard}>
       <Text style={styles.subsectionTitle}>Edit farmer profile</Text>
-      <View style={styles.formGrid}>
-        <AdminField
-          label="Member number"
-          value={memberNumber}
-          onChange={setMemberNumber}
-        />
-        <AdminField label="Full name" value={displayName} onChange={setDisplayName} />
-        <AdminField
-          label="Mobile number"
-          value={mobileNumber}
-          onChange={setMobileNumber}
-          keyboardType="phone-pad"
-        />
-        <AdminField
-          label="Alternate mobile"
-          value={alternateMobileNumber}
-          onChange={setAlternateMobileNumber}
-          keyboardType="phone-pad"
-        />
-        <AdminField
-          label="Aadhaar number"
-          value={aadhaarNumber}
-          onChange={setAadhaarNumber}
-          keyboardType="numeric"
-        />
-        <AdminField label="Village" value={village} onChange={setVillage} />
-        <AdminField label="Taluka" value={taluka} onChange={setTaluka} />
-        <AdminField label="District" value={districtName} onChange={setDistrictName} />
-        <AdminField label="State" value={stateName} onChange={setStateName} />
-        <AdminField label="Gender" value={gender} onChange={setGender} />
-        <AdminField label="Age" value={age} onChange={setAge} keyboardType="numeric" />
-        <AdminField
-          label="Farmer category"
-          value={farmerCategory}
-          onChange={setFarmerCategory}
-        />
-      </View>
+      <FarmerIdentityFields
+        includeLogin={false}
+        value={identity}
+        onChange={setIdentity}
+      />
 
       {localError || error ? (
         <Text style={styles.formError}>{localError || error}</Text>
@@ -1291,6 +1213,42 @@ function EditMemberForm({
       </View>
     </View>
   );
+}
+
+function toCreateFpoMemberInput(input: FarmerIdentityInput): CreateFpoMemberInput {
+  return {
+    aadhaarNumber: input.aadhaarNumber,
+    age: input.age,
+    alternateMobileNumber: input.alternateMobileNumber,
+    displayName: input.displayName,
+    districtName: input.districtName,
+    farmerCategory: input.farmerCategory,
+    gender: input.gender,
+    memberNumber: input.memberNumber,
+    mobileNumber: input.mobileNumber,
+    password: input.password,
+    stateName: input.stateName,
+    taluka: input.taluka,
+    username: input.username,
+    village: input.village
+  };
+}
+
+function toUpdateFpoMemberInput(input: FarmerIdentityInput): UpdateFpoMemberInput {
+  return {
+    aadhaarNumber: input.aadhaarNumber,
+    age: input.age,
+    alternateMobileNumber: input.alternateMobileNumber,
+    displayName: input.displayName,
+    districtName: input.districtName,
+    farmerCategory: input.farmerCategory,
+    gender: input.gender,
+    memberNumber: input.memberNumber,
+    mobileNumber: input.mobileNumber,
+    stateName: input.stateName,
+    taluka: input.taluka,
+    village: input.village
+  };
 }
 
 function AdminField({
@@ -1502,27 +1460,6 @@ function dashboardEyebrow(role: StaffRole) {
 
 function formatAge(age: number | undefined) {
   return age === undefined ? "" : `${age} years`;
-}
-
-function isValidOptionalAge(age: string | undefined) {
-  if (!age) {
-    return true;
-  }
-
-  const parsedAge = Number(age);
-  return Number.isInteger(parsedAge) && parsedAge >= 0 && parsedAge <= 120;
-}
-
-function isValidIndianMobile(mobileNumber: string | undefined) {
-  return Boolean(mobileNumber?.replace(/\D/g, "").match(/^[6-9][0-9]{9}$/));
-}
-
-function isValidOptionalAadhaar(aadhaarNumber: string | undefined) {
-  if (!aadhaarNumber) {
-    return true;
-  }
-
-  return /^[0-9]{12}$/.test(aadhaarNumber.replace(/\D/g, ""));
 }
 
 function evidenceStatusLabel(status: EvidenceStatus) {

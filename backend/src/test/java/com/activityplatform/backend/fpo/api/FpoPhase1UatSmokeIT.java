@@ -119,6 +119,7 @@ class FpoPhase1UatSmokeIT {
   private String fpoManagerToken;
   private String fieldCoordinatorToken;
   private String farmerToken;
+  private String carbonOnlyAdminToken;
   private String disabledTenantAdminToken;
   private TenantEntity tenant;
   private UserEntity adminUser;
@@ -163,6 +164,28 @@ class FpoPhase1UatSmokeIT {
     fpoManagerToken = jwtService.issueTokens(fpoManagerUser).accessToken();
     fieldCoordinatorToken = jwtService.issueTokens(fieldCoordinatorUser).accessToken();
     farmerToken = jwtService.issueTokens(firstFarmerUser).accessToken();
+
+    TenantEntity carbonOnlyTenant = tenantRepository.save(
+        TestDataFactory.tenant("carbon-only-uat-" + UUID.randomUUID())
+    );
+    RoleEntity carbonOnlyAdminRole = roleRepository.save(
+        TestDataFactory.role(carbonOnlyTenant, Role.ADMIN)
+    );
+    UserEntity carbonOnlyAdmin = userRepository.save(TestDataFactory.user(
+        carbonOnlyTenant,
+        "admin-" + UUID.randomUUID(),
+        passwordEncoder.encode("admin12345"),
+        "Carbon Only UAT Admin",
+        carbonOnlyAdminRole
+    ));
+    enableModules(carbonOnlyTenant, List.of(
+        ModuleCode.SUSTAINABILITY,
+        ModuleCode.ACTIVITY_COMPLIANCE,
+        ModuleCode.EVIDENCE_REVIEW,
+        ModuleCode.ADVISORY,
+        ModuleCode.REPORT_EXPORT
+    ));
+    carbonOnlyAdminToken = jwtService.issueTokens(carbonOnlyAdmin).accessToken();
 
     TenantEntity disabledTenant = tenantRepository.save(
         TestDataFactory.tenant("disabled-uat-" + UUID.randomUUID())
@@ -253,6 +276,23 @@ class FpoPhase1UatSmokeIT {
             .header("Authorization", "Bearer " + disabledTenantAdminToken))
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$.error.code").value("MODULE_NOT_ENABLED"));
+  }
+
+  @Test
+  void testCarbonOnlyTenantCannotUseFpoEndpoints() throws Exception {
+    for (String path : List.of(
+        "/api/v1/fpo/members",
+        "/api/v1/fpo/crops",
+        "/api/v1/fpo/seasons",
+        "/api/v1/fpo/crop-plans",
+        "/api/v1/fpo/demand-estimates/summary",
+        "/api/v1/fpo/advisories",
+        "/api/v1/fpo/reports/summary"
+    )) {
+      mockMvc.perform(get(path).header("Authorization", "Bearer " + carbonOnlyAdminToken))
+          .andExpect(status().isForbidden())
+          .andExpect(jsonPath("$.error.code").value("MODULE_NOT_ENABLED"));
+    }
   }
 
   private void seedPilotData(RoleEntity farmerRole) {
@@ -458,20 +498,24 @@ class FpoPhase1UatSmokeIT {
   }
 
   private void enablePhase1Modules() {
-    for (ModuleCode moduleCode : List.of(
+    enableModules(tenant, List.of(
         ModuleCode.MEMBER_DATA,
         ModuleCode.LAND_RECORDS,
         ModuleCode.CROP_PLANNING,
         ModuleCode.INPUT_DEMAND,
         ModuleCode.ADVISORY,
         ModuleCode.REPORT_EXPORT
-    )) {
+    ));
+  }
+
+  private void enableModules(TenantEntity moduleTenant, List<ModuleCode> moduleCodes) {
+    for (ModuleCode moduleCode : moduleCodes) {
       PlatformModuleEntity module = platformModuleRepository.findByCode(moduleCode)
           .orElseThrow();
       Instant now = Instant.now();
       subscriptionRepository.save(new TenantModuleSubscriptionEntity(
           UUID.randomUUID(),
-          tenant,
+          moduleTenant,
           module,
           TenantModuleSubscriptionStatus.ENABLED,
           now,

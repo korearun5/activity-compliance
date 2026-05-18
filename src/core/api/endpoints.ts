@@ -54,6 +54,9 @@ export const endpoints = {
     review: (evidenceId: string) => `${apiRoot}/evidence/${evidenceId}/review`,
     upload: `${apiRoot}/evidence`
   },
+  farmers: {
+    participants: `${apiRoot}/farmers/participants`
+  },
   fpo: {
     advisories: {
       byId: (advisoryId: string) => `${apiRoot}/fpo/advisories/${advisoryId}`,

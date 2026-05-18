@@ -1,6 +1,6 @@
 # Foundation Hardening Roadmap
 
-Last updated: 2026-05-17
+Last updated: 2026-05-19
 
 This document captures the standards and future hardening tasks discussed after
 the Carbon enrollment UI cleanup. It is intentionally not a Phase 1 feature
@@ -58,6 +58,11 @@ For production engineering, convert those expectations into measurable targets:
   access-denied states.
 - Role/module visibility must be centralized; do not scatter role checks across
   many components.
+- Farmer identity fields must be shared. Carbon/FPO/future module screens must
+  compose the shared farmer identity component instead of copying name, mobile,
+  location, gender, category, username, and password fields.
+- Shared workflow screens must consume a platform participant contract, not an
+  FPO-only or Carbon-only record type.
 - Shared UI patterns belong under `src/ui` or a module-local UI folder if they
   are module-specific.
 
@@ -72,6 +77,9 @@ For production engineering, convert those expectations into measurable targets:
 - `EXPO_PUBLIC_ENABLED_CLIENT_MODULES` is a packaging/UX switch only, not source
   license protection.
 - Backend enabled-module checks remain the authorization boundary.
+- Platform roles, user login, farmer identity, and activity participant
+  selection are cross-module foundations. Product modules extend them with
+  module-specific records, but do not redefine or duplicate them.
 - Use Playwright for future web E2E/browser smoke tests. Consider Detox or an
   Expo-compatible approach later for native mobile E2E.
 
@@ -90,6 +98,11 @@ For production engineering, convert those expectations into measurable targets:
   load grows.
 - Keep reusable platform code in common/core-like backend packages and
   product-specific rules under the owning product package.
+- Shared farmer profile validation belongs in the backend farmer package and is
+  reused by FPO and Carbon services.
+- Canonical farmer identity belongs in `farmer_profiles`; modules extend that
+  record instead of owning separate farmer identities. See
+  [Farmer Identity Foundation](farmer-identity-foundation.md).
 
 ### Testing Standards
 
@@ -142,6 +155,24 @@ For production engineering, convert those expectations into measurable targets:
 - Primary database failure handling depends on the selected hosting platform
   and must be finalized during production architecture.
 
+## Farmer Identity Foundation Sprint
+
+Use this sprint to fix the root identity issue before adding more farmer-facing
+features.
+
+| ID                        | Status      | Area                 | Task                                                                                         | Acceptance                                                                                         |
+| ------------------------- | ----------- | -------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| FOUNDATION-FARMER-001     | Done        | Backend schema/core  | Add canonical `farmer_profiles`, nullable FPO/Carbon links, and the `FarmerService` contract. | New schema migrates safely; farmer-only users can receive canonical profiles; existing reads work.  |
+| FOUNDATION-FARMER-002     | Done        | FPO alignment        | Link FPO member profiles to canonical farmer profiles.                                        | New FPO member create/update/status paths use `FarmerService`; old FPO reads continue during migration. |
+| FOUNDATION-FARMER-003     | Done        | Carbon alignment     | Link Carbon profiles to canonical farmer profiles.                                            | New Carbon farmer create/update paths use `FarmerService`; existing Carbon reads remain compatible. |
+| FOUNDATION-FARMER-004     | Done        | Backend service      | Standardize farmer identity access behind the `FarmerService` contract.                       | FPO and Carbon runtime paths use one canonical service for farmer create, ensure, update, and participant lookup. |
+| FOUNDATION-MIGRATION-001  | Done        | Data migration       | Backfill canonical farmer profiles from FPO and Carbon data with duplicate-review safeguards.  | Exact `user_id`, selected FPO member, and deterministic unique-mobile links are audited; ambiguous records are flagged, not silently merged.  |
+| FOUNDATION-PARTICIPANT-001 | Done       | Workflow foundation  | Resolve workflow participants through canonical farmer users.                                  | Platform participant endpoint reads active canonical farmers; activity assignment rejects non-canonical farmer users; assigned farmers can list their activities. |
+| FOUNDATION-UI-001         | Done        | Farmer UI            | Replace module-gated farmer activity access with one common farmer dashboard.                 | Farmer activity tabs are common activity-compliance tabs, Carbon-only farmers still see assigned activities, and backend farmer sessions no longer fall back to stale module-local activity records. |
+| FOUNDATION-QA-001         | Pending     | QA                   | Add regression coverage for Carbon-only, FPO-only, and combined module configurations.         | Automated tests protect farmer create, login, assignment, and activity visibility across packages.  |
+
+Details live in [Farmer Identity Foundation](farmer-identity-foundation.md).
+
 ## Existing Code Alignment Tasks
 
 These are future hardening tasks. Do not treat them as active sprint work unless
@@ -150,10 +181,10 @@ the sprint explicitly selects them.
 | ID         | Status  | Area                 | Task                                                                                                                                                   | Acceptance                                                                                                                       |
 | ---------- | ------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
 | HARDEN-001 | Pending | UI standards         | Audit existing screens for large inline forms and convert the worst offenders to modal, drawer, wizard, or detail-page patterns.                       | Main workflows follow view-first/action-second UX; add/edit has clear save/cancel; no screen is dominated by rarely used inputs. |
-| HARDEN-002 | Pending | UI components        | Extract reusable modal, action header, empty state, error state, advanced section, and confirmation components.                                        | Carbon/FPO screens reuse shared primitives instead of copying modal/form patterns.                                               |
+| HARDEN-002 | In progress | UI components        | Extract reusable modal, action header, empty state, error state, advanced section, and confirmation components.                                        | Shared farmer identity fields now exist; remaining modal/empty/error/advanced primitives still need extraction.                  |
 | HARDEN-003 | Pending | Frontend modules     | Move FPO-owned screen/data/API boundaries into `src/modules/fpo` when next touched.                                                                    | FPO and Carbon remain independently loadable; shared code stays in core/ui.                                                      |
-| HARDEN-004 | Pending | Role/module UX       | Standardize role and module visibility states across all screens.                                                                                      | Disabled or unauthorized features show no dead tabs, blocked buttons, or confusing errors.                                       |
-| HARDEN-005 | Pending | Backend boundaries   | Review backend package boundaries and split reusable platform logic from FPO/Carbon product-specific logic where drift exists.                         | Common services stay reusable; module-specific services own domain rules.                                                        |
+| HARDEN-004 | In progress | Role/module UX       | Standardize role and module visibility states across all screens.                                                                                      | Central role/module registry and shared workflow participant contract exist; disabled/unauthorized states still need browser coverage. |
+| HARDEN-005 | In progress | Backend boundaries   | Review backend package boundaries and split reusable platform logic from FPO/Carbon product-specific logic where drift exists.                         | Shared farmer validation now lives in the backend farmer package; continue extracting common platform rules when duplication appears. |
 | HARDEN-006 | Pending | Transactions         | Audit service transaction boundaries, workflow state changes, and rollback behavior.                                                                   | State-changing use cases have explicit transaction strategy and audit behavior.                                                  |
 | HARDEN-007 | Pending | File consistency     | Define and implement DB/object-storage consistency pattern for evidence, soil reports, advisory images, and exports.                                   | Failed upload/metadata paths leave no silent data loss and can be retried or cleaned up.                                         |
 | HARDEN-008 | Pending | Database performance | Review indexes for tenant-scoped filters, reports, Carbon profile/farm/soil lists, FPO member/crop/demand queries, and audit tables.                   | Query plans for common list/report paths are acceptable under expected data volume.                                              |

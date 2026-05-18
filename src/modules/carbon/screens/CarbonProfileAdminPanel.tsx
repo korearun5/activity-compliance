@@ -12,6 +12,13 @@ import {
 
 import { getErrorMessage } from "../../../core/errors/AppError";
 import { StatusBadge } from "../../../ui/StatusBadge";
+import { FarmerIdentityFields } from "../../../shared/farmers/FarmerIdentityFields";
+import {
+  emptyFarmerIdentityInput,
+  FarmerIdentityInput,
+  normalizeFarmerIdentityInput,
+  validateFarmerIdentityInput
+} from "../../../shared/farmers/farmerIdentity";
 import {
   CARBON_AADHAAR_STATUSES,
   CARBON_BANK_STATUSES,
@@ -522,6 +529,10 @@ function SelectedProfileSummary({
             .filter(Boolean)
             .join(", ") || "Location not set"}
         </Text>
+        <Text style={styles.panelMeta}>
+          {[profile.memberNumber, profile.username].filter(Boolean).join(" - ") ||
+            "Farmer login not linked"}
+        </Text>
         <View style={styles.summaryPillRow}>
           <View style={styles.summaryPill}>
             <Text style={styles.summaryPillValue}>{formatNumber(profileArea)} ac</Text>
@@ -631,27 +642,24 @@ function CarbonProfileForm({
   const [carbonIdentityId, setCarbonIdentityId] = useState("");
   const [coordinatorUserId, setCoordinatorUserId] = useState("");
   const [croppingPattern, setCroppingPattern] = useState("");
-  const [displayName, setDisplayName] = useState("");
-  const [districtName, setDistrictName] = useState("");
   const [documentStatus, setDocumentStatus] = useState<string>(
     CARBON_DOCUMENT_STATUSES[1]
   );
   const [fpoMemberProfileId, setFpoMemberProfileId] = useState("");
   const [gpsLatitude, setGpsLatitude] = useState("");
   const [gpsLongitude, setGpsLongitude] = useState("");
+  const [identity, setIdentity] = useState<FarmerIdentityInput>(
+    emptyFarmerIdentityInput()
+  );
   const [livestockCount, setLivestockCount] = useState("");
   const [localError, setLocalError] = useState("");
-  const [mobileNumber, setMobileNumber] = useState("");
   const [participantType, setParticipantType] = useState(CARBON_PARTICIPANT_TYPES[0]);
-  const [stateName, setStateName] = useState("Maharashtra");
   const [status, setStatus] = useState(CARBON_RECORD_STATUSES[0]);
-  const [taluka, setTaluka] = useState("");
   const [tillageStatus, setTillageStatus] = useState<string>(
     CARBON_TILLAGE_STATUSES[1]
   );
   const [totalLandHoldingAcres, setTotalLandHoldingAcres] = useState("");
   const [userId, setUserId] = useState("");
-  const [village, setVillage] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(Boolean(editingProfile));
 
   useEffect(() => {
@@ -660,53 +668,77 @@ function CarbonProfileForm({
     setCarbonIdentityId(editingProfile?.carbonIdentityId ?? "");
     setCoordinatorUserId(editingProfile?.coordinatorUserId ?? "");
     setCroppingPattern(editingProfile?.croppingPattern ?? "");
-    setDisplayName(editingProfile?.displayName ?? "");
-    setDistrictName(editingProfile?.districtName ?? "");
     setDocumentStatus(editingProfile?.documentStatus ?? CARBON_DOCUMENT_STATUSES[1]);
     setFpoMemberProfileId(editingProfile?.fpoMemberProfileId ?? "");
     setGpsLatitude(toInputNumber(editingProfile?.gpsLatitude));
     setGpsLongitude(toInputNumber(editingProfile?.gpsLongitude));
+    setIdentity(
+      emptyFarmerIdentityInput({
+        aadhaarNumber: editingProfile?.aadhaarNumber ?? "",
+        age: toInputNumber(editingProfile?.age),
+        alternateMobileNumber: editingProfile?.alternateMobileNumber ?? "",
+        displayName: editingProfile?.displayName ?? "",
+        districtName: editingProfile?.districtName ?? "",
+        farmerCategory: editingProfile?.farmerCategory ?? undefined,
+        gender: editingProfile?.gender ?? undefined,
+        memberNumber: editingProfile?.memberNumber ?? "",
+        mobileNumber: editingProfile?.mobileNumber ?? "",
+        stateName: editingProfile?.stateName ?? "Maharashtra",
+        taluka: editingProfile?.taluka ?? "",
+        username: editingProfile?.username ?? "",
+        village: editingProfile?.village ?? ""
+      })
+    );
     setLivestockCount(toInputNumber(editingProfile?.livestockCount));
-    setMobileNumber(editingProfile?.mobileNumber ?? "");
     setParticipantType(editingProfile?.participantType ?? CARBON_PARTICIPANT_TYPES[0]);
-    setStateName(editingProfile?.stateName ?? "Maharashtra");
     setStatus(editingProfile?.status ?? CARBON_RECORD_STATUSES[0]);
-    setTaluka(editingProfile?.taluka ?? "");
     setTillageStatus(editingProfile?.tillageStatus ?? CARBON_TILLAGE_STATUSES[1]);
     setTotalLandHoldingAcres(toInputNumber(editingProfile?.totalLandHoldingAcres));
     setUserId(editingProfile?.userId ?? "");
-    setVillage(editingProfile?.village ?? "");
     setShowAdvanced(Boolean(editingProfile));
     setLocalError("");
   }, [editingProfile]);
 
   async function handleSubmit() {
+    const normalizedIdentity = normalizeFarmerIdentityInput(identity);
+    const requireLogin = !editingProfile && !userId.trim() && !fpoMemberProfileId.trim();
+    const validationError = validateFarmerIdentityInput(normalizedIdentity, {
+      requireLogin
+    });
     const input: CarbonProfileInput = {
+      aadhaarNumber: normalizedIdentity.aadhaarNumber,
       aadhaarStatus,
+      age: normalizedIdentity.age,
+      alternateMobileNumber: normalizedIdentity.alternateMobileNumber,
       bankStatus,
       carbonIdentityId,
       coordinatorUserId,
       croppingPattern,
-      displayName,
-      districtName,
+      displayName: normalizedIdentity.displayName,
+      districtName: normalizedIdentity.districtName,
       documentStatus,
+      farmerCategory: normalizedIdentity.farmerCategory,
       fpoMemberProfileId,
+      gender: normalizedIdentity.gender,
       gpsLatitude,
       gpsLongitude,
       livestockCount,
-      mobileNumber,
+      memberNumber: normalizedIdentity.memberNumber,
+      mobileNumber: normalizedIdentity.mobileNumber,
       participantType,
-      stateName,
+      password: normalizedIdentity.password,
+      stateName: normalizedIdentity.stateName,
       status,
-      taluka,
+      taluka: normalizedIdentity.taluka,
       tillageStatus,
       totalLandHoldingAcres,
       userId,
-      village
+      username: normalizedIdentity.username,
+      village: normalizedIdentity.village
     };
 
-    if (!displayName.trim()) {
-      setLocalError("Display name is required.");
+    if (validationError) {
+      setLocalError(validationError);
       return;
     }
 
@@ -715,17 +747,13 @@ function CarbonProfileForm({
       setCarbonIdentityId("");
       setCoordinatorUserId("");
       setCroppingPattern("");
-      setDisplayName("");
-      setDistrictName("");
       setFpoMemberProfileId("");
       setGpsLatitude("");
       setGpsLongitude("");
+      setIdentity(emptyFarmerIdentityInput());
       setLivestockCount("");
-      setMobileNumber("");
-      setTaluka("");
       setTotalLandHoldingAcres("");
       setUserId("");
-      setVillage("");
       setShowAdvanced(false);
     }
   }
@@ -734,18 +762,13 @@ function CarbonProfileForm({
     <View style={styles.formBlock}>
       {localError ? <Text style={styles.formError}>{localError}</Text> : null}
 
+      <FarmerIdentityFields
+        includeLogin={!editingProfile}
+        value={identity}
+        onChange={setIdentity}
+      />
+
       <View style={styles.formGrid}>
-        <FormField label="Display name" value={displayName} onChange={setDisplayName} />
-        <FormField
-          label="Carbon ID"
-          value={carbonIdentityId}
-          onChange={setCarbonIdentityId}
-        />
-        <FormField label="Mobile" value={mobileNumber} onChange={setMobileNumber} />
-        <FormField label="Village" value={village} onChange={setVillage} />
-        <FormField label="Taluka" value={taluka} onChange={setTaluka} />
-        <FormField label="District" value={districtName} onChange={setDistrictName} />
-        <FormField label="State" value={stateName} onChange={setStateName} />
         <FormField
           label="Total acres"
           keyboardType="decimal-pad"
@@ -761,10 +784,15 @@ function CarbonProfileForm({
 
       <AdvancedSection
         isOpen={showAdvanced}
-        label="More profile details"
+        label="More carbon and link details"
         onToggle={() => setShowAdvanced((current) => !current)}
       >
         <View style={styles.formGrid}>
+          <FormField
+            label="Carbon ID"
+            value={carbonIdentityId}
+            onChange={setCarbonIdentityId}
+          />
           <FormField
             label="Latitude"
             keyboardType="decimal-pad"
@@ -1356,13 +1384,17 @@ function ProfileList({
                 {profile.carbonIdentityId} - {profile.participantType}
               </Text>
               <Text style={styles.rowMeta}>
+                {[profile.memberNumber, profile.username].filter(Boolean).join(" - ") ||
+                  "Login not linked"}
+              </Text>
+              <Text style={styles.rowMeta}>
                 {[profile.village, profile.taluka, profile.districtName]
                   .filter(Boolean)
                   .join(", ") || "Location not set"}
               </Text>
               {isSelected ? (
                 <Text style={styles.selectedHint}>
-                  Farm and soil records shown on right
+                  Farm, soil, and activity records shown on right
                 </Text>
               ) : null}
             </View>
@@ -1610,11 +1642,13 @@ function FormField({
   keyboardType,
   label,
   onChange,
+  secureTextEntry,
   value
 }: {
-  keyboardType?: "decimal-pad" | "number-pad";
+  keyboardType?: "decimal-pad" | "number-pad" | "numeric" | "phone-pad";
   label: string;
   onChange: (value: string) => void;
+  secureTextEntry?: boolean;
   value: string;
 }) {
   return (
@@ -1625,6 +1659,7 @@ function FormField({
         keyboardType={keyboardType}
         placeholder={label}
         placeholderTextColor="#8a99a1"
+        secureTextEntry={secureTextEntry}
         style={styles.input}
         value={value}
         onChangeText={onChange}

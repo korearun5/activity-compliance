@@ -16,14 +16,14 @@ Use with:
 
 ## Implementation Status
 
-| Area                     | Status              | Notes                                                                                                                                                                                                                            |
-| ------------------------ | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Carbon profile identity  | API/UI ready        | `carbon_profiles` stores the Carbon identity and participant/farmer profile foundation; backend APIs are verified by `CarbonProfileControllerIT` and frontend forms are wired with client-facing "Add farmer" enrollment labels. |
-| Carbon farm/plot         | API/UI ready        | `carbon_farm_plots` stores GPS point capture and optional boundary JSON for later map work; backend APIs are verified by `CarbonProfileControllerIT` and frontend forms are wired.                                               |
-| Carbon soil profile      | API/UI upload ready | `carbon_soil_profiles` stores SOC, pH, EC, NPK, bulk density, texture, and report metadata; backend APIs, frontend forms, and direct PDF/image report upload through the storage adapter are wired.                              |
-| Carbon activity records  | API/UI ready        | `carbon_activity_categories` stores App Flow activity categories and `carbon_activity_records` stores farmer/staff-entered activity logs; direct evidence upload/review remains the next slice.                                  |
-| Carbon score/calculation | Not implemented     | Methodology, eligibility, buffer, leakage, and verification rules must be approved before implementation.                                                                                                                        |
-| Provider integrations    | Not implemented     | OTP, map boundary drawing, AI verification, satellite layers, weather API, and payment integrations remain future/provider-dependent.                                                                                            |
+| Area                     | Status              | Notes                                                                                                                                                                                                                                                                              |
+| ------------------------ | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Carbon profile identity  | API/UI ready        | `carbon_profiles` stores the Carbon identity and participant/farmer profile foundation, including FPO-style farmer identity/login fields; backend APIs are verified by `CarbonProfileControllerIT` and frontend forms are wired with client-facing "Add farmer" enrollment labels. |
+| Carbon farm/plot         | API/UI ready        | `carbon_farm_plots` stores GPS point capture and optional boundary JSON for later map work; backend APIs are verified by `CarbonProfileControllerIT` and frontend forms are wired.                                                                                                 |
+| Carbon soil profile      | API/UI upload ready | `carbon_soil_profiles` stores SOC, pH, EC, NPK, bulk density, texture, and report metadata; backend APIs, frontend forms, and direct PDF/image report upload through the storage adapter are wired.                                                                                |
+| Carbon activity records  | API/UI ready        | `carbon_activity_categories` stores App Flow activity categories and `carbon_activity_records` stores farmer/staff-entered activity logs; direct evidence upload/review remains the next slice.                                                                                    |
+| Carbon score/calculation | Not implemented     | Methodology, eligibility, buffer, leakage, and verification rules must be approved before implementation.                                                                                                                                                                          |
+| Provider integrations    | Not implemented     | OTP, map boundary drawing, AI verification, satellite layers, weather API, and payment integrations remain future/provider-dependent.                                                                                                                                              |
 
 ## Module And Package Rules
 
@@ -54,35 +54,46 @@ enrollment" or "Add farmer". The database/API name remains `carbon_profiles` so
 the Carbon module can also support non-FPO participants later without another
 schema rename.
 
+Carbon farmer login rule: Carbon "Add farmer" captures member number, full name,
+mobile, location, gender, farmer category, username, and password, then creates
+or links a `FARMER` user. OTP remains Phase 2/provider-dependent.
+
 Known UX gap: the durable model already supports `userId` and
 `fpoMemberProfileId` links, but the normal Carbon "Add farmer" flow still needs
-a friendly farmer account/member picker or create-login action
-(`CARBON-PROFILE-004`) so staff do not manage raw UUIDs.
+a friendly farmer account/member picker (`CARBON-PROFILE-005`) so staff do not
+manage raw UUIDs for existing users/members.
 
-| Field                   | Required | Validation / Values                             | Notes                                                                        |
-| ----------------------- | -------- | ----------------------------------------------- | ---------------------------------------------------------------------------- |
-| Tenant                  | Yes      | Existing tenant                                 | Scope for all Carbon data.                                                   |
-| User                    | No       | Existing user                                   | Optional until login and OTP flows are finalized.                            |
-| FPO member profile      | No       | Existing FPO member                             | Optional link when Carbon is used with FPO package.                          |
-| Coordinator user        | No       | Existing `FIELD_COORDINATOR` user               | Scopes field-coordinator access; admins/FPO managers can assign or clear it. |
-| Carbon identity ID      | Yes      | Unique within tenant                            | Example: `CCI-MH-2026-001`.                                                  |
-| Participant type        | Yes      | `FARMER`, `FPO_FPC`, `AGRONOMIST`               | Based on App Flow login/user types.                                          |
-| Display name            | Yes      | Text                                            | Farmer or participant name.                                                  |
-| Mobile number           | No       | Phone text                                      | OTP validation waits for Phase 2/provider decision.                          |
-| Village                 | No       | Text                                            | Used for filters and grouping.                                               |
-| Taluka                  | No       | Text                                            | Preferred over block.                                                        |
-| District                | No       | Text                                            | Location grouping.                                                           |
-| State                   | No       | Text                                            | Location grouping.                                                           |
-| GPS latitude            | No       | -90 to 90                                       | Point capture; required later when farm capture UI is finalized.             |
-| GPS longitude           | No       | -180 to 180                                     | Point capture; required later when farm capture UI is finalized.             |
-| Total landholding acres | No       | Non-negative decimal                            | Carbon dashboard farm area input.                                            |
-| Cropping pattern        | No       | Text                                            | Summary of crops/practices.                                                  |
-| Livestock count         | No       | Non-negative integer                            | App Flow farming detail.                                                     |
-| Tillage status          | No       | `Conventional`, `Reduced tillage`, `No tillage` | Carbon practice baseline context.                                            |
-| Bank status             | No       | `Linked`, `Pending`, `Not required`             | Payout flow is future.                                                       |
-| Aadhaar status          | No       | `Provided`, `Optional not captured`             | No Aadhaar number stored in Carbon schema.                                   |
-| Document status         | No       | `Not started`, `Partial`, `Ready`               | Summary state; detailed documents can use storage/evidence later.            |
-| Status                  | Yes      | Lifecycle text                                  | Recommended values: `ACTIVE`, `INACTIVE`, `SUSPENDED`.                       |
+| Field                   | Required                  | Validation / Values                                   | Notes                                                                              |
+| ----------------------- | ------------------------- | ----------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Tenant                  | Yes                       | Existing tenant                                       | Scope for all Carbon data.                                                         |
+| User                    | Yes for farmer enrollment | Existing or newly created `FARMER` user               | Enables username/password farmer login in Phase 1; OTP remains future.             |
+| FPO member profile      | No                        | Existing FPO member                                   | Optional link when Carbon is used with FPO package.                                |
+| Coordinator user        | No                        | Existing `FIELD_COORDINATOR` user                     | Scopes field-coordinator access; admins/FPO managers can assign or clear it.       |
+| Username                | Yes when creating login   | Unique per tenant                                     | Stored on linked user and echoed on Carbon profile for staff visibility.           |
+| Member number           | Yes                       | Text, unique per tenant                               | Same purpose as FPO member number for Carbon-only clients.                         |
+| Carbon identity ID      | Yes                       | Unique within tenant                                  | Example: `CCI-MH-2026-001`.                                                        |
+| Participant type        | Yes                       | `FARMER`, `FPO_FPC`, `AGRONOMIST`                     | Based on App Flow login/user types.                                                |
+| Display name            | Yes                       | Text                                                  | Farmer or participant name.                                                        |
+| Mobile number           | Yes                       | 10 digit Indian mobile                                | Used for farmer login/contact; OTP validation waits for Phase 2/provider decision. |
+| Alternate mobile number | No                        | 10 digit Indian mobile                                | Optional secondary contact.                                                        |
+| Aadhaar number          | No                        | 12 digits when provided                               | Optional identity field, same as FPO farmer profile.                               |
+| Village                 | Yes                       | Text                                                  | Used for filters and grouping.                                                     |
+| Taluka                  | Yes                       | Text                                                  | Preferred over block.                                                              |
+| District                | Yes                       | Text                                                  | Location grouping.                                                                 |
+| State                   | Yes                       | Text                                                  | Location grouping.                                                                 |
+| Gender                  | Yes                       | `MALE`, `FEMALE`, `OTHER`                             | Same approved values as FPO farmer profile.                                        |
+| Age                     | No                        | 0 to 120                                              | Optional, same as FPO farmer profile.                                              |
+| Farmer category         | Yes                       | `MARGINAL`, `SMALL`, `SEMI_MEDIUM`, `MEDIUM`, `LARGE` | Same approved values as FPO farmer profile.                                        |
+| GPS latitude            | No                        | -90 to 90                                             | Point capture; required later when farm capture UI is finalized.                   |
+| GPS longitude           | No                        | -180 to 180                                           | Point capture; required later when farm capture UI is finalized.                   |
+| Total landholding acres | No                        | Non-negative decimal                                  | Carbon dashboard farm area input.                                                  |
+| Cropping pattern        | No                        | Text                                                  | Summary of crops/practices.                                                        |
+| Livestock count         | No                        | Non-negative integer                                  | App Flow farming detail.                                                           |
+| Tillage status          | No                        | `Conventional`, `Reduced tillage`, `No tillage`       | Carbon practice baseline context.                                                  |
+| Bank status             | No                        | `Linked`, `Pending`, `Not required`                   | Payout flow is future.                                                             |
+| Aadhaar status          | No                        | `Provided`, `Optional not captured`                   | No Aadhaar number stored in Carbon schema.                                         |
+| Document status         | No                        | `Not started`, `Partial`, `Ready`                     | Summary state; detailed documents can use storage/evidence later.                  |
+| Status                  | Yes                       | Lifecycle text                                        | Recommended values: `ACTIVE`, `INACTIVE`, `SUSPENDED`.                             |
 
 ## Carbon Farm Plot
 

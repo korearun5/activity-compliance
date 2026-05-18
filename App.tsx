@@ -18,6 +18,7 @@ import {
 import { LoginScreen } from "./src/screens/LoginScreen";
 import { RootStackParamList } from "./src/navigation/types";
 import { UserHomeScreen } from "./src/screens/UserHomeScreen";
+import { ConfirmationModal } from "./src/ui/ConfirmationModal";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -25,6 +26,7 @@ export default function App() {
   const [role, setRole] = useState<Role | null>(null);
   const [username, setUsername] = useState<string | null>(null);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
+  const [isLogoutConfirmVisible, setIsLogoutConfirmVisible] = useState(false);
   const [sessionMessage, setSessionMessage] = useState("");
 
   useEffect(() => {
@@ -58,6 +60,7 @@ export default function App() {
 
   async function handleLogout() {
     await logout();
+    setIsLogoutConfirmVisible(false);
     setSessionMessage("");
     setRole(null);
     setUsername(null);
@@ -77,12 +80,20 @@ export default function App() {
           {staffRole ? (
             <Stack.Screen name="AdminHome">
               {() => (
-                <AdminHomeScreen currentRole={staffRole} onLogout={handleLogout} />
+                <AdminHomeScreen
+                  currentRole={staffRole}
+                  onLogout={() => setIsLogoutConfirmVisible(true)}
+                />
               )}
             </Stack.Screen>
           ) : role === "farmer" ? (
             <Stack.Screen name="UserHome">
-              {() => <UserHomeScreen username={username} onLogout={handleLogout} />}
+              {() => (
+                <UserHomeScreen
+                  username={username}
+                  onLogout={() => setIsLogoutConfirmVisible(true)}
+                />
+              )}
             </Stack.Screen>
           ) : (
             <Stack.Screen name="Login">
@@ -96,6 +107,14 @@ export default function App() {
           )}
         </Stack.Navigator>
       </NavigationContainer>
+      <ConfirmationModal
+        confirmLabel="Log out"
+        message="Your current session will close and you will return to login."
+        onCancel={() => setIsLogoutConfirmVisible(false)}
+        onConfirm={handleLogout}
+        title="Log out?"
+        visible={isLogoutConfirmVisible}
+      />
     </>
   );
 }

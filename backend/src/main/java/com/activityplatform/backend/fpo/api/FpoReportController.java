@@ -50,6 +50,7 @@ public class FpoReportController {
       @RequestBody(required = false) FpoReportExportRequest request
   ) {
     CurrentUser currentUser = CurrentUser.from(authentication);
+    tenantModuleService.requireEnabled(currentUser.tenantId(), ModuleCode.MEMBER_DATA);
     tenantModuleService.requireEnabled(currentUser.tenantId(), ModuleCode.REPORT_EXPORT);
     return ApiResponse.success(reportExportService.export(
         currentUser,

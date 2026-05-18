@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
-import { FpoMember } from "../data/fpoMemberStore";
+import { ActivityParticipant } from "../data/activityParticipantStore";
 import {
   BackendWorkflow,
   BackendWorkflowStatus,
@@ -22,7 +22,7 @@ type AdminWorkflowsTabProps = {
     workflowId: string,
     status: BackendWorkflowStatus
   ) => Promise<void>;
-  participants: FpoMember[];
+  participants: ActivityParticipant[];
   startingActivity: boolean;
   updatingWorkflowId: string | null;
   workflows: BackendWorkflow[];
@@ -326,7 +326,7 @@ function StartActivityForm({
   error: string;
   isSubmitting: boolean;
   onSubmit: (input: StartBackendActivityInput) => Promise<boolean>;
-  participants: FpoMember[];
+  participants: ActivityParticipant[];
 }) {
   const [localError, setLocalError] = useState("");
   const [locationName, setLocationName] = useState("");
@@ -334,6 +334,13 @@ function StartActivityForm({
   const [startedOn, setStartedOn] = useState(toInputDate(new Date()));
   const [unitName, setUnitName] = useState("");
   const [workflowDefinitionId, setWorkflowDefinitionId] = useState("");
+  const activeParticipants = useMemo(
+    () =>
+      participants.filter(
+        (participant) => participant.id && participant.status === "Active"
+      ),
+    [participants]
+  );
 
   async function handleSubmit() {
     const participant = participants.find((item) => item.id === participantUserId);
@@ -404,9 +411,8 @@ function StartActivityForm({
 
       <Text style={styles.formLabel}>Participant</Text>
       <View style={styles.choiceRow}>
-        {participants
-          .filter((participant) => participant.id && participant.status === "Active")
-          .map((participant) => (
+        {activeParticipants.length ? (
+          activeParticipants.map((participant) => (
             <Pressable
               accessibilityRole="button"
               key={participant.id}
@@ -425,13 +431,22 @@ function StartActivityForm({
                   participantUserId === participant.id && styles.choiceButtonTextActive
                 ]}
               >
-                {participant.name}
+                {participant.displayName}
               </Text>
               <Text style={styles.choiceButtonMeta}>
                 {participant.locationName} - {participant.siteName}
               </Text>
+              <Text style={styles.choiceButtonMeta}>
+                {formatParticipantSources(participant.sources)}
+                {participant.username ? ` - ${participant.username}` : ""}
+              </Text>
             </Pressable>
-          ))}
+          ))
+        ) : (
+          <Text style={styles.emptyText}>
+            No active farmer or field participant is available for the enabled modules.
+          </Text>
+        )}
       </View>
 
       <View style={styles.formGrid}>
@@ -648,6 +663,17 @@ function toInputDate(date: Date) {
   return date.toISOString().slice(0, 10);
 }
 
+function formatParticipantSources(sources: ActivityParticipant["sources"]) {
+  return sources
+    .map((source) => {
+      if (source === "fpo") {
+        return "FPO";
+      }
+      return source === "carbon" ? "Carbon" : "Platform";
+    })
+    .join(" + ");
+}
+
 const styles = StyleSheet.create({
   section: {
     gap: 14
@@ -747,6 +773,12 @@ const styles = StyleSheet.create({
     color: "#b42318",
     fontSize: 13,
     fontWeight: "700"
+  },
+  emptyText: {
+    color: "#53666f",
+    fontSize: 13,
+    fontWeight: "700",
+    lineHeight: 18
   },
   formActions: {
     alignItems: "flex-start",

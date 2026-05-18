@@ -1,5 +1,6 @@
 package com.activityplatform.backend.carbon.api;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -7,6 +8,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.hamcrest.Matchers.startsWith;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.activityplatform.backend.TestDataFactory;
 import com.activityplatform.backend.TestcontainersConfiguration;
@@ -18,7 +20,12 @@ import com.activityplatform.backend.auth.repository.TenantRepository;
 import com.activityplatform.backend.auth.repository.UserRepository;
 import com.activityplatform.backend.auth.service.JwtService;
 import com.activityplatform.backend.carbon.domain.CarbonParticipantType;
+import com.activityplatform.backend.carbon.domain.CarbonProfileEntity;
 import com.activityplatform.backend.carbon.domain.CarbonRecordStatus;
+import com.activityplatform.backend.carbon.repository.CarbonProfileRepository;
+import com.activityplatform.backend.farmer.domain.FarmerProfileEntity;
+import com.activityplatform.backend.farmer.domain.FarmerProfileStatus;
+import com.activityplatform.backend.farmer.repository.FarmerProfileRepository;
 import com.activityplatform.backend.platform.domain.ModuleCode;
 import com.activityplatform.backend.platform.domain.PlatformModuleEntity;
 import com.activityplatform.backend.platform.domain.TenantModuleSubscriptionEntity;
@@ -60,6 +67,12 @@ class CarbonProfileControllerIT {
 
   @Autowired
   private UserRepository userRepository;
+
+  @Autowired
+  private CarbonProfileRepository profileRepository;
+
+  @Autowired
+  private FarmerProfileRepository farmerProfileRepository;
 
   @Autowired
   private PlatformModuleRepository platformModuleRepository;
@@ -124,6 +137,11 @@ class CarbonProfileControllerIT {
         adminToken,
         "CAR-UAT-" + UUID.randomUUID().toString().substring(0, 8)
     );
+    FarmerProfileEntity farmerProfile = farmerProfileRepository
+        .findByTenantIdAndUserId(tenant.getId(), farmerUser.getId())
+        .orElseThrow();
+    CarbonProfileEntity savedProfile = profileRepository.findById(profile.id()).orElseThrow();
+    assertThat(savedProfile.getFarmerProfileId()).isEqualTo(farmerProfile.getId());
 
     mockMvc.perform(get("/api/v1/carbon/profiles")
             .header("Authorization", "Bearer " + adminToken)
@@ -150,6 +168,12 @@ class CarbonProfileControllerIT {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.data.displayName").value("Updated Carbon Farmer"))
         .andExpect(jsonPath("$.data.totalLandHoldingAcres").value(2.7500));
+    FarmerProfileEntity updatedFarmerProfile = farmerProfileRepository
+        .findByTenantIdAndUserId(tenant.getId(), farmerUser.getId())
+        .orElseThrow();
+    assertThat(updatedFarmerProfile.getDisplayName()).isEqualTo("Updated Carbon Farmer");
+    assertThat(updatedFarmerProfile.getMobileNumber()).isEqualTo("9876543210");
+    assertThat(updatedFarmerProfile.getStatus()).isEqualTo(FarmerProfileStatus.ACTIVE);
 
     CarbonFarmPlotRequest plotRequest = new CarbonFarmPlotRequest(
         "Wagholi demo plot",
@@ -344,6 +368,72 @@ class CarbonProfileControllerIT {
   }
 
   @Test
+  void testCarbonFarmerEnrollmentCreatesFarmerLogin() throws Exception {
+    String username = "carbon-farmer-" + UUID.randomUUID();
+    String password = "farmerPass123";
+    String carbonIdentityId = "CAR-LOGIN-" + UUID.randomUUID().toString().substring(0, 8);
+    CarbonProfileRequest request = new CarbonProfileRequest(
+        null,
+        null,
+        coordinatorUser.getId(),
+        username,
+        password,
+        carbonIdentityId + "-MEMBER",
+        carbonIdentityId,
+        CarbonParticipantType.FARMER,
+        "Carbon Login Farmer",
+        "9876543211",
+        "9876543212",
+        "123412341234",
+        "Wagholi",
+        "Haveli",
+        "Pune",
+        "Maharashtra",
+        "FEMALE",
+        35,
+        "SMALL",
+        new BigDecimal("18.5800000"),
+        new BigDecimal("73.9800000"),
+        new BigDecimal("2.5000"),
+        "Paddy and wheat",
+        2,
+        "Reduced tillage",
+        "Linked",
+        "Provided",
+        "Partial",
+        CarbonRecordStatus.ACTIVE
+    );
+
+    String response = mockMvc.perform(post("/api/v1/carbon/profiles")
+            .header("Authorization", "Bearer " + adminToken)
+            .contentType("application/json")
+            .content(jsonMapper.writeValueAsString(request)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.username").value(username))
+        .andExpect(jsonPath("$.data.memberNumber").value(carbonIdentityId + "-MEMBER"))
+        .andExpect(jsonPath("$.data.gender").value("FEMALE"))
+        .andExpect(jsonPath("$.data.farmerCategory").value("SMALL"))
+        .andExpect(jsonPath("$.data.userId").exists())
+        .andReturn()
+        .getResponse()
+        .getContentAsString();
+    CarbonProfileResponse profile = readData(response, CarbonProfileResponse.class);
+
+    UserEntity createdUser = userRepository
+        .findByTenantCodeIgnoreCaseAndUsernameIgnoreCase(tenant.getCode(), username)
+        .orElseThrow();
+
+    assertTrue(passwordEncoder.matches(password, createdUser.getPasswordHash()));
+    assertTrue(createdUser.getRoles().stream().anyMatch(role -> Role.FARMER.name().equals(role.getCode())));
+    FarmerProfileEntity farmerProfile = farmerProfileRepository
+        .findByTenantIdAndUserId(tenant.getId(), createdUser.getId())
+        .orElseThrow();
+    CarbonProfileEntity savedProfile = profileRepository.findById(profile.id()).orElseThrow();
+    assertThat(savedProfile.getFarmerProfileId()).isEqualTo(farmerProfile.getId());
+    assertThat(farmerProfile.getDisplayName()).isEqualTo("Carbon Login Farmer");
+  }
+
+  @Test
   void testFieldCoordinatorCannotReadUnassignedProfile() throws Exception {
     CarbonProfileResponse assigned = createProfile(
         adminToken,
@@ -431,14 +521,22 @@ class CarbonProfileControllerIT {
         userId,
         null,
         coordinatorUserId,
+        null,
+        null,
+        carbonIdentityId + "-MEMBER",
         carbonIdentityId,
         CarbonParticipantType.FARMER,
         displayName,
         "9876543210",
+        null,
+        null,
         "Wagholi",
         "Haveli",
         "Pune",
         "Maharashtra",
+        "MALE",
+        42,
+        "SMALL",
         new BigDecimal("18.5800000"),
         new BigDecimal("73.9800000"),
         landHolding,

@@ -160,6 +160,7 @@ public class FpoDashboardSummaryService {
   }
 
   private void requireReportModule(CurrentUser currentUser) {
+    tenantModuleService.requireEnabled(currentUser.tenantId(), ModuleCode.MEMBER_DATA);
     tenantModuleService.requireEnabled(currentUser.tenantId(), ModuleCode.REPORT_EXPORT);
   }
 

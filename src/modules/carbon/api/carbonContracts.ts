@@ -31,10 +31,16 @@ export type CarbonProfileResponse = {
   districtName: string | null;
   documentStatus: string | null;
   fpoMemberProfileId: Id | null;
+  aadhaarNumber: string | null;
+  age: number | null;
+  alternateMobileNumber: string | null;
+  farmerCategory: string | null;
+  gender: string | null;
   gpsLatitude: number | null;
   gpsLongitude: number | null;
   id: Id;
   livestockCount: number | null;
+  memberNumber: string | null;
   mobileNumber: string | null;
   participantType: CarbonParticipantType;
   stateName: string | null;
@@ -45,11 +51,15 @@ export type CarbonProfileResponse = {
   totalLandHoldingAcres: number | null;
   updatedAt: string;
   userId: Id | null;
+  username: string | null;
   village: string | null;
 };
 
 export type CarbonProfileRequest = {
+  aadhaarNumber?: string;
   aadhaarStatus?: string;
+  age?: number;
+  alternateMobileNumber?: string;
   bankStatus?: string;
   carbonIdentityId?: string;
   coordinatorUserId?: Id;
@@ -57,18 +67,23 @@ export type CarbonProfileRequest = {
   displayName?: string;
   districtName?: string;
   documentStatus?: string;
+  farmerCategory?: string;
   fpoMemberProfileId?: Id;
+  gender?: string;
   gpsLatitude?: number;
   gpsLongitude?: number;
   livestockCount?: number;
+  memberNumber?: string;
   mobileNumber?: string;
   participantType?: CarbonParticipantType;
+  password?: string;
   stateName?: string;
   status?: CarbonRecordStatus;
   taluka?: string;
   tillageStatus?: string;
   totalLandHoldingAcres?: number;
   userId?: Id;
+  username?: string;
   village?: string;
 };
 

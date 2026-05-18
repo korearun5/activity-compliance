@@ -1,22 +1,34 @@
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { StateCard } from "../../../ui/StateCard";
 import { StatusBadge } from "../../../ui/StatusBadge";
 import { CarbonProgramSnapshot, getCarbonProgramSnapshot } from "../data/carbonStore";
 import { CarbonProfileRecord } from "../data/carbonProfileStore";
 import { CarbonProfileAdminPanel } from "./CarbonProfileAdminPanel";
 
-type AdminCarbonSectionId = "overview" | "enrollment" | "evidence" | "marketplace";
+type AdminCarbonSectionId =
+  | "activityVerification"
+  | "dashboard"
+  | "farmers"
+  | "soilVerification";
 
 const adminCarbonSections: { id: AdminCarbonSectionId; label: string }[] = [
-  { id: "overview", label: "Overview" },
-  { id: "enrollment", label: "Enrollment" },
-  { id: "evidence", label: "Evidence" },
-  { id: "marketplace", label: "Marketplace" }
+  { id: "dashboard", label: "Dashboard" },
+  { id: "farmers", label: "Farmer management" },
+  { id: "activityVerification", label: "Activity verification" },
+  { id: "soilVerification", label: "Soil verification" }
 ];
 
-export function AdminCarbonOverviewTab() {
-  const [activeSection, setActiveSection] = useState<AdminCarbonSectionId>("overview");
+type AdminCarbonOverviewTabProps = {
+  onProfilesLoaded?: (profiles: CarbonProfileRecord[]) => void;
+};
+
+export function AdminCarbonOverviewTab({
+  onProfilesLoaded
+}: AdminCarbonOverviewTabProps) {
+  const [activeSection, setActiveSection] =
+    useState<AdminCarbonSectionId>("dashboard");
   const [liveProfiles, setLiveProfiles] = useState<CarbonProfileRecord[]>([]);
   const [snapshot, setSnapshot] = useState<CarbonProgramSnapshot | null>(null);
 
@@ -40,76 +52,29 @@ export function AdminCarbonOverviewTab() {
   const summaryCards = useMemo(
     () => [
       {
-        label: "Total farm area",
+        label: "Farmers enrolled",
+        value: String(liveProfiles.length || snapshot?.farmerParticipation || 0)
+      },
+      {
+        label: "Total plot area",
         value: `${formatNumber(totalFarmAreaAcres)} ac`
+      },
+      {
+        label: "Pending activities",
+        value: String(snapshot?.pendingActivities ?? 0)
       },
       {
         label: "Soil carbon score",
         value: String(snapshot?.soilCarbonScore ?? 0)
-      },
-      {
-        label: "Carbon credit potential",
-        value: `${formatNumber(snapshot?.carbonCreditPotentialTco2e ?? 0)} tCO2e`
-      },
-      {
-        label: "Farm activities pending",
-        value: String(snapshot?.pendingActivities ?? 0)
-      },
-      {
-        label: "Advisory alerts",
-        value: String(snapshot?.advisoryAlertCount ?? 0)
-      },
-      {
-        label: "Weather snapshot",
-        value: `${snapshot?.weatherSnapshot.temperatureC ?? 0} C`
-      },
-      {
-        label: "Nearby dealers",
-        value: String(snapshot?.nearbyDealerCount ?? 0)
-      },
-      {
-        label: "Farmers enrolled",
-        value: String(liveProfiles.length || snapshot?.farmerParticipation || 0)
       }
     ],
     [liveProfiles.length, snapshot, totalFarmAreaAcres]
   );
-  const profileCount = liveProfiles.length || snapshot?.farmerParticipation || 0;
-  const journeySteps = useMemo(
-    () => [
-      {
-        meta: `${profileCount} farmer${profileCount === 1 ? "" : "s"}`,
-        status: profileCount ? "Ready" : "Needs data",
-        title: "1. Enroll farmers"
-      },
-      {
-        meta: `${formatNumber(totalFarmAreaAcres)} ac captured`,
-        status: totalFarmAreaAcres > 0 ? "Ready" : "Needs data",
-        title: "2. Add farms and soil"
-      },
-      {
-        meta: `${snapshot?.pendingActivities ?? 0} pending`,
-        status: snapshot?.pendingActivities ? "Review" : "Ready",
-        title: "3. Track activities"
-      },
-      {
-        meta: `${snapshot?.advisoryAlertCount ?? 0} published`,
-        status: snapshot?.advisoryAlertCount ? "Ready" : "Draft",
-        title: "4. Advisory and support"
-      }
-    ],
-    [
-      profileCount,
-      snapshot?.advisoryAlertCount,
-      snapshot?.pendingActivities,
-      totalFarmAreaAcres
-    ]
-  );
 
   if (!snapshot) {
     return (
-      <View style={styles.panel}>
-        <Text style={styles.emptyText}>Loading carbon program base...</Text>
+      <View style={styles.section}>
+        <StateCard message="Loading carbon admin workspace..." tone="empty" />
       </View>
     );
   }
@@ -119,16 +84,15 @@ export function AdminCarbonOverviewTab() {
       <View style={styles.panel}>
         <View style={styles.workspaceHeader}>
           <View style={styles.headerText}>
-            <Text style={styles.title}>Carbon workspace</Text>
+            <Text style={styles.title}>Carbon admin workspace</Text>
             <Text style={styles.copy}>
-              Enroll farmers, capture farm and soil records, track carbon activities,
-              and prepare advisory and marketplace support.
+              P0 operations for farmer management, activity evidence, and soil review.
             </Text>
           </View>
           <Pressable
             accessibilityRole="button"
             style={styles.primaryAction}
-            onPress={() => setActiveSection("enrollment")}
+            onPress={() => setActiveSection("farmers")}
           >
             <Text style={styles.primaryActionText}>Add farmer</Text>
           </Pressable>
@@ -139,190 +103,160 @@ export function AdminCarbonOverviewTab() {
           onChange={setActiveSection}
           sections={adminCarbonSections}
         />
-
-        {activeSection === "overview" ? (
-          <>
-            <View style={styles.summaryGrid}>
-              {summaryCards.map((item) => (
-                <View key={item.label} style={styles.summaryCard}>
-                  <Text style={styles.summaryValue}>{item.value}</Text>
-                  <Text style={styles.summaryLabel}>{item.label}</Text>
-                </View>
-              ))}
-            </View>
-
-            <View style={styles.stepGrid}>
-              {journeySteps.map((step) => (
-                <View key={step.title} style={styles.stepCard}>
-                  <StatusBadge
-                    label={step.status}
-                    tone={step.status === "Ready" ? "good" : "warning"}
-                  />
-                  <Text style={styles.stepTitle}>{step.title}</Text>
-                  <Text style={styles.rowMeta}>{step.meta}</Text>
-                </View>
-              ))}
-            </View>
-
-            <View style={styles.weatherCard}>
-              <View style={styles.rowText}>
-                <Text style={styles.rowTitle}>Weather snapshot</Text>
-                <Text style={styles.rowMeta}>
-                  {snapshot.weatherSnapshot.condition} -{" "}
-                  {snapshot.weatherSnapshot.humidityPercent}% humidity - rain risk{" "}
-                  {snapshot.weatherSnapshot.rainfallRisk}
-                </Text>
-                <Text style={styles.rowMeta}>{snapshot.weatherSnapshot.advisory}</Text>
-              </View>
-              <StatusBadge label={snapshot.weatherSnapshot.updatedAt} tone="neutral" />
-            </View>
-          </>
-        ) : null}
-
-        {activeSection === "enrollment" ? (
-          <Text style={styles.copy}>
-            Farmer carbon identity, farm plots, GPS points, soil reports, and enrollment
-            readiness.
-          </Text>
-        ) : null}
-
-        {activeSection === "evidence" ? (
-          <Text style={styles.copy}>
-            Soil profile review and carbon activity evidence are grouped here for
-            operations users.
-          </Text>
-        ) : null}
-
-        {activeSection === "marketplace" ? (
-          <Text style={styles.copy}>
-            Dealer and lab discovery stays separate from farmer enrollment and evidence
-            review.
-          </Text>
-        ) : null}
       </View>
 
-      {activeSection === "overview" ? (
-        <View style={styles.panel}>
-          <Text style={styles.subsectionTitle}>Farmer carbon identity</Text>
-          {liveProfiles.length
-            ? liveProfiles.map((profile) => (
-                <View key={profile.id} style={styles.row}>
-                  <View style={styles.rowText}>
-                    <Text style={styles.rowTitle}>{profile.displayName}</Text>
-                    <Text style={styles.rowMeta}>
-                      {profile.carbonIdentityId} -{" "}
-                      {[profile.village, profile.taluka].filter(Boolean).join(", ") ||
-                        "Location not set"}
-                    </Text>
-                    <Text style={styles.rowMeta}>
-                      {formatNumber(profile.totalLandHoldingAcres ?? 0)} ac -{" "}
-                      {profile.tillageStatus ?? "Tillage not set"} -{" "}
-                      {profile.bankStatus ?? "Bank not set"}
-                    </Text>
-                  </View>
-                  <StatusBadge
-                    label={profile.documentStatus ?? profile.status}
-                    tone={profile.documentStatus === "Ready" ? "good" : "warning"}
-                  />
-                </View>
-              ))
-            : snapshot.profiles.map((profile) => (
-                <View key={profile.id} style={styles.row}>
-                  <View style={styles.rowText}>
-                    <Text style={styles.rowTitle}>{profile.farmerName}</Text>
-                    <Text style={styles.rowMeta}>
-                      {profile.carbonIdentityId} - {profile.village}, {profile.taluka}
-                    </Text>
-                    <Text style={styles.rowMeta}>
-                      {profile.totalLandHoldingAcres} ac - {profile.tillageStatus} -{" "}
-                      {profile.bankStatus}
-                    </Text>
-                  </View>
-                  <StatusBadge
-                    label={
-                      profile.documents.length >= 3 ? "Docs ready" : "Docs partial"
-                    }
-                    tone={profile.documents.length >= 3 ? "good" : "warning"}
-                  />
-                </View>
-              ))}
-        </View>
+      {activeSection === "dashboard" ? (
+        <DashboardSection
+          profileCount={liveProfiles.length || snapshot.farmerParticipation}
+          snapshot={snapshot}
+          summaryCards={summaryCards}
+          totalFarmAreaAcres={totalFarmAreaAcres}
+        />
       ) : null}
 
-      {activeSection === "enrollment" ? (
-        <CarbonProfileAdminPanel onProfilesLoaded={setLiveProfiles} />
+      {activeSection === "farmers" ? (
+        <CarbonProfileAdminPanel
+          onProfilesLoaded={(profiles) => {
+            setLiveProfiles(profiles);
+            onProfilesLoaded?.(profiles);
+          }}
+        />
       ) : null}
 
-      {activeSection === "evidence" ? (
-        <>
-          <View style={styles.panel}>
-            <Text style={styles.subsectionTitle}>Soil profile pipeline</Text>
-            {snapshot.soilProfiles.map((profile) => (
-              <View key={profile.id} style={styles.row}>
-                <View style={styles.rowText}>
-                  <Text style={styles.rowTitle}>{profile.plotName}</Text>
-                  <Text style={styles.rowMeta}>
-                    SOC {profile.soilOrganicCarbonPercent}% - pH {profile.ph} - NDVI{" "}
-                    {profile.ndvi}
-                  </Text>
-                  <Text style={styles.rowMeta}>
-                    {profile.carbonPotentialTco2e} tCO2e potential -{" "}
-                    {profile.recommendedInputs.join(", ")}
-                  </Text>
-                </View>
-                <StatusBadge
-                  label={`${profile.soilHealthScore}`}
-                  tone={profile.soilHealthScore >= 75 ? "good" : "warning"}
-                />
-              </View>
-            ))}
+      {activeSection === "activityVerification" ? (
+        <ActivityVerificationSection snapshot={snapshot} />
+      ) : null}
+
+      {activeSection === "soilVerification" ? (
+        <SoilVerificationSection snapshot={snapshot} />
+      ) : null}
+    </View>
+  );
+}
+
+function DashboardSection({
+  profileCount,
+  snapshot,
+  summaryCards,
+  totalFarmAreaAcres
+}: {
+  profileCount: number;
+  snapshot: CarbonProgramSnapshot;
+  summaryCards: Array<{ label: string; value: string }>;
+  totalFarmAreaAcres: number;
+}) {
+  const journeySteps = [
+    {
+      meta: `${profileCount} farmer${profileCount === 1 ? "" : "s"}`,
+      status: profileCount ? "Ready" : "Needs data",
+      title: "1. Farmer management"
+    },
+    {
+      meta: `${formatNumber(totalFarmAreaAcres)} ac captured`,
+      status: totalFarmAreaAcres > 0 ? "Ready" : "Needs data",
+      title: "2. Plots and soil"
+    },
+    {
+      meta: `${snapshot.pendingActivities} pending`,
+      status: snapshot.pendingActivities ? "Review" : "Ready",
+      title: "3. Activity evidence"
+    },
+    {
+      meta: `${snapshot.soilProfiles.length} soil profile records`,
+      status: snapshot.soilProfiles.length ? "Ready" : "Needs data",
+      title: "4. Soil verification"
+    }
+  ];
+
+  return (
+    <>
+      <View style={styles.summaryGrid}>
+        {summaryCards.map((item) => (
+          <View key={item.label} style={styles.summaryCard}>
+            <Text style={styles.summaryValue}>{item.value}</Text>
+            <Text style={styles.summaryLabel}>{item.label}</Text>
           </View>
+        ))}
+      </View>
 
-          <View style={styles.panel}>
-            <Text style={styles.subsectionTitle}>Activity verification queue</Text>
-            {snapshot.activities.map((activity) => (
-              <View key={activity.id} style={styles.row}>
-                <View style={styles.rowText}>
-                  <Text style={styles.rowTitle}>{activity.category}</Text>
-                  <Text style={styles.rowMeta}>
-                    {activity.crop} - {activity.inputUsed} - {activity.quantity}
-                  </Text>
-                  <Text style={styles.rowMeta}>
-                    Score {activity.activityScore} - {activity.emissionReductionTco2e}{" "}
-                    tCO2e reduction - {activity.evidenceCount} evidence item
-                    {activity.evidenceCount === 1 ? "" : "s"}
-                  </Text>
-                </View>
-                <StatusBadge
-                  label={activity.verificationStatus}
-                  tone={activity.verificationStatus === "Verified" ? "good" : "warning"}
-                />
-              </View>
-            ))}
+      <View style={styles.stepGrid}>
+        {journeySteps.map((step) => (
+          <View key={step.title} style={styles.stepCard}>
+            <StatusBadge
+              label={step.status}
+              tone={step.status === "Ready" ? "good" : "warning"}
+            />
+            <Text style={styles.stepTitle}>{step.title}</Text>
+            <Text style={styles.rowMeta}>{step.meta}</Text>
           </View>
-        </>
-      ) : null}
+        ))}
+      </View>
+    </>
+  );
+}
 
-      {activeSection === "marketplace" ? (
-        <View style={styles.panel}>
-          <Text style={styles.subsectionTitle}>Dealer and lab directory</Text>
-          {snapshot.dealers.map((dealer) => (
-            <View key={dealer.id} style={styles.row}>
-              <View style={styles.rowText}>
-                <Text style={styles.rowTitle}>{dealer.name}</Text>
-                <Text style={styles.rowMeta}>
-                  {dealer.category} - {dealer.distanceKm} km - rating {dealer.rating}
-                </Text>
-                <Text style={styles.rowMeta}>{dealer.products.join(", ")}</Text>
-              </View>
-              <StatusBadge
-                label={dealer.stockStatus}
-                tone={dealer.stockStatus === "Available" ? "good" : "warning"}
-              />
-            </View>
-          ))}
+function ActivityVerificationSection({
+  snapshot
+}: {
+  snapshot: CarbonProgramSnapshot;
+}) {
+  return (
+    <View style={styles.panel}>
+      <Text style={styles.subsectionTitle}>Activity verification queue</Text>
+      {snapshot.activities.map((activity) => (
+        <View key={activity.id} style={styles.row}>
+          <View style={styles.rowText}>
+            <Text style={styles.rowTitle}>{activity.category}</Text>
+            <Text style={styles.rowMeta}>
+              {activity.crop} - {activity.inputUsed} - {activity.quantity}
+            </Text>
+            <Text style={styles.rowMeta}>
+              Score {activity.activityScore} - {activity.emissionReductionTco2e}{" "}
+              tCO2e reduction - {activity.evidenceCount} evidence item
+              {activity.evidenceCount === 1 ? "" : "s"}
+            </Text>
+          </View>
+          <StatusBadge
+            label={activity.verificationStatus}
+            tone={activity.verificationStatus === "Verified" ? "good" : "warning"}
+          />
         </View>
-      ) : null}
+      ))}
+      <StateCard
+        message="Approve and reject actions will use the shared evidence review path in CARBON-CLIENT-011."
+        tone="info"
+      />
+    </View>
+  );
+}
+
+function SoilVerificationSection({ snapshot }: { snapshot: CarbonProgramSnapshot }) {
+  return (
+    <View style={styles.panel}>
+      <Text style={styles.subsectionTitle}>Soil verification queue</Text>
+      {snapshot.soilProfiles.map((profile) => (
+        <View key={profile.id} style={styles.row}>
+          <View style={styles.rowText}>
+            <Text style={styles.rowTitle}>{profile.plotName}</Text>
+            <Text style={styles.rowMeta}>
+              SOC {profile.soilOrganicCarbonPercent}% - pH {profile.ph} - NDVI{" "}
+              {profile.ndvi}
+            </Text>
+            <Text style={styles.rowMeta}>
+              {profile.carbonPotentialTco2e} tCO2e potential -{" "}
+              {profile.recommendedInputs.join(", ")}
+            </Text>
+          </View>
+          <StatusBadge
+            label={`${profile.soilHealthScore}`}
+            tone={profile.soilHealthScore >= 75 ? "good" : "warning"}
+          />
+        </View>
+      ))}
+      <StateCard
+        message="OCR and manual verification status will be added with the soil sprint."
+        tone="info"
+      />
     </View>
   );
 }
@@ -369,8 +303,13 @@ function round(value: number) {
 }
 
 const styles = StyleSheet.create({
-  section: {
-    gap: 14
+  copy: {
+    color: "#53666f",
+    fontSize: 14,
+    lineHeight: 20
+  },
+  headerText: {
+    flex: 1
   },
   panel: {
     backgroundColor: "#ffffff",
@@ -379,20 +318,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     gap: 14,
     padding: 16
-  },
-  title: {
-    color: "#172126",
-    fontSize: 18,
-    fontWeight: "800",
-    marginBottom: 6
-  },
-  copy: {
-    color: "#53666f",
-    fontSize: 14,
-    lineHeight: 20
-  },
-  headerText: {
-    flex: 1
   },
   primaryAction: {
     alignItems: "center",
@@ -409,48 +334,32 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "800"
   },
-  summaryGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10
-  },
-  summaryCard: {
-    backgroundColor: "#f4f7fb",
+  row: {
+    alignItems: "flex-start",
+    backgroundColor: "#f7fafb",
     borderRadius: 8,
-    flex: 1,
-    minWidth: 132,
-    padding: 14
+    flexDirection: "row",
+    gap: 12,
+    justifyContent: "space-between",
+    padding: 12
   },
-  summaryValue: {
-    color: "#1f6f73",
-    fontSize: 22,
+  rowMeta: {
+    color: "#53666f",
+    fontSize: 13,
+    fontWeight: "700",
+    lineHeight: 18
+  },
+  rowText: {
+    flex: 1
+  },
+  rowTitle: {
+    color: "#172126",
+    fontSize: 14,
     fontWeight: "800",
     marginBottom: 4
   },
-  summaryLabel: {
-    color: "#53666f",
-    fontSize: 13,
-    fontWeight: "800"
-  },
-  stepCard: {
-    backgroundColor: "#f7fafb",
-    borderColor: "#d9e4ea",
-    borderRadius: 8,
-    borderWidth: 1,
-    flex: 1,
-    gap: 8,
-    minWidth: 150,
-    padding: 12
-  },
-  stepGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10
-  },
-  stepTitle: {
-    color: "#172126",
-    fontSize: 13,
-    fontWeight: "800"
+  section: {
+    gap: 14
   },
   sectionTab: {
     backgroundColor: "#ffffff",
@@ -477,21 +386,61 @@ const styles = StyleSheet.create({
   sectionTabTextActive: {
     color: "#ffffff"
   },
+  stepCard: {
+    backgroundColor: "#f7fafb",
+    borderColor: "#d9e4ea",
+    borderRadius: 8,
+    borderWidth: 1,
+    flex: 1,
+    gap: 8,
+    minWidth: 150,
+    padding: 12
+  },
+  stepGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10
+  },
+  stepTitle: {
+    color: "#172126",
+    fontSize: 13,
+    fontWeight: "800"
+  },
   subsectionTitle: {
     color: "#172126",
     fontSize: 15,
     fontWeight: "800"
   },
-  weatherCard: {
-    alignItems: "flex-start",
-    backgroundColor: "#f7fafb",
+  summaryCard: {
+    backgroundColor: "#ffffff",
     borderColor: "#d9e4ea",
     borderRadius: 8,
     borderWidth: 1,
+    flex: 1,
+    minWidth: 150,
+    padding: 16
+  },
+  summaryGrid: {
     flexDirection: "row",
-    gap: 12,
-    justifyContent: "space-between",
-    padding: 12
+    flexWrap: "wrap",
+    gap: 12
+  },
+  summaryLabel: {
+    color: "#53666f",
+    fontSize: 13,
+    fontWeight: "800"
+  },
+  summaryValue: {
+    color: "#1f6f73",
+    fontSize: 24,
+    fontWeight: "800",
+    marginBottom: 4
+  },
+  title: {
+    color: "#172126",
+    fontSize: 18,
+    fontWeight: "800",
+    marginBottom: 6
   },
   workspaceHeader: {
     alignItems: "flex-start",
@@ -499,34 +448,5 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: 12,
     justifyContent: "space-between"
-  },
-  row: {
-    alignItems: "flex-start",
-    backgroundColor: "#f7fafb",
-    borderRadius: 8,
-    flexDirection: "row",
-    gap: 12,
-    justifyContent: "space-between",
-    padding: 12
-  },
-  rowText: {
-    flex: 1
-  },
-  rowTitle: {
-    color: "#172126",
-    fontSize: 14,
-    fontWeight: "800",
-    marginBottom: 4
-  },
-  rowMeta: {
-    color: "#53666f",
-    fontSize: 13,
-    fontWeight: "700",
-    lineHeight: 18
-  },
-  emptyText: {
-    color: "#53666f",
-    fontSize: 13,
-    fontWeight: "700"
   }
 });

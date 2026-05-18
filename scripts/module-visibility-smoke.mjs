@@ -60,9 +60,11 @@ assert.deepEqual(Object.keys(moduleVisibilityRegistry.adminTabs).sort(), [
   "workflows"
 ]);
 assert.equal(moduleVisibilityRegistry.adminTabs.carbon.scope, "carbon");
+assert.equal(moduleVisibilityRegistry.adminTabs.advisories.scope, "fpo");
 assert.equal(moduleVisibilityRegistry.adminTabs.participants.scope, "fpo");
 assert.equal(moduleVisibilityRegistry.farmerTabs.carbon.scope, "carbon");
-assert.equal(moduleVisibilityRegistry.farmerTabs.cycles.scope, "fpo");
+assert.equal(moduleVisibilityRegistry.farmerTabs.cycles.scope, "common");
+assert.equal(moduleVisibilityRegistry.actions.manageAdvisories.scope, "fpo");
 
 const carbonAdminTabs = tabIds(
   getVisibleAdminTabs("admin", carbonModules, {
@@ -70,9 +72,13 @@ const carbonAdminTabs = tabIds(
   })
 );
 assert.ok(carbonAdminTabs.includes("carbon"));
+assert.ok(!carbonAdminTabs.includes("advisories"));
 assert.ok(!carbonAdminTabs.includes("participants"));
 assert.ok(!carbonAdminTabs.includes("cropPlanning"));
 assert.ok(!carbonAdminTabs.includes("inputDemand"));
+assert.ok(
+  carbonAdminTabs.every((tab) => moduleVisibilityRegistry.adminTabs[tab].scope !== "fpo")
+);
 
 const carbonCoordinatorTabs = tabIds(
   getVisibleAdminTabs("fieldCoordinator", carbonModules, {
@@ -81,6 +87,7 @@ const carbonCoordinatorTabs = tabIds(
 );
 assert.ok(carbonCoordinatorTabs.includes("carbon"));
 assert.ok(!carbonCoordinatorTabs.includes("roles"));
+assert.ok(!carbonCoordinatorTabs.includes("advisories"));
 
 const carbonWithoutSubscriptionTabs = tabIds(
   getVisibleAdminTabs("admin", coreModules, {
@@ -95,6 +102,7 @@ const fpoAdminTabs = tabIds(
   })
 );
 assert.ok(!fpoAdminTabs.includes("carbon"));
+assert.ok(fpoAdminTabs.includes("advisories"));
 assert.ok(fpoAdminTabs.includes("participants"));
 assert.ok(fpoAdminTabs.includes("cropPlanning"));
 assert.ok(fpoAdminTabs.includes("inputDemand"));
@@ -105,6 +113,7 @@ const fullPackageTabs = tabIds(
   })
 );
 assert.ok(fullPackageTabs.includes("carbon"));
+assert.ok(fullPackageTabs.includes("advisories"));
 assert.ok(fullPackageTabs.includes("participants"));
 
 const farmerCarbonTabs = tabIds(
@@ -112,8 +121,11 @@ const farmerCarbonTabs = tabIds(
     enabledClientModules: ["carbon"]
   })
 );
-assert.deepEqual(farmerCarbonTabs, ["carbon"]);
+assert.deepEqual(farmerCarbonTabs, ["cycles", "dashboard", "history", "carbon"]);
 assert.ok(farmerCarbonTabs.includes("carbon"));
+assert.ok(
+  farmerCarbonTabs.every((tab) => moduleVisibilityRegistry.farmerTabs[tab].scope !== "fpo")
+);
 
 const farmerFpoTabs = tabIds(
   getVisibleFarmerTabs(fpoModules, {
@@ -140,11 +152,19 @@ const farmerWithoutSubscriptionTabs = tabIds(
     enabledClientModules: ["carbon"]
   })
 );
+assert.deepEqual(farmerWithoutSubscriptionTabs, ["cycles", "dashboard", "history"]);
 assert.ok(!farmerWithoutSubscriptionTabs.includes("carbon"));
 
 assert.equal(canRolePerform("fpoManager", "manageInputDemand"), true);
 assert.equal(
   canRolePerform("fpoManager", "manageInputDemand", {
+    enabledModules: carbonModules,
+    features: { enabledClientModules: ["carbon"] }
+  }),
+  false
+);
+assert.equal(
+  canRolePerform("admin", "manageAdvisories", {
     enabledModules: carbonModules,
     features: { enabledClientModules: ["carbon"] }
   }),

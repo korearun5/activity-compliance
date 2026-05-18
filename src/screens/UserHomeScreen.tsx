@@ -44,7 +44,7 @@ import {
 } from "../data/workflowActivityStore";
 import { getCachedEnabledModules, PlatformModuleCode } from "../data/moduleStore";
 import { getVisibleFarmerTabs, type FarmerTabId } from "../auth/roleAccess";
-import { getEnabledClientModuleIds, isClientModuleEnabled } from "../modules";
+import { getEnabledClientModuleIds } from "../modules";
 import { StatusBadge } from "../ui/StatusBadge";
 import { UserCarbonScreen } from "../modules/carbon";
 
@@ -66,9 +66,7 @@ type SelectedProof = {
 
 export function UserHomeScreen({ username, onLogout }: UserHomeScreenProps) {
   const [activeTab, setActiveTab] = useState<ParticipantTab>(
-    isClientModuleEnabled("carbon") && !isClientModuleEnabled("fpo")
-      ? "carbon"
-      : "cycles"
+    getEnabledClientModuleIds().includes("carbon") ? "carbon" : "cycles"
   );
   const [savedProofs, setSavedProofs] = useState<ProofSubmission[]>([]);
   const [savedCycles, setSavedCycles] = useState<CropCycle[]>([]);
@@ -84,6 +82,7 @@ export function UserHomeScreen({ username, onLogout }: UserHomeScreenProps) {
   const [plotName, setPlotName] = useState("");
   const [startDate, setStartDate] = useState(toInputDate(new Date()));
   const [startCropError, setStartCropError] = useState("");
+  const [activityLoadError, setActivityLoadError] = useState("");
   const [completedCropName, setCompletedCropName] = useState<string | null>(null);
   const [enabledModules, setEnabledModules] = useState<PlatformModuleCode[] | null>(
     null
@@ -113,11 +112,14 @@ export function UserHomeScreen({ username, onLogout }: UserHomeScreenProps) {
           setWorkflowTemplates(templates);
           setSavedCycles(cycles);
           setSavedProofs(proofs);
+          setActivityLoadError("");
           return;
         } catch (error) {
-          setStartCropError(
-            getErrorMessage(error, "Unable to load backend activity timeline.")
-          );
+          setActivityLoadError(getErrorMessage(error, "Unable to load activities."));
+          setWorkflowTemplates([]);
+          setSavedCycles([]);
+          setSavedProofs([]);
+          return;
         }
       }
 
@@ -129,6 +131,7 @@ export function UserHomeScreen({ username, onLogout }: UserHomeScreenProps) {
       setWorkflowTemplates([]);
       setSavedProofs(proofs);
       setSavedCycles(cycles);
+      setActivityLoadError("");
     }
 
     loadParticipantData();
@@ -179,9 +182,9 @@ export function UserHomeScreen({ username, onLogout }: UserHomeScreenProps) {
   ).length;
 
   const summary = [
-    { label: "Running crops", value: String(runningCycles.length) },
+    { label: "Running activities", value: String(runningCycles.length) },
     { label: "Next actions", value: String(nextActionCount) },
-    { label: "Finished cycles", value: String(completedCycles.length) },
+    { label: "Finished activities", value: String(completedCycles.length) },
     { label: "Proof saved", value: String(savedProofs.length) }
   ];
   const uiFeatures = useMemo(
@@ -449,6 +452,7 @@ export function UserHomeScreen({ username, onLogout }: UserHomeScreenProps) {
         <View style={styles.shell}>
           {activeTab === "cycles" ? (
             <CyclesView
+              activityLoadError={activityLoadError}
               isStartCropOpen={isStartCropOpen}
               plotName={plotName}
               proofError={proofError}
@@ -499,10 +503,10 @@ export function UserHomeScreen({ username, onLogout }: UserHomeScreenProps) {
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
             <Text style={styles.modalEyebrow}>Congratulations</Text>
-            <Text style={styles.modalTitle}>{completedCropName} cycle completed</Text>
+            <Text style={styles.modalTitle}>{completedCropName} activity completed</Text>
             <Text style={styles.modalCopy}>
-              All required process steps are done. This crop has moved to History with
-              its proof records.
+              All required process steps are done. This activity has moved to History
+              with its proof records.
             </Text>
             <Pressable
               style={styles.primaryButton}
@@ -521,6 +525,7 @@ export function UserHomeScreen({ username, onLogout }: UserHomeScreenProps) {
 }
 
 function CyclesView({
+  activityLoadError,
   isStartCropOpen,
   plotName,
   proofError,
@@ -544,6 +549,7 @@ function CyclesView({
   onCancelProof,
   onOpenProof
 }: {
+  activityLoadError: string;
   isStartCropOpen: boolean;
   plotName: string;
   proofError: string;
@@ -571,10 +577,10 @@ function CyclesView({
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
         <View style={styles.sectionHeaderText}>
-          <Text style={styles.pageTitle}>Active crop cycles</Text>
+          <Text style={styles.pageTitle}>Assigned activities</Text>
           <Text style={styles.pageCopy}>
-            Select a crop, follow each process step, and mark proof done with a photo
-            and note.
+            Follow each assigned workflow step and mark proof done with a photo and
+            note.
           </Text>
         </View>
         <Pressable
@@ -582,10 +588,16 @@ function CyclesView({
           onPress={() => setIsStartCropOpen(!isStartCropOpen)}
         >
           <Text style={styles.primaryButtonText}>
-            {isStartCropOpen ? "Close" : "New crop"}
+            {isStartCropOpen ? "Close" : "New activity"}
           </Text>
         </Pressable>
       </View>
+
+      {activityLoadError ? (
+        <View style={styles.errorCard}>
+          <Text style={styles.errorText}>{activityLoadError}</Text>
+        </View>
+      ) : null}
 
       {isStartCropOpen ? (
         <StartCropForm
@@ -692,7 +704,8 @@ function CyclesView({
       ) : (
         <View style={styles.emptyCard}>
           <Text style={styles.cardDescription}>
-            No active crop cycles yet. Start a crop when field work begins.
+            No assigned activities yet. Assigned workflows will appear here when work
+            begins.
           </Text>
         </View>
       )}
@@ -723,8 +736,8 @@ function StartCropForm({
 }) {
   return (
     <View style={styles.formCard}>
-      <Text style={styles.cardTitle}>Start new crop</Text>
-      <Text style={styles.inputLabel}>Crop</Text>
+      <Text style={styles.cardTitle}>Start activity</Text>
+      <Text style={styles.inputLabel}>Workflow</Text>
       {workflowTemplates.length ? (
         <View style={styles.choiceRow}>
           {workflowTemplates.map((template) => (
@@ -751,13 +764,13 @@ function StartCropForm({
       ) : (
         <View style={styles.emptyCard}>
           <Text style={styles.cardDescription}>
-            No crop workflow is configured yet. An admin must add the workflow and task
-            list before farmers can start work.
+            No workflow is configured yet. An admin must add the workflow and task list
+            before farmers can start work.
           </Text>
         </View>
       )}
 
-      <Text style={styles.inputLabel}>Plot name</Text>
+      <Text style={styles.inputLabel}>Unit or plot name</Text>
       <TextInput
         onChangeText={setPlotName}
         placeholder="Example: Plot D"
@@ -777,7 +790,7 @@ function StartCropForm({
 
       <View style={styles.formActions}>
         <Pressable style={styles.primaryButton} onPress={onStartCrop}>
-          <Text style={styles.primaryButtonText}>Start crop</Text>
+          <Text style={styles.primaryButtonText}>Start activity</Text>
         </Pressable>
       </View>
     </View>
@@ -796,7 +809,7 @@ function DashboardView({
       <View>
         <Text style={styles.pageTitle}>Dashboard summary</Text>
         <Text style={styles.pageCopy}>
-          A simple overview of current crop work and proof completion.
+          A simple overview of current activity work and proof completion.
         </Text>
       </View>
 
@@ -809,7 +822,7 @@ function DashboardView({
         ))}
       </View>
 
-      <Text style={styles.sectionTitle}>Running crops</Text>
+      <Text style={styles.sectionTitle}>Running activities</Text>
       {runningCycles.length ? (
         runningCycles.map((cycle) => (
           <View key={cycle.id} style={styles.cycleCard}>
@@ -827,7 +840,7 @@ function DashboardView({
       ) : (
         <View style={styles.emptyCard}>
           <Text style={styles.cardDescription}>
-            No running crops are available yet.
+            No running activities are available yet.
           </Text>
         </View>
       )}
@@ -869,8 +882,8 @@ function HistoryView({ completedCycles }: { completedCycles: CropCycle[] }) {
       <View>
         <Text style={styles.pageTitle}>History</Text>
         <Text style={styles.pageCopy}>
-          Completed crop cycles live here. Active crop proof remains inside the running
-          crop until that crop is finished.
+          Completed activities live here. Active proof remains inside the running
+          activity until it is finished.
         </Text>
       </View>
       {completedCycles.length ? (
@@ -890,7 +903,7 @@ function HistoryView({ completedCycles }: { completedCycles: CropCycle[] }) {
       ) : (
         <View style={styles.emptyCard}>
           <Text style={styles.cardDescription}>
-            Completed crop cycles will appear here.
+            Completed activities will appear here.
           </Text>
         </View>
       )}
@@ -1175,6 +1188,13 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     padding: 16
+  },
+  errorCard: {
+    backgroundColor: "#fff5f5",
+    borderColor: "#f0b8b8",
+    borderRadius: 8,
+    borderWidth: 1,
+    padding: 14
   },
   cardHeader: {
     alignItems: "flex-start",

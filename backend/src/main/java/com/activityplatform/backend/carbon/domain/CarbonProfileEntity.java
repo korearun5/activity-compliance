@@ -2,6 +2,7 @@ package com.activityplatform.backend.carbon.domain;
 
 import com.activityplatform.backend.auth.domain.TenantEntity;
 import com.activityplatform.backend.auth.domain.UserEntity;
+import com.activityplatform.backend.farmer.domain.FarmerProfileEntity;
 import com.activityplatform.backend.fpo.domain.FpoMemberProfileEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -35,8 +36,18 @@ public class CarbonProfileEntity {
   private FpoMemberProfileEntity fpoMemberProfile;
 
   @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "farmer_profile_id")
+  private FarmerProfileEntity farmerProfile;
+
+  @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "coordinator_user_id")
   private UserEntity coordinatorUser;
+
+  @Column(name = "username")
+  private String username;
+
+  @Column(name = "member_number")
+  private String memberNumber;
 
   @Column(name = "carbon_identity_id", nullable = false)
   private String carbonIdentityId;
@@ -51,6 +62,12 @@ public class CarbonProfileEntity {
   @Column(name = "mobile_number")
   private String mobileNumber;
 
+  @Column(name = "alternate_mobile_number")
+  private String alternateMobileNumber;
+
+  @Column(name = "aadhaar_number")
+  private String aadhaarNumber;
+
   private String village;
 
   private String taluka;
@@ -60,6 +77,13 @@ public class CarbonProfileEntity {
 
   @Column(name = "state_name")
   private String stateName;
+
+  private String gender;
+
+  private Integer age;
+
+  @Column(name = "farmer_category")
+  private String farmerCategory;
 
   @Column(name = "gps_latitude")
   private BigDecimal gpsLatitude;
@@ -107,14 +131,21 @@ public class CarbonProfileEntity {
       UserEntity user,
       FpoMemberProfileEntity fpoMemberProfile,
       UserEntity coordinatorUser,
+      String username,
+      String memberNumber,
       String carbonIdentityId,
       CarbonParticipantType participantType,
       String displayName,
       String mobileNumber,
+      String alternateMobileNumber,
+      String aadhaarNumber,
       String village,
       String taluka,
       String districtName,
       String stateName,
+      String gender,
+      Integer age,
+      String farmerCategory,
       BigDecimal gpsLatitude,
       BigDecimal gpsLongitude,
       BigDecimal totalLandHoldingAcres,
@@ -132,14 +163,21 @@ public class CarbonProfileEntity {
     this.user = user;
     this.fpoMemberProfile = fpoMemberProfile;
     this.coordinatorUser = coordinatorUser;
+    this.username = username;
+    this.memberNumber = memberNumber;
     this.carbonIdentityId = carbonIdentityId;
     this.participantType = participantType;
     this.displayName = displayName;
     this.mobileNumber = mobileNumber;
+    this.alternateMobileNumber = alternateMobileNumber;
+    this.aadhaarNumber = aadhaarNumber;
     this.village = village;
     this.taluka = taluka;
     this.districtName = districtName;
     this.stateName = stateName;
+    this.gender = gender;
+    this.age = age;
+    this.farmerCategory = farmerCategory;
     this.gpsLatitude = gpsLatitude;
     this.gpsLongitude = gpsLongitude;
     this.totalLandHoldingAcres = totalLandHoldingAcres;
@@ -170,8 +208,24 @@ public class CarbonProfileEntity {
     return fpoMemberProfile;
   }
 
+  public FarmerProfileEntity getFarmerProfile() {
+    return farmerProfile;
+  }
+
+  public UUID getFarmerProfileId() {
+    return farmerProfile == null ? null : farmerProfile.getId();
+  }
+
   public UserEntity getCoordinatorUser() {
     return coordinatorUser;
+  }
+
+  public String getUsername() {
+    return username;
+  }
+
+  public String getMemberNumber() {
+    return memberNumber;
   }
 
   public String getCarbonIdentityId() {
@@ -190,6 +244,14 @@ public class CarbonProfileEntity {
     return mobileNumber;
   }
 
+  public String getAlternateMobileNumber() {
+    return alternateMobileNumber;
+  }
+
+  public String getAadhaarNumber() {
+    return aadhaarNumber;
+  }
+
   public String getVillage() {
     return village;
   }
@@ -204,6 +266,18 @@ public class CarbonProfileEntity {
 
   public String getStateName() {
     return stateName;
+  }
+
+  public String getGender() {
+    return gender;
+  }
+
+  public Integer getAge() {
+    return age;
+  }
+
+  public String getFarmerCategory() {
+    return farmerCategory;
   }
 
   public BigDecimal getGpsLatitude() {
@@ -258,14 +332,21 @@ public class CarbonProfileEntity {
       UserEntity user,
       FpoMemberProfileEntity fpoMemberProfile,
       UserEntity coordinatorUser,
+      String username,
+      String memberNumber,
       String carbonIdentityId,
       CarbonParticipantType participantType,
       String displayName,
       String mobileNumber,
+      String alternateMobileNumber,
+      String aadhaarNumber,
       String village,
       String taluka,
       String districtName,
       String stateName,
+      String gender,
+      Integer age,
+      String farmerCategory,
       BigDecimal gpsLatitude,
       BigDecimal gpsLongitude,
       BigDecimal totalLandHoldingAcres,
@@ -281,14 +362,21 @@ public class CarbonProfileEntity {
     this.user = user;
     this.fpoMemberProfile = fpoMemberProfile;
     this.coordinatorUser = coordinatorUser;
+    this.username = username;
+    this.memberNumber = memberNumber;
     this.carbonIdentityId = carbonIdentityId;
     this.participantType = participantType;
     this.displayName = displayName;
     this.mobileNumber = mobileNumber;
+    this.alternateMobileNumber = alternateMobileNumber;
+    this.aadhaarNumber = aadhaarNumber;
     this.village = village;
     this.taluka = taluka;
     this.districtName = districtName;
     this.stateName = stateName;
+    this.gender = gender;
+    this.age = age;
+    this.farmerCategory = farmerCategory;
     this.gpsLatitude = gpsLatitude;
     this.gpsLongitude = gpsLongitude;
     this.totalLandHoldingAcres = totalLandHoldingAcres;
@@ -299,6 +387,11 @@ public class CarbonProfileEntity {
     this.aadhaarStatus = aadhaarStatus;
     this.documentStatus = documentStatus;
     this.status = status;
+    this.updatedAt = now;
+  }
+
+  public void linkFarmerProfile(FarmerProfileEntity farmerProfile, Instant now) {
+    this.farmerProfile = farmerProfile;
     this.updatedAt = now;
   }
 }

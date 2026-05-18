@@ -9,6 +9,10 @@ import com.activityplatform.backend.audit.domain.AuditAction;
 import com.activityplatform.backend.audit.service.AuditEventService;
 import com.activityplatform.backend.common.error.ApplicationException;
 import com.activityplatform.backend.common.error.ErrorCode;
+import com.activityplatform.backend.farmer.domain.FarmerProfileEntity;
+import com.activityplatform.backend.farmer.domain.FarmerProfileStatus;
+import com.activityplatform.backend.farmer.service.FarmerProfileCommand;
+import com.activityplatform.backend.farmer.service.FarmerService;
 import com.activityplatform.backend.fpo.api.CreateFpoMemberRequest;
 import com.activityplatform.backend.fpo.api.FpoMemberResponse;
 import com.activityplatform.backend.fpo.api.UpdateFpoMemberRequest;
@@ -42,6 +46,7 @@ public class FpoMemberService {
   private final TenantRepository tenantRepository;
   private final UserRepository userRepository;
   private final UserService userService;
+  private final FarmerService farmerService;
 
   public FpoMemberService(
       AuditEventService auditEventService,
@@ -49,7 +54,8 @@ public class FpoMemberService {
       TenantModuleService tenantModuleService,
       TenantRepository tenantRepository,
       UserRepository userRepository,
-      UserService userService
+      UserService userService,
+      FarmerService farmerService
   ) {
     this.auditEventService = auditEventService;
     this.memberRepository = memberRepository;
@@ -57,6 +63,7 @@ public class FpoMemberService {
     this.tenantRepository = tenantRepository;
     this.userRepository = userRepository;
     this.userService = userService;
+    this.farmerService = farmerService;
   }
 
   @Transactional(readOnly = true)
@@ -127,6 +134,26 @@ public class FpoMemberService {
     if (memberRepository.existsByTenantIdAndUserId(currentUser.tenantId(), user.getId())) {
       throw conflict("This user already has an FPO member profile.");
     }
+    FpoMemberStatus memberStatus = request.status() == null ? FpoMemberStatus.ACTIVE : request.status();
+    FarmerProfileEntity farmerProfile = farmerService.ensureFarmerProfileForUser(
+        currentUser,
+        user,
+        farmerProfileCommand(
+            request.displayName(),
+            mobileNumber,
+            request.alternateMobileNumber(),
+            request.aadhaarNumber(),
+            request.village(),
+            request.taluka(),
+            request.districtName(),
+            request.stateName(),
+            request.gender(),
+            request.dateOfBirth(),
+            request.age(),
+            request.farmerCategory(),
+            memberStatus
+        )
+    );
 
     UserEntity coordinator = resolveCoordinatorForCreate(currentUser, request.coordinatorUserId());
     Instant now = Instant.now();
@@ -148,9 +175,10 @@ public class FpoMemberService {
         request.age(),
         FpoMemberProfileRules.normalizeFarmerCategory(request.farmerCategory()),
         coordinator,
-        request.status() == null ? FpoMemberStatus.ACTIVE : request.status(),
+        memberStatus,
         now
     );
+    member.linkFarmerProfile(farmerProfile, now);
 
     FpoMemberProfileEntity savedMember = saveMember(member);
     auditMember(currentUser, savedMember, AuditAction.FPO_MEMBER_CREATED);
@@ -175,6 +203,26 @@ public class FpoMemberService {
     String mobileNumber = FpoMemberProfileRules.normalizeIndianMobile(request.mobileNumber());
     ensureMemberNumberAvailable(currentUser.tenantId(), memberNumber, member.getId());
     ensureMobileAvailable(currentUser.tenantId(), mobileNumber, member.getId());
+    FarmerProfileEntity farmerProfile = syncFarmerProfile(
+        currentUser,
+        member,
+        farmerProfileCommand(
+            request.displayName(),
+            mobileNumber,
+            request.alternateMobileNumber(),
+            request.aadhaarNumber(),
+            request.village(),
+            request.taluka(),
+            request.districtName(),
+            request.stateName(),
+            request.gender(),
+            request.dateOfBirth(),
+            request.age(),
+            request.farmerCategory(),
+            request.status()
+        )
+    );
+    Instant now = Instant.now();
 
     member.updateDetails(
         memberNumber,
@@ -192,8 +240,9 @@ public class FpoMemberService {
         FpoMemberProfileRules.normalizeFarmerCategory(request.farmerCategory()),
         resolveCoordinatorForUpdate(currentUser, request.coordinatorUserId(), member.getCoordinatorUser()),
         request.status(),
-        Instant.now()
+        now
     );
+    member.linkFarmerProfile(farmerProfile, now);
 
     FpoMemberProfileEntity savedMember = saveMember(member);
     auditMember(currentUser, savedMember, AuditAction.FPO_MEMBER_UPDATED);
@@ -214,7 +263,14 @@ public class FpoMemberService {
         member,
         "You do not have permission to update this FPO member status."
     );
-    member.updateStatus(status, Instant.now());
+    FarmerProfileEntity farmerProfile = syncFarmerProfile(
+        currentUser,
+        member,
+        farmerProfileCommand(member, status)
+    );
+    Instant now = Instant.now();
+    member.updateStatus(status, now);
+    member.linkFarmerProfile(farmerProfile, now);
     FpoMemberProfileEntity savedMember = memberRepository.save(member);
     auditMember(currentUser, savedMember, AuditAction.FPO_MEMBER_STATUS_CHANGED);
     return FpoMemberResponse.from(savedMember);
@@ -254,6 +310,71 @@ public class FpoMemberService {
     );
 
     return requireUser(currentUser, user.id());
+  }
+
+  private FarmerProfileEntity syncFarmerProfile(
+      CurrentUser currentUser,
+      FpoMemberProfileEntity member,
+      FarmerProfileCommand command
+  ) {
+    if (member.getFarmerProfileId() == null) {
+      return farmerService.ensureFarmerProfileForUser(currentUser, member.getUser(), command);
+    }
+
+    return farmerService.updateFarmerProfile(currentUser, member.getFarmerProfileId(), command);
+  }
+
+  private FarmerProfileCommand farmerProfileCommand(
+      FpoMemberProfileEntity member,
+      FpoMemberStatus status
+  ) {
+    return farmerProfileCommand(
+        member.getDisplayName(),
+        member.getMobileNumber(),
+        member.getAlternateMobileNumber(),
+        member.getAadhaarNumber(),
+        member.getVillage(),
+        member.getTaluka(),
+        member.getDistrictName(),
+        member.getStateName(),
+        member.getGender(),
+        member.getDateOfBirth(),
+        member.getAge(),
+        member.getFarmerCategory(),
+        status
+    );
+  }
+
+  private FarmerProfileCommand farmerProfileCommand(
+      String displayName,
+      String mobileNumber,
+      String alternateMobileNumber,
+      String aadhaarNumber,
+      String village,
+      String taluka,
+      String districtName,
+      String stateName,
+      String gender,
+      java.time.LocalDate dateOfBirth,
+      Integer age,
+      String farmerCategory,
+      FpoMemberStatus status
+  ) {
+    return new FarmerProfileCommand(
+        displayName,
+        mobileNumber,
+        alternateMobileNumber,
+        aadhaarNumber,
+        village,
+        taluka,
+        districtName,
+        stateName,
+        gender,
+        dateOfBirth,
+        age,
+        farmerCategory,
+        FarmerProfileStatus.valueOf((status == null ? FpoMemberStatus.ACTIVE : status).name())
+    );
   }
 
   private void ensureMemberNumberAvailable(UUID tenantId, String memberNumber, UUID currentId) {

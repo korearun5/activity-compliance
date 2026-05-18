@@ -5,7 +5,9 @@ import com.activityplatform.backend.carbon.domain.CarbonRecordStatus;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -14,6 +16,20 @@ public record CarbonProfileRequest(
     UUID userId,
     UUID fpoMemberProfileId,
     UUID coordinatorUserId,
+    @Size(max = 120)
+    @Pattern(
+        regexp = "^$|^[A-Za-z0-9][A-Za-z0-9._-]*$",
+        message = "Username must use letters, numbers, dots, underscores, and hyphens."
+    )
+    String username,
+    @Size(min = 8, max = 128)
+    String password,
+    @Size(max = 80)
+    @Pattern(
+        regexp = "^$|^[A-Za-z0-9][A-Za-z0-9._/-]*$",
+        message = "Member number must use letters, numbers, dots, underscores, slashes, and hyphens."
+    )
+    String memberNumber,
     @Size(max = 80)
     String carbonIdentityId,
     CarbonParticipantType participantType,
@@ -21,6 +37,18 @@ public record CarbonProfileRequest(
     String displayName,
     @Size(max = 40)
     String mobileNumber,
+    @Size(max = 40)
+    @Pattern(
+        regexp = "^\\s*$|^\\+?[0-9][0-9\\s-]{6,30}$",
+        message = "Alternate mobile number format is invalid."
+    )
+    String alternateMobileNumber,
+    @Size(max = 12)
+    @Pattern(
+        regexp = "^\\s*$|^[0-9]{12}$",
+        message = "Aadhaar number must be 12 digits when provided."
+    )
+    String aadhaarNumber,
     @Size(max = 160)
     String village,
     @Size(max = 160)
@@ -29,6 +57,13 @@ public record CarbonProfileRequest(
     String districtName,
     @Size(max = 160)
     String stateName,
+    @Size(max = 32)
+    String gender,
+    @Min(0)
+    @Max(120)
+    Integer age,
+    @Size(max = 80)
+    String farmerCategory,
     @DecimalMin(value = "-90.0", message = "Latitude must be greater than or equal to -90.")
     @DecimalMax(value = "90.0", message = "Latitude must be less than or equal to 90.")
     @Digits(integer = 3, fraction = 7)

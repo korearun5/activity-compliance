@@ -173,6 +173,7 @@ public class FpoAdvisoryService {
   }
 
   private void requireAdvisoryModule(CurrentUser currentUser) {
+    tenantModuleService.requireEnabled(currentUser.tenantId(), ModuleCode.MEMBER_DATA);
     tenantModuleService.requireEnabled(currentUser.tenantId(), ModuleCode.ADVISORY);
   }
 

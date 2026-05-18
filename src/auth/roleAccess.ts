@@ -96,12 +96,13 @@ export const moduleVisibilityRegistry = {
       scope: "common"
     },
     manageAdvisories: {
+      clientModule: "fpo",
       id: "manageAdvisories",
       kind: "action",
       label: "Manage advisories",
       module: "ADVISORY",
       roles: adminAndFpoRoles,
-      scope: "common"
+      scope: "fpo"
     },
     manageCropMasterData: {
       clientModule: "fpo",
@@ -155,12 +156,13 @@ export const moduleVisibilityRegistry = {
   } satisfies Record<RoleAction, ActionAccess>,
   adminTabs: {
     advisories: {
+      clientModule: "fpo",
       id: "advisories",
       kind: "adminTab",
       label: "Advisories",
       module: "ADVISORY",
       roles: allStaffRoles,
-      scope: "common",
+      scope: "fpo",
       tab: "advisories"
     },
     carbon: {
@@ -249,30 +251,27 @@ export const moduleVisibilityRegistry = {
       tab: "carbon"
     },
     cycles: {
-      clientModule: "fpo",
       id: "cycles",
       kind: "farmerTab",
-      label: "Cycles",
+      label: "Activities",
       module: "ACTIVITY_COMPLIANCE",
-      scope: "fpo",
+      scope: "common",
       tab: "cycles"
     },
     dashboard: {
-      clientModule: "fpo",
       id: "dashboard",
       kind: "farmerTab",
       label: "Dashboard",
       module: "ACTIVITY_COMPLIANCE",
-      scope: "fpo",
+      scope: "common",
       tab: "dashboard"
     },
     history: {
-      clientModule: "fpo",
       id: "history",
       kind: "farmerTab",
       label: "History",
       module: "ACTIVITY_COMPLIANCE",
-      scope: "fpo",
+      scope: "common",
       tab: "history"
     },
     profile: {

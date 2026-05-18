@@ -1,6 +1,6 @@
 # Roles, FPO Managers, And Field Coordinators
 
-Last updated: 2026-05-15
+Last updated: 2026-05-18
 
 Use this document for Phase 1 role behavior. `SUPERVISOR` is not a Phase 1
 role; use `FIELD_COORDINATOR` for field staff.
@@ -45,6 +45,10 @@ The React app uses [roleAccess.ts](../src/auth/roleAccess.ts) as the frontend
 equivalent of a Mendix role-page map. Keep new Phase 1 pages and buttons wired
 through that policy instead of scattering one-off role checks across screens.
 
+Roles are platform-wide. A module can add or hide screens and data, but it must
+not invent a separate meaning for `ADMIN`, `FPO_MANAGER`, `FIELD_COORDINATOR`,
+or `FARMER`.
+
 | Dashboard area                  | `ADMIN`                                                                           | `FPO_MANAGER`                 | `FIELD_COORDINATOR`                                                 | `FARMER`                    |
 | ------------------------------- | --------------------------------------------------------------------------------- | ----------------------------- | ------------------------------------------------------------------- | --------------------------- |
 | Staff dashboard shell           | Yes                                                                               | Yes                           | Yes                                                                 | No                          |
@@ -79,6 +83,9 @@ through that policy instead of scattering one-off role checks across screens.
   `FIELD_COORDINATOR`.
 - `/api/v1/fpo/members` is the farmer creation flow. It creates or links the
   farmer/member profile and the `FARMER` login together.
+- Carbon enrollment also links farmer participants to a platform `FARMER` user.
+  FPO stores the FPO member profile, Carbon stores the Carbon profile, and both
+  use the same farmer identity rules.
 - `FARMER` must not be assigned through generic role management because that
   would create an orphan login with no farmer profile.
 
@@ -143,4 +150,9 @@ Current alignment:
 - Frontend tab/action visibility is centralized in `src/auth/roleAccess.ts`;
   Carbon/FPO package visibility is also controlled by app feature flags and
   backend enabled modules.
+- Farmer identity fields and frontend validation are shared through
+  `src/shared/farmers`.
+- Workflow assignment uses a shared activity participant registry instead of an
+  FPO-only list, so Carbon-only, FPO-only, and combined packages resolve active
+  farmers consistently.
 - Focused JUnit and Testcontainers integration tests cover this foundation.

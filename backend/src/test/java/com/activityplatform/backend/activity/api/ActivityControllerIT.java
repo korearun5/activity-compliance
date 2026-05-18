@@ -14,11 +14,16 @@ import com.activityplatform.backend.auth.repository.RoleRepository;
 import com.activityplatform.backend.auth.repository.TenantRepository;
 import com.activityplatform.backend.auth.repository.UserRepository;
 import com.activityplatform.backend.auth.service.JwtService;
+import com.activityplatform.backend.farmer.domain.FarmerProfileStatus;
+import com.activityplatform.backend.farmer.service.FarmerProfileCommand;
+import com.activityplatform.backend.farmer.service.FarmerService;
+import com.activityplatform.backend.security.CurrentUser;
 import com.activityplatform.backend.security.Role;
 import com.activityplatform.backend.workflow.domain.WorkflowDefinitionEntity;
 import com.activityplatform.backend.workflow.domain.WorkflowDefinitionStatus;
 import com.activityplatform.backend.workflow.repository.WorkflowDefinitionRepository;
 import java.time.LocalDate;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -53,6 +58,9 @@ class ActivityControllerIT {
   private WorkflowDefinitionRepository workflowDefinitionRepository;
 
   @Autowired
+  private FarmerService farmerService;
+
+  @Autowired
   private PasswordEncoder passwordEncoder;
 
   @Autowired
@@ -61,19 +69,22 @@ class ActivityControllerIT {
   private String adminToken;
   private String FIELD_COORDINATORToken;
   private String farmerToken;
+  private RoleEntity farmerRole;
+  private TenantEntity tenant;
+  private UUID farmerUserId;
   private UUID otherFIELD_COORDINATORId;
   private UUID workflowId;
 
   @BeforeEach
   void setup() {
-    TenantEntity tenant = tenantRepository.save(
+    tenant = tenantRepository.save(
         TestDataFactory.tenant("tenant-" + UUID.randomUUID())
     );
     RoleEntity adminRole = roleRepository.save(TestDataFactory.role(tenant, Role.ADMIN));
     RoleEntity FIELD_COORDINATORRole = roleRepository.save(
         TestDataFactory.role(tenant, Role.FIELD_COORDINATOR)
     );
-    RoleEntity farmerRole = roleRepository.save(TestDataFactory.role(tenant, Role.FARMER));
+    farmerRole = roleRepository.save(TestDataFactory.role(tenant, Role.FARMER));
     UserEntity adminUser = userRepository.save(TestDataFactory.user(
         tenant,
         "admin-" + UUID.randomUUID(),
@@ -102,6 +113,16 @@ class ActivityControllerIT {
         "Farmer User",
         farmerRole
     ));
+    farmerService.createFarmerProfile(
+        new CurrentUser(
+            adminUser.getId(),
+            tenant.getId(),
+            adminUser.getUsername(),
+            Set.of(Role.ADMIN)
+        ),
+        farmerUser,
+        farmerCommand("Farmer User", "9999900000", FarmerProfileStatus.ACTIVE)
+    );
     WorkflowDefinitionEntity workflow = workflowDefinitionRepository.save(
         TestDataFactory.workflow(
             tenant,
@@ -111,6 +132,7 @@ class ActivityControllerIT {
     );
 
     workflowId = workflow.getId();
+    farmerUserId = farmerUser.getId();
     otherFIELD_COORDINATORId = otherFIELD_COORDINATOR.getId();
     adminToken = jwtService.issueTokens(adminUser).accessToken();
     FIELD_COORDINATORToken = jwtService.issueTokens(FIELD_COORDINATORUser).accessToken();
@@ -196,6 +218,57 @@ class ActivityControllerIT {
   }
 
   @Test
+  void testAdminCanAssignCanonicalFarmerAndFarmerCanListActivity() throws Exception {
+    StartActivityRequest request = new StartActivityRequest(
+        workflowId,
+        farmerUserId,
+        "Farmer Plot",
+        "Wagholi",
+        LocalDate.now()
+    );
+
+    mockMvc.perform(post("/api/v1/activities")
+            .header("Authorization", "Bearer " + adminToken)
+            .contentType("application/json")
+            .content(jsonMapper.writeValueAsString(request)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data.participantUserId").value(farmerUserId.toString()))
+        .andExpect(jsonPath("$.data.unitName").value("Farmer Plot"));
+
+    mockMvc.perform(get("/api/v1/activities")
+            .header("Authorization", "Bearer " + farmerToken))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.content[0].participantUserId")
+            .value(farmerUserId.toString()))
+        .andExpect(jsonPath("$.data.content[0].unitName").value("Farmer Plot"));
+  }
+
+  @Test
+  void testAdminCannotAssignFarmerWithoutCanonicalProfile() throws Exception {
+    UserEntity unlinkedFarmer = userRepository.save(TestDataFactory.user(
+        tenant,
+        "unlinked-farmer-" + UUID.randomUUID(),
+        passwordEncoder.encode("password123"),
+        "Unlinked Farmer",
+        farmerRole
+    ));
+    StartActivityRequest request = new StartActivityRequest(
+        workflowId,
+        unlinkedFarmer.getId(),
+        "Unlinked Plot",
+        "Wagholi",
+        LocalDate.now()
+    );
+
+    mockMvc.perform(post("/api/v1/activities")
+            .header("Authorization", "Bearer " + adminToken)
+            .contentType("application/json")
+            .content(jsonMapper.writeValueAsString(request)))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
   void testFIELD_COORDINATORCannotStartActivityForAnotherFIELD_COORDINATOR() throws Exception {
     StartActivityRequest request = new StartActivityRequest(
         workflowId,
@@ -216,5 +289,27 @@ class ActivityControllerIT {
   void testUnauthorizedAccess() throws Exception {
     mockMvc.perform(get("/api/v1/activities"))
         .andExpect(status().isUnauthorized());
+  }
+
+  private FarmerProfileCommand farmerCommand(
+      String displayName,
+      String mobileNumber,
+      FarmerProfileStatus status
+  ) {
+    return new FarmerProfileCommand(
+        displayName,
+        mobileNumber,
+        null,
+        null,
+        "Wagholi",
+        "Haveli",
+        "Pune",
+        "Maharashtra",
+        "male",
+        LocalDate.of(1990, 1, 1),
+        36,
+        "small",
+        status
+    );
   }
 }

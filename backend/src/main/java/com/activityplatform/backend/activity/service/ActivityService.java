@@ -14,6 +14,9 @@ import com.activityplatform.backend.audit.domain.AuditAction;
 import com.activityplatform.backend.audit.service.AuditEventService;
 import com.activityplatform.backend.common.error.ApplicationException;
 import com.activityplatform.backend.common.error.ErrorCode;
+import com.activityplatform.backend.farmer.domain.FarmerProfileEntity;
+import com.activityplatform.backend.farmer.domain.FarmerProfileStatus;
+import com.activityplatform.backend.farmer.service.FarmerService;
 import com.activityplatform.backend.security.CurrentUser;
 import com.activityplatform.backend.security.Role;
 import com.activityplatform.backend.workflow.domain.TaskProgress;
@@ -40,6 +43,7 @@ public class ActivityService {
   private final ActivityRepository activityRepository;
   private final ActivityTaskRepository activityTaskRepository;
   private final AuditEventService auditEventService;
+  private final FarmerService farmerService;
   private final UserRepository userRepository;
   private final WorkflowDefinitionRepository workflowDefinitionRepository;
   private final WorkflowProgressionService workflowProgressionService;
@@ -48,12 +52,14 @@ public class ActivityService {
       ActivityRepository activityRepository,
       ActivityTaskRepository activityTaskRepository,
       AuditEventService auditEventService,
+      FarmerService farmerService,
       UserRepository userRepository,
       WorkflowDefinitionRepository workflowDefinitionRepository,
       WorkflowProgressionService workflowProgressionService) {
     this.activityRepository = activityRepository;
     this.activityTaskRepository = activityTaskRepository;
     this.auditEventService = auditEventService;
+    this.farmerService = farmerService;
     this.userRepository = userRepository;
     this.workflowDefinitionRepository = workflowDefinitionRepository;
     this.workflowProgressionService = workflowProgressionService;
@@ -213,11 +219,29 @@ public class ActivityService {
           HttpStatus.FORBIDDEN);
     }
 
-    if (!hasAnyRole(participant, Role.FIELD_COORDINATOR, Role.FARMER)) {
+    boolean fieldCoordinatorParticipant = hasAnyRole(participant, Role.FIELD_COORDINATOR);
+    boolean farmerParticipant = hasOnlyRole(participant, Role.FARMER);
+    if (!fieldCoordinatorParticipant && !farmerParticipant) {
       throw new ApplicationException(
           ErrorCode.VALIDATION_FAILED,
-          "Activity participant must be a field coordinator or farmer.",
+          "Activity participant must be a field coordinator or canonical farmer.",
           HttpStatus.BAD_REQUEST);
+    }
+
+    if (farmerParticipant) {
+      FarmerProfileEntity farmerProfile = farmerService
+          .findByUserId(currentUser.tenantId(), participant.getId())
+          .orElseThrow(() -> new ApplicationException(
+              ErrorCode.VALIDATION_FAILED,
+              "Farmer activity participant must have a canonical farmer profile.",
+              HttpStatus.BAD_REQUEST));
+
+      if (farmerProfile.getStatus() != FarmerProfileStatus.ACTIVE) {
+        throw new ApplicationException(
+            ErrorCode.VALIDATION_FAILED,
+            "Farmer activity participant must be active.",
+            HttpStatus.BAD_REQUEST);
+      }
     }
 
     return participant;
@@ -278,6 +302,13 @@ public class ActivityService {
       }
     }
     return false;
+  }
+
+  private boolean hasOnlyRole(UserEntity user, Role expectedRole) {
+    List<String> roleCodes = user.getRoles().stream()
+        .map(RoleEntity::getCode)
+        .toList();
+    return roleCodes.size() == 1 && roleCodes.contains(expectedRole.name());
   }
 
   private UserEntity actor(CurrentUser currentUser) {

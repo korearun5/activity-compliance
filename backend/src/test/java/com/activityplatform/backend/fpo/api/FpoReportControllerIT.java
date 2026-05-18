@@ -144,6 +144,7 @@ class FpoReportControllerIT {
         FIELD_COORDINATORRole
     ));
     member = memberRepository.save(member(tenant, FIELD_COORDINATORUser, adminUser, "MEM-1"));
+    enableModule(tenant, ModuleCode.MEMBER_DATA);
     enableModule(tenant, ModuleCode.REPORT_EXPORT);
 
     TenantEntity disabledTenant = tenantRepository.save(
