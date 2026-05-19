@@ -8,6 +8,13 @@ export const endpoints = {
     list: `${apiRoot}/activities`,
     start: `${apiRoot}/activities`
   },
+  admin: {
+    bankDetails: {
+      pending: `${apiRoot}/admin/bank-details/pending`,
+      verify: (bankDetailsId: string) =>
+        `${apiRoot}/admin/bank-details/${bankDetailsId}/verify`
+    }
+  },
   auth: {
     login: `${apiRoot}/auth/login`,
     me: `${apiRoot}/auth/me`,
@@ -53,6 +60,14 @@ export const endpoints = {
     list: `${apiRoot}/evidence`,
     review: (evidenceId: string) => `${apiRoot}/evidence/${evidenceId}/review`,
     upload: `${apiRoot}/evidence`
+  },
+  farmer: {
+    bankDetails: {
+      current: `${apiRoot}/farmer/bank-details`,
+      update: (bankDetailsId: string) =>
+        `${apiRoot}/farmer/bank-details/${bankDetailsId}`
+    },
+    profileCompletion: `${apiRoot}/farmer/profile/completion`
   },
   farmers: {
     participants: `${apiRoot}/farmers/participants`

@@ -1,8 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
+import { ConfirmationModal } from "../../../ui/ConfirmationModal";
 import { StateCard } from "../../../ui/StateCard";
 import { StatusBadge } from "../../../ui/StatusBadge";
+import {
+  FarmerBankDetailsInput,
+  FarmerBankDetailsRecord,
+  FarmerBankDetailsStatus,
+  getFarmerBankDetails,
+  saveFarmerBankDetails
+} from "../../../shared/farmers/bankDetailsStore";
+import {
+  FarmerProfileCompletionRecord,
+  FarmerProfileCompletionStep,
+  getFarmerProfileCompletion
+} from "../../../shared/farmers/profileCompletionStore";
 import { getFarmerCarbonSnapshot } from "../data/carbonStore";
 import {
   CarbonFarmPlotRecord,
@@ -38,8 +51,12 @@ export function UserCarbonScreen({ username }: UserCarbonScreenProps) {
     useState<CarbonUserSectionId>("dashboard");
   const [snapshot, setSnapshot] = useState<FarmerCarbonSnapshot | null>(null);
   const [liveError, setLiveError] = useState("");
+  const [liveBankDetails, setLiveBankDetails] =
+    useState<FarmerBankDetailsRecord | null>(null);
   const [livePlots, setLivePlots] = useState<CarbonFarmPlotRecord[]>([]);
   const [liveProfile, setLiveProfile] = useState<CarbonProfileRecord | null>(null);
+  const [profileCompletion, setProfileCompletion] =
+    useState<FarmerProfileCompletionRecord | null>(null);
   const [liveSoilProfiles, setLiveSoilProfiles] = useState<CarbonSoilProfileRecord[]>(
     []
   );
@@ -52,17 +69,28 @@ export function UserCarbonScreen({ username }: UserCarbonScreenProps) {
 
       try {
         const nextProfile = await getMyCarbonProfile();
-        const [nextPlots, nextSoilProfiles] = await Promise.all([
+        const [
+          nextPlots,
+          nextSoilProfiles,
+          nextProfileCompletion,
+          nextBankDetails
+        ] = await Promise.all([
           listCarbonFarmPlots(nextProfile.id),
-          listCarbonSoilProfiles(nextProfile.id)
+          listCarbonSoilProfiles(nextProfile.id),
+          getFarmerProfileCompletion(),
+          getFarmerBankDetails()
         ]);
 
         setLiveProfile(nextProfile);
+        setLiveBankDetails(nextBankDetails);
         setLivePlots(nextPlots);
+        setProfileCompletion(nextProfileCompletion);
         setLiveSoilProfiles(nextSoilProfiles);
       } catch (error) {
+        setLiveBankDetails(null);
         setLiveProfile(null);
         setLivePlots([]);
+        setProfileCompletion(null);
         setLiveSoilProfiles([]);
         setLiveError(
           error instanceof Error ? error.message : "Carbon profile unavailable."
@@ -139,7 +167,24 @@ export function UserCarbonScreen({ username }: UserCarbonScreenProps) {
       ) : null}
 
       {activeSection === "profile" ? (
-        <ProfileSection liveProfile={liveProfile} snapshot={snapshot} />
+        <ProfileSection
+          bankDetails={liveBankDetails}
+          liveProfile={liveProfile}
+          onBankDetailsSaved={(details) => {
+            setLiveBankDetails(details);
+            getFarmerProfileCompletion()
+              .then(setProfileCompletion)
+              .catch((error) => {
+                setLiveError(
+                  error instanceof Error
+                    ? error.message
+                    : "Profile completion unavailable."
+                );
+              });
+          }}
+          profileCompletion={profileCompletion}
+          snapshot={snapshot}
+        />
       ) : null}
 
       {activeSection === "plots" ? (
@@ -222,10 +267,16 @@ function DashboardSection({
 }
 
 function ProfileSection({
+  bankDetails,
   liveProfile,
+  onBankDetailsSaved,
+  profileCompletion,
   snapshot
 }: {
+  bankDetails: FarmerBankDetailsRecord | null;
   liveProfile: CarbonProfileRecord | null;
+  onBankDetailsSaved: (details: FarmerBankDetailsRecord) => void;
+  profileCompletion: FarmerProfileCompletionRecord | null;
   snapshot: FarmerCarbonSnapshot;
 }) {
   const profile = liveProfile;
@@ -254,16 +305,18 @@ function ProfileSection({
         </View>
       </View>
 
+      <ProfileCompletionWidget completion={profileCompletion} />
+
+      <BankDetailsForm
+        bankDetails={bankDetails}
+        onSaved={onBankDetailsSaved}
+      />
+
       <View style={styles.cardGrid}>
         <PlaceholderFeatureCard
-          label="Bank details"
-          meta={profile?.bankStatus ?? snapshot.profile.bankStatus}
-          status="CARBON-CLIENT-004"
-        />
-        <PlaceholderFeatureCard
           label="Documents"
-          meta={profile?.documentStatus ?? snapshot.profile.documents.join(", ")}
-          status="CARBON-CLIENT-005"
+          meta="Coming soon"
+          status="Coming soon"
         />
         <PlaceholderFeatureCard
           label="Aadhaar"
@@ -273,6 +326,295 @@ function ProfileSection({
       </View>
     </>
   );
+}
+
+function BankDetailsForm({
+  bankDetails,
+  onSaved
+}: {
+  bankDetails: FarmerBankDetailsRecord | null;
+  onSaved: (details: FarmerBankDetailsRecord) => void;
+}) {
+  const [accountHolderName, setAccountHolderName] = useState("");
+  const [accountNumber, setAccountNumber] = useState("");
+  const [bankName, setBankName] = useState("");
+  const [ifscCode, setIfscCode] = useState("");
+  const [upiId, setUpiId] = useState("");
+  const [formError, setFormError] = useState("");
+  const [formMessage, setFormMessage] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [showConfirmSave, setShowConfirmSave] = useState(false);
+
+  useEffect(() => {
+    setAccountHolderName(bankDetails?.accountHolderName ?? "");
+    setAccountNumber(bankDetails?.accountNumber ?? "");
+    setBankName(bankDetails?.bankName ?? "");
+    setIfscCode(bankDetails?.ifscCode ?? "");
+    setUpiId(bankDetails?.upiId ?? "");
+    setFormError("");
+    setFormMessage("");
+  }, [bankDetails]);
+
+  const input: FarmerBankDetailsInput = {
+    accountHolderName,
+    accountNumber,
+    bankName,
+    ifscCode,
+    upiId
+  };
+
+  function requestSave() {
+    const validationError = validateBankDetails(input);
+    if (validationError) {
+      setFormError(validationError);
+      setFormMessage("");
+      return;
+    }
+
+    setFormError("");
+    setShowConfirmSave(true);
+  }
+
+  async function confirmSave() {
+    setShowConfirmSave(false);
+    setIsSaving(true);
+    setFormError("");
+    setFormMessage("");
+
+    try {
+      const saved = await saveFarmerBankDetails(input, bankDetails?.id);
+      onSaved(saved);
+      setFormMessage("Bank details saved. Verification is pending.");
+    } catch (error) {
+      setFormError(
+        error instanceof Error ? error.message : "Unable to save bank details."
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  return (
+    <View style={styles.card}>
+      <View style={styles.cardHeader}>
+        <View style={styles.cardHeaderText}>
+          <Text style={styles.sectionTitle}>Bank details</Text>
+          <Text style={styles.cardDescription}>
+            {bankDetails
+              ? `${bankDetails.bankName} - ${bankDetails.ifscCode}`
+              : "No bank details saved yet."}
+          </Text>
+        </View>
+        <StatusBadge
+          label={bankStatusLabel(bankDetails?.status)}
+          tone={bankStatusTone(bankDetails?.status)}
+        />
+      </View>
+
+      {formError ? (
+        <StateCard message={formError} title="Bank details" tone="error" />
+      ) : null}
+      {formMessage ? (
+        <StateCard message={formMessage} title="Bank details" tone="success" />
+      ) : null}
+
+      <View style={styles.formGrid}>
+        <FormField
+          label="Account holder name"
+          onChangeText={setAccountHolderName}
+          value={accountHolderName}
+        />
+        <FormField
+          label="Account number"
+          onChangeText={setAccountNumber}
+          value={accountNumber}
+        />
+        <FormField
+          autoCapitalize="characters"
+          label="IFSC code"
+          onChangeText={setIfscCode}
+          value={ifscCode}
+        />
+        <FormField
+          label="UPI ID"
+          onChangeText={setUpiId}
+          value={upiId}
+        />
+        <FormField
+          label="Bank name"
+          onChangeText={setBankName}
+          value={bankName}
+        />
+      </View>
+
+      <View style={styles.formActions}>
+        <Pressable
+          accessibilityRole="button"
+          disabled={isSaving}
+          style={[styles.primaryButton, isSaving && styles.buttonDisabled]}
+          onPress={requestSave}
+        >
+          <Text style={styles.primaryButtonText}>
+            {isSaving ? "Saving..." : bankDetails ? "Update bank details" : "Save bank details"}
+          </Text>
+        </Pressable>
+      </View>
+
+      <ConfirmationModal
+        cancelLabel="Review"
+        confirmLabel="Save"
+        message="Save these bank details with pending verification status?"
+        onCancel={() => setShowConfirmSave(false)}
+        onConfirm={confirmSave}
+        title="Save bank details"
+        visible={showConfirmSave}
+      />
+    </View>
+  );
+}
+
+function FormField({
+  autoCapitalize = "none",
+  label,
+  onChangeText,
+  value
+}: {
+  autoCapitalize?: "none" | "sentences" | "words" | "characters";
+  label: string;
+  onChangeText: (value: string) => void;
+  value: string;
+}) {
+  return (
+    <View style={styles.formField}>
+      <Text style={styles.formLabel}>{label}</Text>
+      <TextInput
+        autoCapitalize={autoCapitalize}
+        onChangeText={onChangeText}
+        style={styles.textInput}
+        value={value}
+      />
+    </View>
+  );
+}
+
+function ProfileCompletionWidget({
+  completion
+}: {
+  completion: FarmerProfileCompletionRecord | null;
+}) {
+  if (!completion) {
+    return (
+      <StateCard
+        message="Profile completion is unavailable until the Carbon profile is linked."
+        title="Profile completion"
+        tone="warning"
+      />
+    );
+  }
+
+  return (
+    <View style={styles.card}>
+      <View style={styles.cardHeader}>
+        <View style={styles.cardHeaderText}>
+          <Text style={styles.sectionTitle}>Profile completion</Text>
+          <Text style={styles.cardDescription}>
+            {completion.completedRequiredSteps}/{completion.totalRequiredSteps} required
+            steps complete
+          </Text>
+        </View>
+        <View style={styles.completionBadge}>
+          <Text style={styles.completionValue}>
+            {completion.completionPercentage}%
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.completionSteps}>
+        {completion.steps.map((step) => (
+          <CompletionStep key={step.code} step={step} />
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function CompletionStep({ step }: { step: FarmerProfileCompletionStep }) {
+  const statusLabel = profileCompletionStatusLabel(step);
+  const tone = profileCompletionTone(step);
+
+  return (
+    <View style={styles.completionStep}>
+      <View style={styles.rowText}>
+        <Text style={styles.rowTitle}>{step.label}</Text>
+        <Text style={styles.rowMeta}>{step.description}</Text>
+      </View>
+      <StatusBadge label={statusLabel} tone={tone} />
+    </View>
+  );
+}
+
+function profileCompletionStatusLabel(step: FarmerProfileCompletionStep) {
+  if (step.comingSoon) {
+    return "Coming soon";
+  }
+
+  return step.complete ? "Complete" : "Pending";
+}
+
+function profileCompletionTone(
+  step: FarmerProfileCompletionStep
+): "good" | "neutral" | "warning" {
+  if (step.complete) {
+    return "good";
+  }
+
+  return step.comingSoon ? "neutral" : "warning";
+}
+
+function validateBankDetails(input: FarmerBankDetailsInput) {
+  if (!input.accountHolderName.trim()) {
+    return "Account holder name is required.";
+  }
+
+  if (!input.accountNumber.trim()) {
+    return "Account number is required.";
+  }
+
+  if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(input.ifscCode.trim().toUpperCase())) {
+    return "Enter a valid IFSC code.";
+  }
+
+  if (!input.bankName.trim()) {
+    return "Bank name is required.";
+  }
+
+  return "";
+}
+
+function bankStatusLabel(status: FarmerBankDetailsStatus | undefined) {
+  if (status === "VERIFIED") {
+    return "Verified";
+  }
+
+  if (status === "REJECTED") {
+    return "Rejected";
+  }
+
+  return "Pending";
+}
+
+function bankStatusTone(
+  status: FarmerBankDetailsStatus | undefined
+): "good" | "neutral" | "warning" | "danger" {
+  if (status === "VERIFIED") {
+    return "good";
+  }
+
+  if (status === "REJECTED") {
+    return "danger";
+  }
+
+  return "warning";
 }
 
 function PlotsSection({
@@ -554,6 +896,55 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginTop: 7
   },
+  completionBadge: {
+    alignItems: "center",
+    backgroundColor: "#e8f3f2",
+    borderColor: "#b8d7d5",
+    borderRadius: 8,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 52,
+    minWidth: 72,
+    paddingHorizontal: 12
+  },
+  completionStep: {
+    alignItems: "flex-start",
+    backgroundColor: "#f7fafb",
+    borderRadius: 8,
+    flexDirection: "row",
+    gap: 12,
+    justifyContent: "space-between",
+    padding: 12
+  },
+  completionSteps: {
+    gap: 8
+  },
+  completionValue: {
+    color: "#1f6f73",
+    fontSize: 20,
+    fontWeight: "800"
+  },
+  buttonDisabled: {
+    opacity: 0.65
+  },
+  formActions: {
+    alignItems: "flex-start"
+  },
+  formField: {
+    flex: 1,
+    gap: 6,
+    minWidth: 220
+  },
+  formGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12
+  },
+  formLabel: {
+    color: "#53666f",
+    fontSize: 13,
+    fontWeight: "800"
+  },
   listRow: {
     alignItems: "flex-start",
     backgroundColor: "#ffffff",
@@ -608,6 +999,19 @@ const styles = StyleSheet.create({
     gap: 8,
     minWidth: 180,
     padding: 14
+  },
+  primaryButton: {
+    alignItems: "center",
+    backgroundColor: "#1f6f73",
+    borderRadius: 8,
+    justifyContent: "center",
+    minHeight: 42,
+    paddingHorizontal: 16
+  },
+  primaryButtonText: {
+    color: "#ffffff",
+    fontSize: 14,
+    fontWeight: "800"
   },
   quickAction: {
     backgroundColor: "#f7fafb",
@@ -679,6 +1083,17 @@ const styles = StyleSheet.create({
     color: "#53666f",
     fontSize: 14,
     fontWeight: "700"
+  },
+  textInput: {
+    backgroundColor: "#ffffff",
+    borderColor: "#c9d8df",
+    borderRadius: 8,
+    borderWidth: 1,
+    color: "#172126",
+    fontSize: 14,
+    minHeight: 42,
+    paddingHorizontal: 12,
+    paddingVertical: 9
   },
   statsGrid: {
     flexDirection: "row",

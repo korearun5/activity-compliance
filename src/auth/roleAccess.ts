@@ -83,7 +83,7 @@ export const moduleVisibilityRegistry = {
     createFpoManager: {
       id: "createFpoManager",
       kind: "action",
-      label: "Create FPO manager",
+      label: "Create manager",
       roles: ["admin"],
       scope: "common"
     },

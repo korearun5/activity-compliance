@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
+import { isClientModuleEnabled } from "../modules";
 import { getErrorMessage } from "../core/errors/AppError";
 import type { StaffRole } from "../auth/roleAccess";
 import {
@@ -21,6 +22,14 @@ type AdminRolesTabProps = {
 };
 
 type CreateStaffRole = Extract<BackendRoleCode, "FIELD_COORDINATOR" | "FPO_MANAGER">;
+type StaffTerminology = {
+  coordinatorOnlyHelp: string;
+  coordinatorSiteLabel: string;
+  managerLabel: string;
+  managerLocationLabel: string;
+  managerSiteLabel: string;
+  managerWithCoordinatorHelp: string;
+};
 
 const roleOrder: BackendRoleCode[] = [
   "ADMIN",
@@ -42,6 +51,7 @@ export function AdminRolesTab({ canUseBackend, currentRole }: AdminRolesTabProps
   const canUpdateRoles = currentRole === "admin";
   const allowedStaffRoles =
     currentRole === "admin" ? adminStaffCreationRoles : fpoManagerStaffCreationRoles;
+  const terminology = useMemo(() => getStaffTerminology(), []);
 
   useEffect(() => {
     if (!canUseBackend) {
@@ -167,6 +177,7 @@ export function AdminRolesTab({ canUseBackend, currentRole }: AdminRolesTabProps
         error={createError}
         isSubmitting={isCreatingStaffUser}
         onSubmit={handleCreateStaffUser}
+        terminology={terminology}
       />
 
       {error ? <Text style={styles.formError}>{error}</Text> : null}
@@ -186,7 +197,11 @@ export function AdminRolesTab({ canUseBackend, currentRole }: AdminRolesTabProps
                   tone={user.status === "ACTIVE" ? "good" : "warning"}
                 />
                 {user.roles.map((role) => (
-                  <StatusBadge key={role} label={roleLabel(role)} tone="neutral" />
+                  <StatusBadge
+                    key={role}
+                    label={roleLabel(role, terminology)}
+                    tone="neutral"
+                  />
                 ))}
               </View>
             </View>
@@ -228,7 +243,7 @@ export function AdminRolesTab({ canUseBackend, currentRole }: AdminRolesTabProps
                             active && styles.roleButtonTextActive
                           ]}
                         >
-                          {roleLabel(role.code)}
+                          {roleLabel(role.code, terminology)}
                         </Text>
                       </Pressable>
                     );
@@ -252,12 +267,14 @@ function CreateStaffUserForm({
   allowedRoles,
   error,
   isSubmitting,
-  onSubmit
+  onSubmit,
+  terminology
 }: {
   allowedRoles: CreateStaffRole[];
   error: string;
   isSubmitting: boolean;
   onSubmit: (input: CreateStaffUserInput) => Promise<boolean>;
+  terminology: StaffTerminology;
 }) {
   const [displayName, setDisplayName] = useState("");
   const [localError, setLocalError] = useState("");
@@ -315,8 +332,8 @@ function CreateStaffUserForm({
         <Text style={styles.cardTitle}>Create staff login</Text>
         <Text style={styles.cardDescription}>
           {allowedRoles.includes("FPO_MANAGER")
-            ? "Add FPO manager or field coordinator accounts. Farmer logins are created from farmer profiles."
-            : "Add field coordinator accounts for this FPO. Farmer logins are created from farmer profiles."}
+            ? terminology.managerWithCoordinatorHelp
+            : terminology.coordinatorOnlyHelp}
         </Text>
       </View>
 
@@ -337,7 +354,7 @@ function CreateStaffUserForm({
                 role === option && styles.segmentButtonTextActive
               ]}
             >
-              {roleLabel(option)}
+              {roleLabel(option, terminology)}
             </Text>
           </Pressable>
         ))}
@@ -354,12 +371,20 @@ function CreateStaffUserForm({
         />
         <StaffField label="Mobile" value={phone} onChange={setPhone} />
         <StaffField
-          label={role === "FPO_MANAGER" ? "FPO location" : "Assigned village"}
+          label={
+            role === "FPO_MANAGER"
+              ? terminology.managerLocationLabel
+              : "Assigned village"
+          }
           value={locationName}
           onChange={setLocationName}
         />
         <StaffField
-          label={role === "FPO_MANAGER" ? "FPO name" : "Taluka / FPO"}
+          label={
+            role === "FPO_MANAGER"
+              ? terminology.managerSiteLabel
+              : terminology.coordinatorSiteLabel
+          }
           value={siteName}
           onChange={setSiteName}
         />
@@ -417,12 +442,40 @@ function sortRoleCodes(roles: BackendRoleCode[]) {
     .sort((left, right) => roleOrder.indexOf(left) - roleOrder.indexOf(right));
 }
 
-function roleLabel(role: BackendRoleCode) {
+function getStaffTerminology(): StaffTerminology {
+  const carbonOnly = isClientModuleEnabled("carbon") && !isClientModuleEnabled("fpo");
+
+  if (carbonOnly) {
+    return {
+      coordinatorOnlyHelp:
+        "Add field coordinator accounts for this farm program. Farmer logins are created from farmer profiles.",
+      coordinatorSiteLabel: "Taluka / farm program",
+      managerLabel: "Farm Manager",
+      managerLocationLabel: "Farm location",
+      managerSiteLabel: "Farm/program name",
+      managerWithCoordinatorHelp:
+        "Add farm manager or field coordinator accounts. Farmer logins are created from farmer profiles."
+    };
+  }
+
+  return {
+    coordinatorOnlyHelp:
+      "Add field coordinator accounts for this FPO. Farmer logins are created from farmer profiles.",
+    coordinatorSiteLabel: "Taluka / FPO",
+    managerLabel: "FPO Manager",
+    managerLocationLabel: "FPO location",
+    managerSiteLabel: "FPO name",
+    managerWithCoordinatorHelp:
+      "Add FPO manager or field coordinator accounts. Farmer logins are created from farmer profiles."
+  };
+}
+
+function roleLabel(role: BackendRoleCode, terminology: StaffTerminology) {
   switch (role) {
     case "ADMIN":
       return "Admin";
     case "FPO_MANAGER":
-      return "FPO Manager";
+      return terminology.managerLabel;
     case "FIELD_COORDINATOR":
       return "Field Coordinator";
     case "FARMER":

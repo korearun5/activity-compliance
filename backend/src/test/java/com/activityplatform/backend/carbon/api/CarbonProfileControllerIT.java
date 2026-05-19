@@ -23,6 +23,10 @@ import com.activityplatform.backend.carbon.domain.CarbonParticipantType;
 import com.activityplatform.backend.carbon.domain.CarbonProfileEntity;
 import com.activityplatform.backend.carbon.domain.CarbonRecordStatus;
 import com.activityplatform.backend.carbon.repository.CarbonProfileRepository;
+import com.activityplatform.backend.farmer.api.FarmerBankDetailsRequest;
+import com.activityplatform.backend.farmer.api.FarmerBankDetailsResponse;
+import com.activityplatform.backend.farmer.api.FarmerBankDetailsVerificationRequest;
+import com.activityplatform.backend.farmer.domain.FarmerBankDetailsStatus;
 import com.activityplatform.backend.farmer.domain.FarmerProfileEntity;
 import com.activityplatform.backend.farmer.domain.FarmerProfileStatus;
 import com.activityplatform.backend.farmer.repository.FarmerProfileRepository;
@@ -153,6 +157,108 @@ class CarbonProfileControllerIT {
             .header("Authorization", "Bearer " + farmerToken))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.data.id").value(profile.id().toString()));
+
+    mockMvc.perform(get("/api/v1/farmer/profile/completion")
+            .header("Authorization", "Bearer " + farmerToken))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.carbonProfileId").value(profile.id().toString()))
+        .andExpect(jsonPath("$.data.completionPercentage").value(67))
+        .andExpect(jsonPath("$.data.completedRequiredSteps").value(2))
+        .andExpect(jsonPath("$.data.totalRequiredSteps").value(3))
+        .andExpect(jsonPath("$.data.steps[2].code").value("BANK_DETAILS"))
+        .andExpect(jsonPath("$.data.steps[2].status").value("INCOMPLETE"))
+        .andExpect(jsonPath("$.data.steps[2].required").value(true))
+        .andExpect(jsonPath("$.data.steps[3].code").value("DOCUMENTS"))
+        .andExpect(jsonPath("$.data.steps[3].status").value("COMING_SOON"));
+
+    FarmerBankDetailsRequest bankDetailsRequest = new FarmerBankDetailsRequest(
+        "Carbon Farmer",
+        "123456789012",
+        "hdfc0001234",
+        "carbonfarmer@upi",
+        "HDFC Bank"
+    );
+    String bankDetailsResponse = mockMvc.perform(post("/api/v1/farmer/bank-details")
+            .header("Authorization", "Bearer " + farmerToken)
+            .contentType("application/json")
+            .content(jsonMapper.writeValueAsString(bankDetailsRequest)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.farmerProfileId").value(farmerProfile.getId().toString()))
+        .andExpect(jsonPath("$.data.ifscCode").value("HDFC0001234"))
+        .andExpect(jsonPath("$.data.status").value("PENDING_VERIFICATION"))
+        .andReturn()
+        .getResponse()
+        .getContentAsString();
+    FarmerBankDetailsResponse bankDetails = readData(
+        bankDetailsResponse,
+        FarmerBankDetailsResponse.class
+    );
+
+    mockMvc.perform(get("/api/v1/farmer/bank-details")
+            .header("Authorization", "Bearer " + farmerToken))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.id").value(bankDetails.id().toString()))
+        .andExpect(jsonPath("$.data.accountNumber").value("123456789012"));
+
+    FarmerBankDetailsRequest updatedBankDetailsRequest = new FarmerBankDetailsRequest(
+        "Updated Carbon Farmer",
+        "998877665544",
+        "ICIC0004567",
+        null,
+        "ICICI Bank"
+    );
+    mockMvc.perform(put("/api/v1/farmer/bank-details/" + bankDetails.id())
+            .header("Authorization", "Bearer " + farmerToken)
+            .contentType("application/json")
+            .content(jsonMapper.writeValueAsString(updatedBankDetailsRequest)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.accountHolderName").value("Updated Carbon Farmer"))
+        .andExpect(jsonPath("$.data.accountNumber").value("998877665544"))
+        .andExpect(jsonPath("$.data.ifscCode").value("ICIC0004567"))
+        .andExpect(jsonPath("$.data.upiId").doesNotExist())
+        .andExpect(jsonPath("$.data.status").value("PENDING_VERIFICATION"));
+
+    mockMvc.perform(get("/api/v1/admin/bank-details/pending")
+            .header("Authorization", "Bearer " + adminToken))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data[0].id").value(bankDetails.id().toString()))
+        .andExpect(jsonPath("$.data[0].farmerName").value("Carbon Farmer"))
+        .andExpect(jsonPath("$.data[0].farmerMobileNumber").value("9876543210"))
+        .andExpect(jsonPath("$.data[0].accountNumber").value("998877665544"))
+        .andExpect(jsonPath("$.data[0].status").value("PENDING_VERIFICATION"));
+
+    FarmerBankDetailsVerificationRequest verificationRequest =
+        new FarmerBankDetailsVerificationRequest(
+            FarmerBankDetailsStatus.VERIFIED,
+            "Verified for UAT."
+        );
+    mockMvc.perform(put("/api/v1/admin/bank-details/" + bankDetails.id() + "/verify")
+            .header("Authorization", "Bearer " + adminToken)
+            .contentType("application/json")
+            .content(jsonMapper.writeValueAsString(verificationRequest)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.status").value("VERIFIED"))
+        .andExpect(jsonPath("$.data.verifiedByUserId").value(adminUser.getId().toString()))
+        .andExpect(jsonPath("$.data.verificationNotes").value("Verified for UAT."))
+        .andExpect(jsonPath("$.data.verifiedAt").exists());
+
+    mockMvc.perform(get("/api/v1/farmer/bank-details")
+            .header("Authorization", "Bearer " + farmerToken))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.id").value(bankDetails.id().toString()))
+        .andExpect(jsonPath("$.data.status").value("VERIFIED"));
+
+    mockMvc.perform(get("/api/v1/farmer/profile/completion")
+            .header("Authorization", "Bearer " + farmerToken))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.carbonProfileId").value(profile.id().toString()))
+        .andExpect(jsonPath("$.data.completionPercentage").value(100))
+        .andExpect(jsonPath("$.data.completedRequiredSteps").value(3))
+        .andExpect(jsonPath("$.data.totalRequiredSteps").value(3))
+        .andExpect(jsonPath("$.data.steps[2].code").value("BANK_DETAILS"))
+        .andExpect(jsonPath("$.data.steps[2].status").value("COMPLETE"))
+        .andExpect(jsonPath("$.data.steps[3].code").value("DOCUMENTS"))
+        .andExpect(jsonPath("$.data.steps[3].status").value("COMING_SOON"));
 
     CarbonProfileRequest updateProfileRequest = profileRequest(
         profile.carbonIdentityId(),
@@ -365,6 +471,7 @@ class CarbonProfileControllerIT {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.data[0].id").value(soilProfile.id().toString()))
         .andExpect(jsonPath("$.data[0].reportFileName").value("soil-lab-report.pdf"));
+
   }
 
   @Test
@@ -474,6 +581,7 @@ class CarbonProfileControllerIT {
         TestDataFactory.tenant("disabled-" + UUID.randomUUID())
     );
     RoleEntity adminRole = roleRepository.save(TestDataFactory.role(disabledTenant, Role.ADMIN));
+    RoleEntity farmerRole = roleRepository.save(TestDataFactory.role(disabledTenant, Role.FARMER));
     UserEntity disabledAdmin = userRepository.save(TestDataFactory.user(
         disabledTenant,
         "admin-" + UUID.randomUUID(),
@@ -481,9 +589,52 @@ class CarbonProfileControllerIT {
         "Disabled Admin",
         adminRole
     ));
+    UserEntity disabledFarmer = userRepository.save(TestDataFactory.user(
+        disabledTenant,
+        "farmer-" + UUID.randomUUID(),
+        passwordEncoder.encode("farmer12345"),
+        "Disabled Farmer",
+        farmerRole
+    ));
+    farmerProfileRepository.save(new FarmerProfileEntity(
+        UUID.randomUUID(),
+        disabledTenant,
+        disabledFarmer,
+        "Disabled Farmer",
+        "9876543210",
+        null,
+        null,
+        "Wagholi",
+        "Haveli",
+        "Pune",
+        "Maharashtra",
+        "MALE",
+        null,
+        42,
+        "SMALL",
+        FarmerProfileStatus.ACTIVE,
+        disabledAdmin,
+        Instant.now()
+    ));
     String disabledToken = jwtService.issueTokens(disabledAdmin).accessToken();
+    String disabledFarmerToken = jwtService.issueTokens(disabledFarmer).accessToken();
 
     mockMvc.perform(get("/api/v1/carbon/profiles")
+            .header("Authorization", "Bearer " + disabledToken))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.error.code").value("MODULE_NOT_ENABLED"));
+
+    mockMvc.perform(get("/api/v1/farmer/profile/completion")
+            .header("Authorization", "Bearer " + disabledFarmerToken))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.error.code").value("MODULE_NOT_ENABLED"));
+
+    mockMvc.perform(get("/api/v1/farmer/bank-details")
+            .header("Authorization", "Bearer " + disabledFarmerToken))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.error.code").value("MODULE_NOT_ENABLED"));
+
+    mockMvc.perform(get("/api/v1/admin/bank-details/pending")
             .header("Authorization", "Bearer " + disabledToken))
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$.error.code").value("MODULE_NOT_ENABLED"));

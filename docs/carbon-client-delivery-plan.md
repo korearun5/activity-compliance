@@ -1,6 +1,6 @@
 # Carbon Client Delivery Plan
 
-Last updated: 2026-05-19
+Last updated: 2026-05-20
 
 Purpose: translate the client's `Carbon Flow.xlsx` into a delivery plan that
 protects the reusable platform foundation while giving the client a clear
@@ -136,6 +136,15 @@ Start here once the user approves implementation.
 | CARBON-CLIENT-012 | P0 | Add basic Carbon reports/export dashboard. | 008, 010, 011 | report exporter, XLSX/PDF builders |
 | CARBON-CLIENT-013 | P0 | Add UAT seed data and UAT script. | 012 | test data factory, docs |
 | CARBON-CLIENT-014 | P0 | Add regression tests for P0 user journey. | 013 | Testcontainers, module visibility smoke |
+
+## Implementation Status
+
+| ID | Status | Notes |
+| -- | ------ | ----- |
+| CARBON-CLIENT-001 | Done | Carbon-only visibility hides FPO navigation and keeps FPO code intact. |
+| CARBON-CLIENT-002 | Done | Carbon shell now follows the P0 dashboard/profile/plots/soil/activities/admin shape. |
+| CARBON-CLIENT-003 | Done | Profile completion endpoint and farmer widget are in place; real table-backed steps are enabled as later slices land. |
+| CARBON-CLIENT-004 | In review | Bank details use the canonical farmer profile path with `PENDING_VERIFICATION` status; MVP stores account numbers in plain text and production must encrypt or tokenize bank identifiers before shared/live use. |
 
 ## Client Decisions Needed Before Each Sprint
 

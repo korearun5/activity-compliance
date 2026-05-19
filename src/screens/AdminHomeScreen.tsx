@@ -510,7 +510,9 @@ export function AdminHomeScreen({ currentRole, onLogout }: AdminHomeScreenProps)
         <View style={styles.shell}>
           <View style={styles.headerRow}>
             <View style={styles.headerText}>
-              <Text style={styles.eyebrow}>{dashboardEyebrow(currentRole)}</Text>
+              <Text style={styles.eyebrow}>
+                {dashboardEyebrow(currentRole, fpoUiEnabled)}
+              </Text>
               <Text style={styles.title}>Carbon Farming Operations</Text>
               <Text style={styles.copy}>
                 Track farmer profiles, regenerative activities, proof records,
@@ -663,6 +665,7 @@ export function AdminHomeScreen({ currentRole, onLogout }: AdminHomeScreenProps)
               complianceScore={complianceScore}
               crops={crops}
               exportingReportFormat={exportingReportFormat}
+              managerRoleLabel={fpoUiEnabled ? "FPO Manager" : "Farm Manager"}
               onExportReport={handleExportReport}
               proofRecords={proofRecords}
               reportExport={reportExport}
@@ -1285,6 +1288,7 @@ function ReportsTab({
   complianceScore,
   crops,
   exportingReportFormat,
+  managerRoleLabel,
   onExportReport,
   proofRecords,
   reportExport,
@@ -1297,6 +1301,7 @@ function ReportsTab({
   complianceScore: number;
   crops: string[];
   exportingReportFormat: ReportExport["format"] | null;
+  managerRoleLabel: string;
   onExportReport: (format: ReportExport["format"]) => Promise<void>;
   proofRecords: ProofSubmission[];
   reportExport: ReportExport | null;
@@ -1386,7 +1391,7 @@ function ReportsTab({
           ) : null}
           {!canExportComplianceReport ? (
             <Text style={styles.cardMeta}>
-              Compliance export is available to Admin and FPO Manager roles.
+              Compliance export is available to Admin and {managerRoleLabel} roles.
             </Text>
           ) : null}
         </View>
@@ -1445,12 +1450,12 @@ function calculateComplianceScore(cycles: CropCycle[], proofs: ProofSubmission[]
   return Math.round((acceptedProofCount / totalSteps) * 100);
 }
 
-function dashboardEyebrow(role: StaffRole) {
+function dashboardEyebrow(role: StaffRole, fpoUiEnabled: boolean) {
   switch (role) {
     case "admin":
       return "Platform admin dashboard";
     case "fpoManager":
-      return "FPO manager dashboard";
+      return fpoUiEnabled ? "FPO manager dashboard" : "Farm manager dashboard";
     case "fieldCoordinator":
       return "Field coordinator dashboard";
     default:

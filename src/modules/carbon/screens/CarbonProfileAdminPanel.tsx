@@ -11,6 +11,7 @@ import {
 } from "react-native";
 
 import { getErrorMessage } from "../../../core/errors/AppError";
+import { isClientModuleEnabled } from "../../../modules";
 import { StatusBadge } from "../../../ui/StatusBadge";
 import { FarmerIdentityFields } from "../../../shared/farmers/FarmerIdentityFields";
 import {
@@ -56,6 +57,7 @@ type CarbonProfileAdminPanelProps = {
 };
 
 type ActiveEnrollmentForm = "activity" | "profile" | "plot" | "soil" | null;
+type CarbonParticipantOption = (typeof CARBON_PARTICIPANT_TYPES)[number];
 
 export function CarbonProfileAdminPanel({
   onProfilesLoaded
@@ -653,7 +655,9 @@ function CarbonProfileForm({
   );
   const [livestockCount, setLivestockCount] = useState("");
   const [localError, setLocalError] = useState("");
-  const [participantType, setParticipantType] = useState(CARBON_PARTICIPANT_TYPES[0]);
+  const [participantType, setParticipantType] = useState<CarbonParticipantOption>(
+    CARBON_PARTICIPANT_TYPES[0]
+  );
   const [status, setStatus] = useState(CARBON_RECORD_STATUSES[0]);
   const [tillageStatus, setTillageStatus] = useState<string>(
     CARBON_TILLAGE_STATUSES[1]
@@ -661,6 +665,14 @@ function CarbonProfileForm({
   const [totalLandHoldingAcres, setTotalLandHoldingAcres] = useState("");
   const [userId, setUserId] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(Boolean(editingProfile));
+  const showFpoLinking = isClientModuleEnabled("fpo");
+  const participantOptions = useMemo<CarbonParticipantOption[]>(
+    () =>
+      showFpoLinking
+        ? CARBON_PARTICIPANT_TYPES
+        : CARBON_PARTICIPANT_TYPES.filter((option) => option !== "FPO_FPC"),
+    [showFpoLinking]
+  );
 
   useEffect(() => {
     setAadhaarStatus(editingProfile?.aadhaarStatus ?? CARBON_AADHAAR_STATUSES[1]);
@@ -699,9 +711,16 @@ function CarbonProfileForm({
     setLocalError("");
   }, [editingProfile]);
 
+  useEffect(() => {
+    if (!participantOptions.includes(participantType)) {
+      setParticipantType(participantOptions[0]);
+    }
+  }, [participantOptions, participantType]);
+
   async function handleSubmit() {
     const normalizedIdentity = normalizeFarmerIdentityInput(identity);
-    const requireLogin = !editingProfile && !userId.trim() && !fpoMemberProfileId.trim();
+    const hasFpoMemberLink = showFpoLinking && Boolean(fpoMemberProfileId.trim());
+    const requireLogin = !editingProfile && !userId.trim() && !hasFpoMemberLink;
     const validationError = validateFarmerIdentityInput(normalizedIdentity, {
       requireLogin
     });
@@ -718,7 +737,7 @@ function CarbonProfileForm({
       districtName: normalizedIdentity.districtName,
       documentStatus,
       farmerCategory: normalizedIdentity.farmerCategory,
-      fpoMemberProfileId,
+      fpoMemberProfileId: showFpoLinking ? fpoMemberProfileId : "",
       gender: normalizedIdentity.gender,
       gpsLatitude,
       gpsLongitude,
@@ -812,11 +831,13 @@ function CarbonProfileForm({
             onChange={setLivestockCount}
           />
           <FormField label="User ID" value={userId} onChange={setUserId} />
-          <FormField
-            label="FPO member ID"
-            value={fpoMemberProfileId}
-            onChange={setFpoMemberProfileId}
-          />
+          {showFpoLinking ? (
+            <FormField
+              label="FPO member ID"
+              value={fpoMemberProfileId}
+              onChange={setFpoMemberProfileId}
+            />
+          ) : null}
           <FormField
             label="Coordinator ID"
             value={coordinatorUserId}
@@ -825,7 +846,7 @@ function CarbonProfileForm({
         </View>
         <OptionGroup
           label="Participant"
-          options={CARBON_PARTICIPANT_TYPES}
+          options={participantOptions}
           value={participantType}
           onChange={setParticipantType}
         />

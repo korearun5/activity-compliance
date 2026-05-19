@@ -34,6 +34,11 @@ public interface CarbonProfileRepository extends JpaRepository<CarbonProfileEnti
 
   Optional<CarbonProfileEntity> findByTenantIdAndUserId(UUID tenantId, UUID userId);
 
+  Optional<CarbonProfileEntity> findFirstByTenant_IdAndFarmerProfile_IdOrderByUpdatedAtDesc(
+      UUID tenantId,
+      UUID farmerProfileId
+  );
+
   Optional<CarbonProfileEntity> findByTenantIdAndCarbonIdentityIdIgnoreCase(
       UUID tenantId,
       String carbonIdentityId

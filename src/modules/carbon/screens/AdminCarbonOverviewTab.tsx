@@ -5,10 +5,12 @@ import { StateCard } from "../../../ui/StateCard";
 import { StatusBadge } from "../../../ui/StatusBadge";
 import { CarbonProgramSnapshot, getCarbonProgramSnapshot } from "../data/carbonStore";
 import { CarbonProfileRecord } from "../data/carbonProfileStore";
+import { AdminBankVerification } from "./AdminBankVerification";
 import { CarbonProfileAdminPanel } from "./CarbonProfileAdminPanel";
 
 type AdminCarbonSectionId =
   | "activityVerification"
+  | "bankVerification"
   | "dashboard"
   | "farmers"
   | "soilVerification";
@@ -16,6 +18,7 @@ type AdminCarbonSectionId =
 const adminCarbonSections: { id: AdminCarbonSectionId; label: string }[] = [
   { id: "dashboard", label: "Dashboard" },
   { id: "farmers", label: "Farmer management" },
+  { id: "bankVerification", label: "Bank verification" },
   { id: "activityVerification", label: "Activity verification" },
   { id: "soilVerification", label: "Soil verification" }
 ];
@@ -126,6 +129,8 @@ export function AdminCarbonOverviewTab({
       {activeSection === "activityVerification" ? (
         <ActivityVerificationSection snapshot={snapshot} />
       ) : null}
+
+      {activeSection === "bankVerification" ? <AdminBankVerification /> : null}
 
       {activeSection === "soilVerification" ? (
         <SoilVerificationSection snapshot={snapshot} />
