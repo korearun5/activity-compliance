@@ -4,6 +4,7 @@ import com.activityplatform.backend.carbon.domain.CarbonFarmPlotEntity;
 import com.activityplatform.backend.carbon.domain.CarbonRecordStatus;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 
 public record CarbonFarmPlotResponse(
@@ -18,6 +19,12 @@ public record CarbonFarmPlotResponse(
     String irrigationSource,
     String primaryCrop,
     String tillageStatus,
+    String variety,
+    String rootstock,
+    LocalDate plantingDate,
+    String blockCode,
+    String spacing,
+    Integer rowCount,
     CarbonRecordStatus status,
     Instant createdAt,
     Instant updatedAt
@@ -35,6 +42,12 @@ public record CarbonFarmPlotResponse(
         plot.getIrrigationSource(),
         plot.getPrimaryCrop(),
         plot.getTillageStatus(),
+        plot.getVariety(),
+        plot.getRootstock(),
+        plot.getPlantingDate(),
+        plot.getBlockCode(),
+        plot.getSpacing(),
+        plot.getRowCount(),
         plot.getStatus(),
         plot.getCreatedAt(),
         plot.getUpdatedAt()

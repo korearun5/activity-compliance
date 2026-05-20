@@ -108,6 +108,7 @@ export type CarbonProfileInput = {
 
 export type CarbonFarmPlotRecord = {
   areaAcres: number;
+  blockCode?: string;
   carbonProfileId: string;
   createdAt: string;
   farmName: string;
@@ -115,24 +116,35 @@ export type CarbonFarmPlotRecord = {
   irrigationSource?: string;
   latitude: number;
   longitude: number;
+  plantingDate?: string;
   primaryCrop?: string;
+  rootstock?: string;
+  rowCount?: number;
+  spacing?: string;
   status: CarbonRecordStatus;
   surveyNumber?: string;
   tenantId: string;
   tillageStatus?: string;
   updatedAt: string;
+  variety?: string;
 };
 
 export type CarbonFarmPlotInput = {
   areaAcres: string;
+  blockCode?: string;
   farmName: string;
   irrigationSource?: string;
   latitude: string;
   longitude: string;
+  plantingDate?: string;
   primaryCrop?: string;
+  rootstock?: string;
+  rowCount?: string;
+  spacing?: string;
   status?: CarbonRecordStatus;
   surveyNumber?: string;
   tillageStatus?: string;
+  variety?: string;
 };
 
 export type CarbonSoilProfileRecord = {
@@ -489,6 +501,7 @@ function toCarbonProfile(response: CarbonProfileResponse): CarbonProfileRecord {
 function toCarbonFarmPlot(response: CarbonFarmPlotResponse): CarbonFarmPlotRecord {
   return {
     areaAcres: response.areaAcres,
+    blockCode: response.blockCode ?? undefined,
     carbonProfileId: response.carbonProfileId,
     createdAt: response.createdAt,
     farmName: response.farmName,
@@ -496,12 +509,17 @@ function toCarbonFarmPlot(response: CarbonFarmPlotResponse): CarbonFarmPlotRecor
     irrigationSource: response.irrigationSource ?? undefined,
     latitude: response.latitude,
     longitude: response.longitude,
+    plantingDate: response.plantingDate ?? undefined,
     primaryCrop: response.primaryCrop ?? undefined,
+    rootstock: response.rootstock ?? undefined,
+    rowCount: response.rowCount ?? undefined,
+    spacing: response.spacing ?? undefined,
     status: response.status,
     surveyNumber: response.surveyNumber ?? undefined,
     tenantId: response.tenantId,
     tillageStatus: response.tillageStatus ?? undefined,
-    updatedAt: response.updatedAt
+    updatedAt: response.updatedAt,
+    variety: response.variety ?? undefined
   };
 }
 
@@ -632,14 +650,20 @@ function toCarbonFarmPlotRequest(input: CarbonFarmPlotInput): CarbonFarmPlotRequ
 
   return removeUndefined({
     areaAcres: parsePositiveNumber(input.areaAcres, "Area"),
+    blockCode: cleanOptional(input.blockCode),
     farmName: requiredText(input.farmName, "Farm name"),
     irrigationSource: cleanOptional(input.irrigationSource),
     latitude,
     longitude,
+    plantingDate: cleanOptional(input.plantingDate),
     primaryCrop: cleanOptional(input.primaryCrop),
+    rootstock: cleanOptional(input.rootstock),
+    rowCount: parseOptionalInteger(input.rowCount, "Row count"),
+    spacing: cleanOptional(input.spacing),
     status: input.status ?? "ACTIVE",
     surveyNumber: cleanOptional(input.surveyNumber),
-    tillageStatus: cleanOptional(input.tillageStatus)
+    tillageStatus: cleanOptional(input.tillageStatus),
+    variety: cleanOptional(input.variety)
   });
 }
 

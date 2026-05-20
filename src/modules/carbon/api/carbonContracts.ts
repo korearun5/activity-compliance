@@ -89,6 +89,7 @@ export type CarbonProfileRequest = {
 
 export type CarbonFarmPlotResponse = {
   areaAcres: number;
+  blockCode: string | null;
   carbonProfileId: Id;
   createdAt: string;
   farmName: string;
@@ -96,24 +97,35 @@ export type CarbonFarmPlotResponse = {
   irrigationSource: string | null;
   latitude: number;
   longitude: number;
+  plantingDate: string | null;
   primaryCrop: string | null;
+  rootstock: string | null;
+  rowCount: number | null;
+  spacing: string | null;
   status: CarbonRecordStatus;
   surveyNumber: string | null;
   tenantId: Id;
   tillageStatus: string | null;
   updatedAt: string;
+  variety: string | null;
 };
 
 export type CarbonFarmPlotRequest = {
   areaAcres: number;
+  blockCode?: string;
   farmName: string;
   irrigationSource?: string;
   latitude: number;
   longitude: number;
+  plantingDate?: string;
   primaryCrop?: string;
+  rootstock?: string;
+  rowCount?: number;
+  spacing?: string;
   status?: CarbonRecordStatus;
   surveyNumber?: string;
   tillageStatus?: string;
+  variety?: string;
 };
 
 export type CarbonSoilProfileResponse = {

@@ -960,6 +960,18 @@ function PlotsSection({
                   .filter(Boolean)
                   .join(" - ") || "Plot context not set"}
               </Text>
+              <Text style={styles.rowMeta}>
+                {[
+                  plot.variety,
+                  plot.rootstock ? `Rootstock ${plot.rootstock}` : null,
+                  plot.blockCode ? `Block ${plot.blockCode}` : null,
+                  plot.spacing,
+                  plot.rowCount !== undefined ? `${plot.rowCount} rows` : null,
+                  plot.plantingDate ? `Planted ${formatDate(plot.plantingDate)}` : null
+                ]
+                  .filter(Boolean)
+                  .join(" - ") || "Vineyard details not set"}
+              </Text>
             </View>
             <StatusBadge label={plot.status} tone="neutral" />
           </View>

@@ -414,6 +414,12 @@ public class CarbonProfileService {
         CarbonProfileRules.normalizeOptionalText(request.irrigationSource()),
         CarbonProfileRules.normalizeOptionalText(request.primaryCrop()),
         CarbonProfileRules.normalizeTillageStatus(request.tillageStatus()),
+        CarbonProfileRules.normalizeOptionalText(request.variety()),
+        CarbonProfileRules.normalizeOptionalText(request.rootstock()),
+        request.plantingDate(),
+        CarbonProfileRules.normalizeOptionalText(request.blockCode()),
+        CarbonProfileRules.normalizeOptionalText(request.spacing()),
+        request.rowCount(),
         statusOrActive(request.status()),
         now
     );
@@ -444,6 +450,12 @@ public class CarbonProfileService {
         CarbonProfileRules.normalizeOptionalText(request.irrigationSource()),
         CarbonProfileRules.normalizeOptionalText(request.primaryCrop()),
         CarbonProfileRules.normalizeTillageStatus(request.tillageStatus()),
+        CarbonProfileRules.normalizeOptionalText(request.variety()),
+        CarbonProfileRules.normalizeOptionalText(request.rootstock()),
+        request.plantingDate(),
+        CarbonProfileRules.normalizeOptionalText(request.blockCode()),
+        CarbonProfileRules.normalizeOptionalText(request.spacing()),
+        request.rowCount(),
         statusOrActive(request.status()),
         Instant.now()
     );

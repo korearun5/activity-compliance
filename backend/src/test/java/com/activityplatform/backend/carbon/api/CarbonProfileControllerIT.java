@@ -396,6 +396,12 @@ class CarbonProfileControllerIT {
         "Drip",
         "Paddy",
         "Reduced tillage",
+        "Thompson Seedless",
+        "110R",
+        LocalDate.of(2021, 6, 15),
+        "BLK-101",
+        "3m x 3m",
+        42,
         CarbonRecordStatus.ACTIVE
     );
     String plotResponse = mockMvc.perform(post("/api/v1/carbon/profiles/" + profile.id() + "/plots")
@@ -405,6 +411,12 @@ class CarbonProfileControllerIT {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.data.carbonProfileId").value(profile.id().toString()))
         .andExpect(jsonPath("$.data.primaryCrop").value("Paddy"))
+        .andExpect(jsonPath("$.data.variety").value("Thompson Seedless"))
+        .andExpect(jsonPath("$.data.rootstock").value("110R"))
+        .andExpect(jsonPath("$.data.plantingDate").value("2021-06-15"))
+        .andExpect(jsonPath("$.data.blockCode").value("BLK-101"))
+        .andExpect(jsonPath("$.data.spacing").value("3m x 3m"))
+        .andExpect(jsonPath("$.data.rowCount").value(42))
         .andReturn()
         .getResponse()
         .getContentAsString();
@@ -419,6 +431,12 @@ class CarbonProfileControllerIT {
         "Drip",
         "Wheat",
         "Reduced tillage",
+        "Shiraz",
+        "140Ru",
+        LocalDate.of(2022, 7, 20),
+        "BLK-102",
+        "2m x 3m",
+        48,
         CarbonRecordStatus.ACTIVE
     );
     mockMvc.perform(put("/api/v1/carbon/plots/" + plot.id())
@@ -426,7 +444,13 @@ class CarbonProfileControllerIT {
             .contentType("application/json")
             .content(jsonMapper.writeValueAsString(updatePlotRequest)))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.data.primaryCrop").value("Wheat"));
+        .andExpect(jsonPath("$.data.primaryCrop").value("Wheat"))
+        .andExpect(jsonPath("$.data.variety").value("Shiraz"))
+        .andExpect(jsonPath("$.data.rootstock").value("140Ru"))
+        .andExpect(jsonPath("$.data.plantingDate").value("2022-07-20"))
+        .andExpect(jsonPath("$.data.blockCode").value("BLK-102"))
+        .andExpect(jsonPath("$.data.spacing").value("2m x 3m"))
+        .andExpect(jsonPath("$.data.rowCount").value(48));
 
     mockMvc.perform(get("/api/v1/carbon/activity-categories")
             .header("Authorization", "Bearer " + farmerToken))

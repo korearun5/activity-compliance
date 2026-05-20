@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 public record CarbonFarmPlotRequest(
     @Size(max = 160)
@@ -33,6 +34,16 @@ public record CarbonFarmPlotRequest(
     String primaryCrop,
     @Size(max = 80)
     String tillageStatus,
+    @Size(max = 255)
+    String variety,
+    @Size(max = 255)
+    String rootstock,
+    LocalDate plantingDate,
+    @Size(max = 100)
+    String blockCode,
+    @Size(max = 50)
+    String spacing,
+    Integer rowCount,
     CarbonRecordStatus status
 ) {
 }

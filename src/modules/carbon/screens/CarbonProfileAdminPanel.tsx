@@ -903,29 +903,41 @@ function CarbonPlotForm({
   onSubmit: (input: CarbonFarmPlotInput) => Promise<boolean>;
 }) {
   const [areaAcres, setAreaAcres] = useState("");
+  const [blockCode, setBlockCode] = useState("");
   const [farmName, setFarmName] = useState("");
   const [irrigationSource, setIrrigationSource] = useState("Drip");
   const [latitude, setLatitude] = useState("");
   const [localError, setLocalError] = useState("");
   const [longitude, setLongitude] = useState("");
+  const [plantingDate, setPlantingDate] = useState("");
   const [primaryCrop, setPrimaryCrop] = useState("");
+  const [rootstock, setRootstock] = useState("");
+  const [rowCount, setRowCount] = useState("");
+  const [spacing, setSpacing] = useState("");
   const [status, setStatus] = useState(CARBON_RECORD_STATUSES[0]);
   const [surveyNumber, setSurveyNumber] = useState("");
   const [tillageStatus, setTillageStatus] = useState<string>(
     CARBON_TILLAGE_STATUSES[1]
   );
+  const [variety, setVariety] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(Boolean(editingPlot));
 
   useEffect(() => {
     setAreaAcres(toInputNumber(editingPlot?.areaAcres));
+    setBlockCode(editingPlot?.blockCode ?? "");
     setFarmName(editingPlot?.farmName ?? "");
     setIrrigationSource(editingPlot?.irrigationSource ?? "Drip");
     setLatitude(toInputNumber(editingPlot?.latitude));
     setLongitude(toInputNumber(editingPlot?.longitude));
+    setPlantingDate(editingPlot?.plantingDate ?? "");
     setPrimaryCrop(editingPlot?.primaryCrop ?? "");
+    setRootstock(editingPlot?.rootstock ?? "");
+    setRowCount(toInputNumber(editingPlot?.rowCount));
+    setSpacing(editingPlot?.spacing ?? "");
     setStatus(editingPlot?.status ?? CARBON_RECORD_STATUSES[0]);
     setSurveyNumber(editingPlot?.surveyNumber ?? "");
     setTillageStatus(editingPlot?.tillageStatus ?? CARBON_TILLAGE_STATUSES[1]);
+    setVariety(editingPlot?.variety ?? "");
     setShowAdvanced(Boolean(editingPlot));
     setLocalError("");
   }, [editingPlot]);
@@ -943,23 +955,35 @@ function CarbonPlotForm({
 
     const success = await onSubmit({
       areaAcres,
+      blockCode,
       farmName,
       irrigationSource,
       latitude,
       longitude,
+      plantingDate,
       primaryCrop,
+      rootstock,
+      rowCount,
+      spacing,
       status,
       surveyNumber,
-      tillageStatus
+      tillageStatus,
+      variety
     });
 
     if (success && !editingPlot) {
       setAreaAcres("");
+      setBlockCode("");
       setFarmName("");
       setLatitude("");
       setLongitude("");
+      setPlantingDate("");
       setPrimaryCrop("");
+      setRootstock("");
+      setRowCount("");
+      setSpacing("");
       setSurveyNumber("");
+      setVariety("");
       setShowAdvanced(false);
     }
   }
@@ -989,11 +1013,13 @@ function CarbonPlotForm({
           onChange={setLongitude}
         />
         <FormField label="Primary crop" value={primaryCrop} onChange={setPrimaryCrop} />
+        <FormField label="Variety" value={variety} onChange={setVariety} />
+        <FormField label="Block code" value={blockCode} onChange={setBlockCode} />
       </View>
 
       <AdvancedSection
         isOpen={showAdvanced}
-        label="More plot details"
+        label="More vineyard details"
         onToggle={() => setShowAdvanced((current) => !current)}
       >
         <View style={styles.formGrid}>
@@ -1001,6 +1027,19 @@ function CarbonPlotForm({
             label="Irrigation"
             value={irrigationSource}
             onChange={setIrrigationSource}
+          />
+          <FormField label="Rootstock" value={rootstock} onChange={setRootstock} />
+          <FormField
+            label="Planting date"
+            value={plantingDate}
+            onChange={setPlantingDate}
+          />
+          <FormField label="Spacing" value={spacing} onChange={setSpacing} />
+          <FormField
+            label="Row count"
+            keyboardType="number-pad"
+            value={rowCount}
+            onChange={setRowCount}
           />
         </View>
         <OptionGroup
@@ -1475,6 +1514,18 @@ function PlotList({
                 {[plot.primaryCrop, plot.irrigationSource, plot.tillageStatus]
                   .filter(Boolean)
                   .join(" - ") || "Plot context not set"}
+              </Text>
+              <Text style={styles.rowMeta}>
+                {[
+                  plot.variety,
+                  plot.rootstock ? `Rootstock ${plot.rootstock}` : null,
+                  plot.blockCode ? `Block ${plot.blockCode}` : null,
+                  plot.spacing,
+                  plot.rowCount !== undefined ? `${plot.rowCount} rows` : null,
+                  plot.plantingDate ? `Planted ${formatDate(plot.plantingDate)}` : null
+                ]
+                  .filter(Boolean)
+                  .join(" - ") || "Vineyard details not set"}
               </Text>
             </View>
             <View style={styles.actionColumn}>
