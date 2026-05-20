@@ -15,6 +15,8 @@ import { CropCycle, CropTemplate, ProofSubmission } from "./agricultureConfig";
 
 export type BackendWorkflowStatus = "ACTIVE" | "ARCHIVED" | "DRAFT";
 
+export type WorkflowDomain = "CARBON" | "COMMON" | "FPO" | "agriculture";
+
 type BackendTaskStatus = "DONE" | "NEXT" | "PENDING" | "SKIPPED";
 
 type BackendActivityStatus = "CANCELLED" | "COMPLETED" | "RUNNING";
@@ -137,17 +139,36 @@ export async function hasBackendSession() {
   return Boolean(await AsyncStorage.getItem(storageKeys.auth.accessToken));
 }
 
-export async function getBackendWorkflowTemplates() {
+export async function getBackendWorkflowTemplates(domain?: WorkflowDomain) {
+  const params = new URLSearchParams({
+    size: "100",
+    sort: "createdAt,desc",
+    status: "ACTIVE"
+  });
+  if (domain) {
+    params.set("domain", domain);
+  }
+
   const response = await apiClient.get<PageResponse<BackendWorkflow>>(
-    `${endpoints.workflows.list}?status=ACTIVE&size=100&sort=createdAt,desc`
+    `${endpoints.workflows.list}?${params.toString()}`
   );
 
   return response.content.map(toCropTemplate);
 }
 
-export async function getBackendWorkflowDefinitions(status?: BackendWorkflowStatus) {
-  const path = status
-    ? `${endpoints.workflows.list}?status=${encodeURIComponent(status)}`
+export async function getBackendWorkflowDefinitions(
+  status?: BackendWorkflowStatus,
+  domain?: WorkflowDomain
+) {
+  const params = new URLSearchParams();
+  if (status) {
+    params.set("status", status);
+  }
+  if (domain) {
+    params.set("domain", domain);
+  }
+  const path = params.toString()
+    ? `${endpoints.workflows.list}?${params.toString()}`
     : endpoints.workflows.list;
   const response = await apiClient.getPaginated<PageResponse<BackendWorkflow>>(path, {
     size: 100,

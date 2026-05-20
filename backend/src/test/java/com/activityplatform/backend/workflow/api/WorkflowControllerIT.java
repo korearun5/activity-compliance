@@ -18,7 +18,9 @@ import com.activityplatform.backend.auth.service.JwtService;
 import com.activityplatform.backend.security.Role;
 import com.activityplatform.backend.workflow.domain.WorkflowDefinitionEntity;
 import com.activityplatform.backend.workflow.domain.WorkflowDefinitionStatus;
+import com.activityplatform.backend.workflow.domain.WorkflowTaskEntity;
 import com.activityplatform.backend.workflow.repository.WorkflowDefinitionRepository;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -102,6 +104,21 @@ class WorkflowControllerIT {
   }
 
   @Test
+  void testListWorkflowsFiltersByDomain() throws Exception {
+    workflowDefinitionRepository.save(workflowWithDomain("carbon-" + UUID.randomUUID(), "CARBON"));
+    workflowDefinitionRepository.save(workflowWithDomain("fpo-" + UUID.randomUUID(), "agriculture"));
+
+    mockMvc.perform(get("/api/v1/workflows")
+            .param("domain", "CARBON")
+            .param("status", "ACTIVE")
+            .header("Authorization", "Bearer " + adminToken))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data.content").isArray())
+        .andExpect(jsonPath("$.data.content[0].domainKey").value("CARBON"));
+  }
+
+  @Test
   void testCreateWorkflowAsAdmin() throws Exception {
     WorkflowRequest request = new WorkflowRequest(
         "new-workflow",
@@ -178,5 +195,30 @@ class WorkflowControllerIT {
   void testUnauthorizedAccess() throws Exception {
     mockMvc.perform(get("/api/v1/workflows"))
         .andExpect(status().isUnauthorized());
+  }
+
+  private WorkflowDefinitionEntity workflowWithDomain(String code, String domainKey) {
+    Instant now = Instant.now();
+    WorkflowDefinitionEntity workflow = new WorkflowDefinitionEntity(
+        UUID.randomUUID(),
+        tenant,
+        code,
+        code,
+        domainKey,
+        30,
+        1,
+        WorkflowDefinitionStatus.ACTIVE,
+        now
+    );
+    workflow.addTask(new WorkflowTaskEntity(
+        UUID.randomUUID(),
+        "capture-evidence",
+        "Capture evidence",
+        10,
+        0,
+        true,
+        now
+    ));
+    return workflow;
   }
 }

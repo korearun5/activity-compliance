@@ -131,6 +131,7 @@ Start here once the user approves implementation.
 | CARBON-CLIENT-006A | P0 | Refactor shared UI reuse before plot-detail work: soil report uploader, evidence uploader/review actions, and activity timeline components shared across Carbon/FPO where data models are not coupled. | 006 | `StateCard`, `StatusBadge`, upload adapter, evidence APIs |
 | CARBON-CLIENT-007 | P0 | Build plot list/add/detail UI with map placeholder first. | 006A | Carbon plot APIs, shared activity/list UI patterns |
 | CARBON-CLIENT-008 | P0 | Promote soil profile into dedicated dashboard/upload/manual entry screens. | 003 | `carbon_soil_profiles`, storage |
+| CARBON-CLIENT-008B | P0 | Extract FPO soil UI to shared manual-entry and soil-list components, then reuse them from Carbon soil screens without changing activity/workflow code. | 008 | Shared soil UI components, FPO/Carbon soil adapters |
 | CARBON-CLIENT-009 | P0 | Seed vineyard workflow definitions for core activities. | 001 | workflow definitions/tasks |
 | CARBON-CLIENT-010 | P0 | Build activity wizard and evidence submission. | 006, 009 | activity, task, evidence APIs |
 | CARBON-CLIENT-011 | P0 | Build admin verification queues for farmer/activity/soil. | 004, 005, 008, 010 | admin shell, evidence review |
@@ -146,9 +147,12 @@ Start here once the user approves implementation.
 | CARBON-CLIENT-002 | Done | Carbon shell now follows the P0 dashboard/profile/plots/soil/activities/admin shape. |
 | CARBON-CLIENT-003 | Done | Profile completion endpoint and farmer widget are in place; real table-backed steps are enabled as later slices land. |
 | CARBON-CLIENT-004 | In review | Bank details use the canonical farmer profile path with `PENDING_VERIFICATION` status; MVP stores account numbers in plain text and production must encrypt or tokenize bank identifiers before shared/live use. |
+| CARBON-CLIENT-005 | Done | Farmer document upload and verification use the shared farmer document path with storage-backed PDF/image intake. |
+| CARBON-CLIENT-006 | Done | Carbon farm plots include vineyard/block fields and staff/farmer UI can create and view linked blocks. |
 | CARBON-CLIENT-006A | Done | Added shared UI components for soil report metadata/upload, evidence upload/review actions, and activity timelines; Carbon/FPO keep separate API stores and module guards. |
 | CARBON-CLIENT-007 | Done | Carbon plot list now has selectable detail cards and map placeholders without adding a map provider dependency. |
 | CARBON-CLIENT-008 | Done | Carbon Soil tab is now a dedicated dashboard/upload/manual-entry workspace using shared soil uploader/dashboard components; linked farmers can create/update/upload their own soil records while staff access remains scoped. |
+| CARBON-CLIENT-008B | Done | FPO and Carbon now share soil manual-entry and soil-list UI components while preserving separate API stores and leaving activity/workflow code untouched. |
 
 ## Client Decisions Needed Before Each Sprint
 

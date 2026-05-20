@@ -33,10 +33,16 @@ public class WorkflowController {
   @GetMapping
   ApiResponse<PageResponse<WorkflowResponse>> list(
       Authentication authentication,
+      @RequestParam(required = false) String domain,
       @RequestParam(required = false) WorkflowDefinitionStatus status,
       @PageableDefault(size = 20, page = 0) Pageable pageable) {
     return ApiResponse.success(
-        PageResponse.from(workflowDefinitionService.list(CurrentUser.from(authentication), status, pageable)));
+        PageResponse.from(
+            workflowDefinitionService.list(
+                CurrentUser.from(authentication),
+                domain,
+                status,
+                pageable)));
   }
 
   @GetMapping("/{workflowId}")

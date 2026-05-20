@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { ConfirmationModal } from "../../../ui/ConfirmationModal";
 import { StateCard } from "../../../ui/StateCard";
 import { StatusBadge } from "../../../ui/StatusBadge";
+import { ActivityWizard } from "../../../shared/components/ActivityWizard";
 import {
   SoilDashboardMetric,
   SoilDashboardRecord,
@@ -1635,14 +1636,18 @@ function guessReportContentType(fileName: string) {
 function ActivitiesSection({ snapshot }: { snapshot: FarmerCarbonSnapshot }) {
   return (
     <>
-      <StateCard
-        message="Activity Wizard - coming soon"
-        title="Screens 27-39"
-        tone="warning"
+      <ActivityWizard
+        domain="CARBON"
+        participantName={snapshot.profile.farmerName}
+        participantRegion={snapshot.profile.village}
       />
 
       <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Current carbon activity records</Text>
+        <Text style={styles.sectionTitle}>Legacy carbon activity records</Text>
+        <Text style={styles.cardDescription}>
+          Existing sample records remain visible while new farmer submissions are saved
+          through the generic activity and evidence tables.
+        </Text>
         {snapshot.activities.map((activity) => (
           <View key={activity.id} style={styles.listRow}>
             <View style={styles.rowText}>

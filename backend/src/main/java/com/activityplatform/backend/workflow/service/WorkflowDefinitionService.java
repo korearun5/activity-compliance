@@ -54,8 +54,25 @@ public class WorkflowDefinitionService {
   @Transactional(readOnly = true)
   public Page<WorkflowResponse> list(
       CurrentUser currentUser,
+      String domain,
       WorkflowDefinitionStatus status,
       Pageable pageable) {
+    String domainKey = normalizeOptional(domain);
+    if (domainKey != null) {
+      if (status == null) {
+        return workflowDefinitionRepository.findByTenantIdAndDomainKey(
+            currentUser.tenantId(),
+            domainKey,
+            pageable).map(WorkflowResponse::from);
+      }
+
+      return workflowDefinitionRepository.findByTenantIdAndDomainKeyAndStatus(
+          currentUser.tenantId(),
+          domainKey,
+          status,
+          pageable).map(WorkflowResponse::from);
+    }
+
     if (status == null) {
       return workflowDefinitionRepository.findByTenantId(currentUser.tenantId(), pageable)
           .map(WorkflowResponse::from);

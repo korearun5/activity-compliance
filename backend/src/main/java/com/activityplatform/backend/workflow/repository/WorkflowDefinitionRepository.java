@@ -25,6 +25,17 @@ public interface WorkflowDefinitionRepository
       WorkflowDefinitionStatus status,
       Pageable pageable);
 
+  Page<WorkflowDefinitionEntity> findByTenantIdAndDomainKey(
+      UUID tenantId,
+      String domainKey,
+      Pageable pageable);
+
+  Page<WorkflowDefinitionEntity> findByTenantIdAndDomainKeyAndStatus(
+      UUID tenantId,
+      String domainKey,
+      WorkflowDefinitionStatus status,
+      Pageable pageable);
+
   Optional<WorkflowDefinitionEntity> findByIdAndTenantId(UUID id, UUID tenantId);
 
   boolean existsByTenantIdAndCodeIgnoreCaseAndVersion(UUID tenantId, String code, int version);
