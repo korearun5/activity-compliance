@@ -148,6 +148,7 @@ Start here once the user approves implementation.
 | CARBON-CLIENT-004 | In review | Bank details use the canonical farmer profile path with `PENDING_VERIFICATION` status; MVP stores account numbers in plain text and production must encrypt or tokenize bank identifiers before shared/live use. |
 | CARBON-CLIENT-006A | Done | Added shared UI components for soil report metadata/upload, evidence upload/review actions, and activity timelines; Carbon/FPO keep separate API stores and module guards. |
 | CARBON-CLIENT-007 | Done | Carbon plot list now has selectable detail cards and map placeholders without adding a map provider dependency. |
+| CARBON-CLIENT-008 | Done | Carbon Soil tab is now a dedicated dashboard/upload/manual-entry workspace using shared soil uploader/dashboard components; linked farmers can create/update/upload their own soil records while staff access remains scoped. |
 
 ## Client Decisions Needed Before Each Sprint
 

@@ -6,6 +6,16 @@ import { ConfirmationModal } from "../../../ui/ConfirmationModal";
 import { StateCard } from "../../../ui/StateCard";
 import { StatusBadge } from "../../../ui/StatusBadge";
 import {
+  SoilDashboardMetric,
+  SoilDashboardRecord,
+  SoilProfileDashboard
+} from "../../../shared/components/SoilProfileDashboard";
+import { SoilManualEntryForm } from "../../../shared/components/SoilManualEntryForm";
+import {
+  SoilReportField,
+  SoilReportValues
+} from "../../../shared/components/SoilReportUploader";
+import {
   FarmerBankDetailsInput,
   FarmerBankDetailsRecord,
   FarmerBankDetailsStatus,
@@ -31,10 +41,15 @@ import { getFarmerCarbonSnapshot } from "../data/carbonStore";
 import {
   CarbonFarmPlotRecord,
   CarbonProfileRecord,
+  CarbonSoilProfileInput,
   CarbonSoilProfileRecord,
+  CarbonSoilReportFile,
+  createCarbonSoilProfile,
   getMyCarbonProfile,
   listCarbonFarmPlots,
-  listCarbonSoilProfiles
+  listCarbonSoilProfiles,
+  updateCarbonSoilProfile,
+  uploadCarbonSoilReport
 } from "../data/carbonProfileStore";
 
 type UserCarbonScreenProps = {
@@ -221,7 +236,13 @@ export function UserCarbonScreen({ username }: UserCarbonScreenProps) {
       ) : null}
 
       {activeSection === "soil" ? (
-        <SoilSection liveSoilProfiles={liveSoilProfiles} snapshot={snapshot} />
+        <SoilSection
+          livePlots={livePlots}
+          liveProfile={liveProfile}
+          liveSoilProfiles={liveSoilProfiles}
+          snapshot={snapshot}
+          onSoilProfilesChanged={setLiveSoilProfiles}
+        />
       ) : null}
 
       {activeSection === "activities" ? (
@@ -1087,62 +1108,528 @@ function PlotMapPlaceholder({
   );
 }
 
+type SoilScreenId = "dashboard" | "manual" | "upload";
+
+const soilScreens: { id: SoilScreenId; label: string }[] = [
+  { id: "dashboard", label: "Dashboard" },
+  { id: "upload", label: "Report upload" },
+  { id: "manual", label: "Manual entry" }
+];
+
 function SoilSection({
+  livePlots,
+  liveProfile,
   liveSoilProfiles,
+  onSoilProfilesChanged,
   snapshot
 }: {
+  livePlots: CarbonFarmPlotRecord[];
+  liveProfile: CarbonProfileRecord | null;
   liveSoilProfiles: CarbonSoilProfileRecord[];
+  onSoilProfilesChanged: (profiles: CarbonSoilProfileRecord[]) => void;
   snapshot: FarmerCarbonSnapshot;
 }) {
-  const primary = liveSoilProfiles[0];
+  const [activeSoilScreen, setActiveSoilScreen] =
+    useState<SoilScreenId>("dashboard");
+  const [draftSoilProfileId, setDraftSoilProfileId] = useState<string | null>(null);
+  const [selectedSoilProfileId, setSelectedSoilProfileId] = useState<string | null>(
+    null
+  );
+  const [soilError, setSoilError] = useState("");
+  const [soilMessage, setSoilMessage] = useState("");
+  const [savingMode, setSavingMode] = useState<"metadata" | "upload" | null>(null);
+
+  const selectedSoilProfile =
+    liveSoilProfiles.find((profile) => profile.id === selectedSoilProfileId) ??
+    liveSoilProfiles[0] ??
+    null;
+  const draftSoilProfile =
+    draftSoilProfileId === null
+      ? null
+      : liveSoilProfiles.find((profile) => profile.id === draftSoilProfileId) ??
+        null;
+
+  useEffect(() => {
+    if (!liveSoilProfiles.length) {
+      setSelectedSoilProfileId(null);
+      setDraftSoilProfileId(null);
+      return;
+    }
+
+    if (
+      selectedSoilProfileId &&
+      !liveSoilProfiles.some((profile) => profile.id === selectedSoilProfileId)
+    ) {
+      setSelectedSoilProfileId(liveSoilProfiles[0].id);
+    }
+
+    if (
+      draftSoilProfileId &&
+      !liveSoilProfiles.some((profile) => profile.id === draftSoilProfileId)
+    ) {
+      setDraftSoilProfileId(null);
+    }
+  }, [draftSoilProfileId, liveSoilProfiles, selectedSoilProfileId]);
+
+  async function handleSaveSoilProfile(
+    input: CarbonSoilProfileInput,
+    profile: CarbonSoilProfileRecord | null
+  ) {
+    if (!liveProfile) {
+      setSoilError("Carbon profile is not linked yet.");
+      setSoilMessage("");
+      return null;
+    }
+
+    setSavingMode("metadata");
+    setSoilError("");
+    setSoilMessage("");
+
+    try {
+      const saved = profile
+        ? await updateCarbonSoilProfile(profile.id, input)
+        : await createCarbonSoilProfile(liveProfile.id, input);
+
+      onSoilProfilesChanged(upsertById(liveSoilProfiles, saved));
+      setSelectedSoilProfileId(saved.id);
+      setDraftSoilProfileId(saved.id);
+      setActiveSoilScreen("dashboard");
+      setSoilMessage("Soil profile saved.");
+      return saved;
+    } catch (error) {
+      setSoilError(error instanceof Error ? error.message : "Unable to save soil profile.");
+      return null;
+    } finally {
+      setSavingMode(null);
+    }
+  }
+
+  async function handleUploadSoilReport(
+    file: CarbonSoilReportFile,
+    input: CarbonSoilProfileInput,
+    profile: CarbonSoilProfileRecord | null
+  ) {
+    if (!liveProfile) {
+      setSoilError("Carbon profile is not linked yet.");
+      setSoilMessage("");
+      return;
+    }
+
+    setSavingMode("upload");
+    setSoilError("");
+    setSoilMessage("");
+
+    try {
+      const targetProfile = profile
+        ? await updateCarbonSoilProfile(profile.id, input)
+        : await createCarbonSoilProfile(liveProfile.id, input);
+      const saved = await uploadCarbonSoilReport(targetProfile.id, file);
+
+      onSoilProfilesChanged(upsertById(liveSoilProfiles, saved));
+      setSelectedSoilProfileId(saved.id);
+      setDraftSoilProfileId(saved.id);
+      setActiveSoilScreen("dashboard");
+      setSoilMessage("Soil report uploaded.");
+    } catch (error) {
+      setSoilError(error instanceof Error ? error.message : "Unable to upload soil report.");
+    } finally {
+      setSavingMode(null);
+    }
+  }
+
+  const dashboardRecords = liveSoilProfiles.map((profile) =>
+    toSoilDashboardRecord(profile, livePlots)
+  );
 
   return (
     <>
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Soil dashboard</Text>
-        <View style={styles.metricGrid}>
-          <Metric
-            label="SOC"
-            value={
-              primary?.soilOrganicCarbonPercent !== undefined
-                ? `${primary.soilOrganicCarbonPercent}%`
-                : `${snapshot.soilProfile.soilOrganicCarbonPercent}%`
-            }
-          />
-          <Metric label="pH" value={primary?.ph ?? snapshot.soilProfile.ph} />
-          <Metric
-            label="EC"
-            value={primary?.electricalConductivity ?? snapshot.soilProfile.ec}
-          />
-          <Metric
-            label="Nitrogen"
-            value={primary?.nitrogenKgHa ?? snapshot.soilProfile.nitrogenKgHa}
-          />
-          <Metric
-            label="Phosphorus"
-            value={primary?.phosphorusKgHa ?? snapshot.soilProfile.phosphorusKgHa}
-          />
-          <Metric
-            label="Potassium"
-            value={primary?.potassiumKgHa ?? snapshot.soilProfile.potassiumKgHa}
-          />
-        </View>
-      </View>
+      <SectionTabs
+        activeSection={activeSoilScreen}
+        onChange={(section) => {
+          setActiveSoilScreen(section);
+          setSoilError("");
+          setSoilMessage("");
+          if (section === "upload") {
+            setDraftSoilProfileId(selectedSoilProfile?.id ?? null);
+          }
+          if (section === "manual") {
+            setDraftSoilProfileId(selectedSoilProfile?.id ?? null);
+          }
+        }}
+        sections={soilScreens}
+      />
 
-      <View style={styles.cardGrid}>
-        <PlaceholderFeatureCard
-          label="Report upload"
-          meta={primary?.reportFileName ?? "Upload shell"}
-          status="Screen 21"
+      {soilError ? <StateCard message={soilError} title="Soil" tone="error" /> : null}
+      {soilMessage ? (
+        <StateCard message={soilMessage} title="Soil" tone="success" />
+      ) : null}
+
+      {activeSoilScreen === "dashboard" ? (
+        <SoilProfileDashboard
+          description="Latest soil values, report intake status, and SOC trend for vineyard blocks."
+          emptyMessage="No soil profile is saved yet. Add a manual entry or upload a soil report to begin."
+          fallbackMetrics={soilFallbackMetrics(snapshot)}
+          records={dashboardRecords}
+          selectedRecordId={selectedSoilProfile?.id}
+          title="Soil dashboard"
+          onSelectRecord={(record) => setSelectedSoilProfileId(record.id)}
+          renderHeaderAction={() => (
+            <View style={styles.inlineActions}>
+              <Pressable
+                accessibilityRole="button"
+                style={styles.primaryButton}
+                onPress={() => {
+                  setDraftSoilProfileId(null);
+                  setActiveSoilScreen("manual");
+                }}
+              >
+                <Text style={styles.primaryButtonText}>Add manual entry</Text>
+              </Pressable>
+            </View>
+          )}
+          renderRecordAction={(record) => (
+            <View style={styles.documentRowActions}>
+              <Pressable
+                accessibilityRole="button"
+                style={styles.secondaryButton}
+                onPress={() => {
+                  setDraftSoilProfileId(record.id);
+                  setActiveSoilScreen("upload");
+                }}
+              >
+                <Text style={styles.secondaryButtonText}>Upload</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                style={styles.secondaryButton}
+                onPress={() => {
+                  setDraftSoilProfileId(record.id);
+                  setActiveSoilScreen("manual");
+                }}
+              >
+                <Text style={styles.secondaryButtonText}>Edit</Text>
+              </Pressable>
+            </View>
+          )}
         />
-        <PlaceholderFeatureCard
-          label="Manual entry"
-          meta="SOC, pH, EC, NPK"
-          status="Screen 22"
+      ) : null}
+
+      {activeSoilScreen === "upload" ? (
+        <CarbonSoilProfileEditor
+          isSubmitting={savingMode === "metadata"}
+          isUploadingFile={savingMode === "upload"}
+          mode="upload"
+          plots={livePlots}
+          soilProfile={draftSoilProfile}
+          onSave={handleSaveSoilProfile}
+          onUpload={handleUploadSoilReport}
         />
-      </View>
+      ) : null}
+
+      {activeSoilScreen === "manual" ? (
+        <CarbonSoilProfileEditor
+          isSubmitting={savingMode === "metadata"}
+          isUploadingFile={savingMode === "upload"}
+          mode="manual"
+          plots={livePlots}
+          soilProfile={draftSoilProfile}
+          onSave={handleSaveSoilProfile}
+          onUpload={handleUploadSoilReport}
+        />
+      ) : null}
     </>
   );
+}
+
+function CarbonSoilProfileEditor({
+  isSubmitting,
+  isUploadingFile,
+  mode,
+  onSave,
+  onUpload,
+  plots,
+  soilProfile
+}: {
+  isSubmitting: boolean;
+  isUploadingFile: boolean;
+  mode: "manual" | "upload";
+  onSave: (
+    input: CarbonSoilProfileInput,
+    profile: CarbonSoilProfileRecord | null
+  ) => Promise<CarbonSoilProfileRecord | null>;
+  onUpload: (
+    file: CarbonSoilReportFile,
+    input: CarbonSoilProfileInput,
+    profile: CarbonSoilProfileRecord | null
+  ) => Promise<void>;
+  plots: CarbonFarmPlotRecord[];
+  soilProfile: CarbonSoilProfileRecord | null;
+}) {
+  const [carbonFarmPlotId, setCarbonFarmPlotId] = useState("");
+  const initialValues = useMemo(
+    () => toSoilReportValues(soilProfile),
+    [soilProfile]
+  );
+
+  useEffect(() => {
+    setCarbonFarmPlotId(soilProfile?.carbonFarmPlotId ?? "");
+  }, [soilProfile]);
+
+  const fields =
+    mode === "upload"
+      ? ([
+          "testDate",
+          "labName",
+          "reportFileName",
+          "reportUrl"
+        ] as SoilReportField[])
+      : ([
+          "testDate",
+          "soilOrganicCarbon",
+          "ph",
+          "nitrogen",
+          "phosphorus",
+          "potassium",
+          "electricalConductivity",
+          "bulkDensity",
+          "texture",
+          "labName",
+          "reportFileName",
+          "reportUrl"
+        ] as SoilReportField[]);
+
+  return (
+    <SoilManualEntryForm
+      badgeLabel={soilProfile ? "Editing saved record" : "New record"}
+      badgeTone={soilProfile ? "neutral" : "warning"}
+      buildInput={(values) => toCarbonSoilInput(values, carbonFarmPlotId)}
+      childrenBeforeFields={
+        plots.length ? (
+          <View style={styles.optionBlock}>
+            <Text style={styles.formLabel}>Vineyard block</Text>
+            <View style={styles.choiceRow}>
+              <Pressable
+                accessibilityRole="button"
+                style={[
+                  styles.choiceButton,
+                  !carbonFarmPlotId && styles.choiceButtonActive
+                ]}
+                onPress={() => setCarbonFarmPlotId("")}
+              >
+                <Text
+                  style={[
+                    styles.choiceButtonText,
+                    !carbonFarmPlotId && styles.choiceButtonTextActive
+                  ]}
+                >
+                  Profile level
+                </Text>
+              </Pressable>
+              {plots.map((plot) => {
+                const isSelected = carbonFarmPlotId === plot.id;
+
+                return (
+                  <Pressable
+                    key={plot.id}
+                    accessibilityRole="button"
+                    style={[
+                      styles.choiceButton,
+                      isSelected && styles.choiceButtonActive
+                    ]}
+                    onPress={() => setCarbonFarmPlotId(plot.id)}
+                  >
+                    <Text
+                      style={[
+                        styles.choiceButtonText,
+                        isSelected && styles.choiceButtonTextActive
+                      ]}
+                    >
+                      {plot.blockCode ?? plot.farmName}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        ) : null
+      }
+      description={
+        mode === "upload"
+          ? "Attach a lab PDF or image to a saved Carbon soil profile."
+          : "Record SOC, pH, EC, NPK, texture, and lab metadata."
+      }
+      endpointPrefix="/api/v1/carbon/soil-profiles"
+      fields={fields}
+      formTitle={mode === "upload" ? "Report metadata" : "Manual soil values"}
+      hasUploadedFile={Boolean(soilProfile?.reportStorageKey)}
+      initialValues={initialValues}
+      isSubmitting={isSubmitting}
+      isUploadingFile={isUploadingFile}
+      module="carbon"
+      submitLabel={
+        soilProfile
+          ? mode === "upload"
+            ? "Save report metadata"
+            : "Update manual entry"
+          : mode === "upload"
+            ? "Create report record"
+            : "Add manual entry"
+      }
+      title={mode === "upload" ? "Soil report upload" : "Soil manual entry"}
+      uploadLabel={soilProfile ? "Upload report" : "Create and upload report"}
+      onSubmit={(input) => onSave(input, soilProfile)}
+      onUploadFile={(file, input) => onUpload(file, input, soilProfile)}
+    />
+  );
+}
+
+function toSoilReportValues(
+  profile: CarbonSoilProfileRecord | null
+): SoilReportValues {
+  if (!profile) {
+    return {};
+  }
+
+  return {
+    bulkDensity: toOptionalInput(profile.bulkDensityGmCm3),
+    electricalConductivity: toOptionalInput(profile.electricalConductivity),
+    labName: profile.labName ?? "",
+    nitrogen: toOptionalInput(profile.nitrogenKgHa),
+    ph: toOptionalInput(profile.ph),
+    phosphorus: toOptionalInput(profile.phosphorusKgHa),
+    potassium: toOptionalInput(profile.potassiumKgHa),
+    reportFileName: profile.reportFileName ?? "",
+    reportUrl: profile.reportUrl ?? "",
+    soilOrganicCarbon: toOptionalInput(profile.soilOrganicCarbonPercent),
+    testDate: profile.testDate ?? "",
+    texture: profile.texture ?? ""
+  };
+}
+
+function toCarbonSoilInput(
+  values: SoilReportValues,
+  carbonFarmPlotId: string
+): CarbonSoilProfileInput {
+  const reportFileName = cleanOptional(values.reportFileName);
+
+  return {
+    bulkDensityGmCm3: cleanOptional(values.bulkDensity),
+    carbonFarmPlotId: cleanOptional(carbonFarmPlotId),
+    electricalConductivity: cleanOptional(values.electricalConductivity),
+    labName: cleanOptional(values.labName),
+    nitrogenKgHa: cleanOptional(values.nitrogen),
+    ph: cleanOptional(values.ph),
+    phosphorusKgHa: cleanOptional(values.phosphorus),
+    potassiumKgHa: cleanOptional(values.potassium),
+    reportContentType: reportFileName
+      ? guessReportContentType(reportFileName)
+      : undefined,
+    reportFileName,
+    reportUrl: cleanOptional(values.reportUrl),
+    soilOrganicCarbonPercent: cleanOptional(values.soilOrganicCarbon),
+    status: "ACTIVE",
+    testDate: cleanOptional(values.testDate),
+    texture: cleanOptional(values.texture)
+  };
+}
+
+function toSoilDashboardRecord(
+  profile: CarbonSoilProfileRecord,
+  plots: CarbonFarmPlotRecord[]
+): SoilDashboardRecord {
+  const plot = plots.find((item) => item.id === profile.carbonFarmPlotId);
+  const reportLabel = profile.reportFileName
+    ? profile.reportStorageKey
+      ? `Uploaded ${profile.reportFileName}`
+      : profile.reportFileName
+    : profile.reportUrl
+      ? "Linked report URL"
+      : "No report attached";
+
+  return {
+    id: profile.id,
+    metaLines: [
+      [
+        metricLine("SOC", profile.soilOrganicCarbonPercent, "%"),
+        metricLine("pH", profile.ph),
+        metricLine("N", profile.nitrogenKgHa)
+      ]
+        .filter(Boolean)
+        .join(" - ") || "Lab values not entered",
+      profile.labName ?? "Lab not set"
+    ],
+    metrics: soilProfileMetrics(profile),
+    reportLabel,
+    socPercent: profile.soilOrganicCarbonPercent,
+    statusLabel: profile.status,
+    testDate: profile.testDate ? formatDate(profile.testDate) : undefined,
+    title: plot?.farmName ?? profile.labName ?? "Profile level soil record"
+  };
+}
+
+function soilFallbackMetrics(
+  snapshot: FarmerCarbonSnapshot
+): SoilDashboardMetric[] {
+  return [
+    { label: "SOC", value: `${snapshot.soilProfile.soilOrganicCarbonPercent}%` },
+    { label: "pH", value: snapshot.soilProfile.ph },
+    { label: "EC", value: snapshot.soilProfile.ec },
+    { label: "Nitrogen", value: snapshot.soilProfile.nitrogenKgHa },
+    { label: "Phosphorus", value: snapshot.soilProfile.phosphorusKgHa },
+    { label: "Potassium", value: snapshot.soilProfile.potassiumKgHa }
+  ];
+}
+
+function soilProfileMetrics(
+  profile: CarbonSoilProfileRecord
+): SoilDashboardMetric[] {
+  return [
+    { label: "SOC", value: valueOrUnset(profile.soilOrganicCarbonPercent, "%") },
+    { label: "pH", value: valueOrUnset(profile.ph) },
+    { label: "EC", value: valueOrUnset(profile.electricalConductivity) },
+    { label: "Nitrogen", value: valueOrUnset(profile.nitrogenKgHa) },
+    { label: "Phosphorus", value: valueOrUnset(profile.phosphorusKgHa) },
+    { label: "Potassium", value: valueOrUnset(profile.potassiumKgHa) }
+  ];
+}
+
+function cleanOptional(value: string | undefined) {
+  const trimmed = value?.trim();
+  return trimmed || undefined;
+}
+
+function toOptionalInput(value: number | undefined) {
+  return value === undefined ? "" : String(value);
+}
+
+function valueOrUnset(value: number | undefined, suffix = "") {
+  return value === undefined ? "Not set" : `${value}${suffix}`;
+}
+
+function metricLine(label: string, value: number | undefined, suffix = "") {
+  return value === undefined ? "" : `${label} ${value}${suffix}`;
+}
+
+function guessReportContentType(fileName: string) {
+  const extension = fileName.split(".").pop()?.toLowerCase();
+
+  if (extension === "pdf") {
+    return "application/pdf";
+  }
+
+  if (extension === "png") {
+    return "image/png";
+  }
+
+  if (extension === "jpg" || extension === "jpeg") {
+    return "image/jpeg";
+  }
+
+  if (extension === "webp") {
+    return "image/webp";
+  }
+
+  return "application/octet-stream";
 }
 
 function ActivitiesSection({ snapshot }: { snapshot: FarmerCarbonSnapshot }) {
@@ -1179,14 +1666,14 @@ function ActivitiesSection({ snapshot }: { snapshot: FarmerCarbonSnapshot }) {
   );
 }
 
-function SectionTabs({
+function SectionTabs<T extends string>({
   activeSection,
   onChange,
   sections
 }: {
-  activeSection: CarbonUserSectionId;
-  onChange: (section: CarbonUserSectionId) => void;
-  sections: { id: CarbonUserSectionId; label: string }[];
+  activeSection: T;
+  onChange: (section: T) => void;
+  sections: { id: T; label: string }[];
 }) {
   return (
     <View style={styles.sectionTabs}>
@@ -1229,24 +1716,6 @@ function QuickAction({
   );
 }
 
-function PlaceholderFeatureCard({
-  label,
-  meta,
-  status
-}: {
-  label: string;
-  meta: string;
-  status: string;
-}) {
-  return (
-    <View style={styles.placeholderCard}>
-      <Text style={styles.rowTitle}>{label}</Text>
-      <Text style={styles.rowMeta}>{meta}</Text>
-      <StatusBadge label={status} tone="warning" />
-    </View>
-  );
-}
-
 function Metric({ label, value }: { label: string; value: number | string }) {
   return (
     <View style={styles.metric}>
@@ -1275,6 +1744,10 @@ function formatNumber(value: number) {
 
 function sum(values: number[]) {
   return Math.round(values.reduce((total, value) => total + value, 0) * 100) / 100;
+}
+
+function upsertById<T extends { id: string }>(items: T[], nextItem: T) {
+  return [nextItem, ...items.filter((item) => item.id !== nextItem.id)];
 }
 
 const styles = StyleSheet.create({
@@ -1315,6 +1788,32 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700",
     marginTop: 7
+  },
+  choiceButton: {
+    backgroundColor: "#ffffff",
+    borderColor: "#c9d8df",
+    borderRadius: 8,
+    borderWidth: 1,
+    minHeight: 38,
+    paddingHorizontal: 11,
+    paddingVertical: 8
+  },
+  choiceButtonActive: {
+    backgroundColor: "#e8f3f2",
+    borderColor: "#1f6f73"
+  },
+  choiceButtonText: {
+    color: "#53666f",
+    fontSize: 13,
+    fontWeight: "800"
+  },
+  choiceButtonTextActive: {
+    color: "#1f6f73"
+  },
+  choiceRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8
   },
   completionBadge: {
     alignItems: "center",
@@ -1397,6 +1896,10 @@ const styles = StyleSheet.create({
     color: "#53666f",
     fontSize: 13,
     fontWeight: "800"
+  },
+  inlineActions: {
+    alignItems: "flex-end",
+    gap: 8
   },
   listRow: {
     alignItems: "flex-start",
@@ -1501,15 +2004,8 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     marginBottom: 6
   },
-  placeholderCard: {
-    backgroundColor: "#ffffff",
-    borderColor: "#d9e4ea",
-    borderRadius: 8,
-    borderWidth: 1,
-    flex: 1,
-    gap: 8,
-    minWidth: 180,
-    padding: 14
+  optionBlock: {
+    gap: 8
   },
   primaryButton: {
     alignItems: "center",
@@ -1598,6 +2094,21 @@ const styles = StyleSheet.create({
   },
   secondaryDangerButtonText: {
     color: "#b53b2f",
+    fontSize: 13,
+    fontWeight: "800"
+  },
+  secondaryButton: {
+    alignItems: "center",
+    backgroundColor: "#e8f3f2",
+    borderColor: "#b9d8d6",
+    borderRadius: 8,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 34,
+    paddingHorizontal: 12
+  },
+  secondaryButtonText: {
+    color: "#1f6f73",
     fontSize: 13,
     fontWeight: "800"
   },

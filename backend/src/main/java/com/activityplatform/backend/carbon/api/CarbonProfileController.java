@@ -146,7 +146,7 @@ public class CarbonProfileController {
   }
 
   @PostMapping("/profiles/{profileId}/soil-profiles")
-  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER','FIELD_COORDINATOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER','FIELD_COORDINATOR','FARMER')")
   ApiResponse<CarbonSoilProfileResponse> createSoilProfile(
       Authentication authentication,
       @PathVariable UUID profileId,
@@ -160,7 +160,7 @@ public class CarbonProfileController {
   }
 
   @PutMapping("/soil-profiles/{soilProfileId}")
-  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER','FIELD_COORDINATOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER','FIELD_COORDINATOR','FARMER')")
   ApiResponse<CarbonSoilProfileResponse> updateSoilProfile(
       Authentication authentication,
       @PathVariable UUID soilProfileId,
@@ -177,7 +177,7 @@ public class CarbonProfileController {
       value = "/soil-profiles/{soilProfileId}/report",
       consumes = MediaType.MULTIPART_FORM_DATA_VALUE
   )
-  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER','FIELD_COORDINATOR')")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER','FIELD_COORDINATOR','FARMER')")
   ApiResponse<CarbonSoilProfileResponse> uploadSoilReport(
       Authentication authentication,
       @PathVariable UUID soilProfileId,

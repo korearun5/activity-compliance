@@ -531,7 +531,7 @@ class CarbonProfileControllerIT {
     );
     String soilResponse = mockMvc.perform(post("/api/v1/carbon/profiles/" + profile.id()
             + "/soil-profiles")
-            .header("Authorization", "Bearer " + adminToken)
+            .header("Authorization", "Bearer " + farmerToken)
             .contentType("application/json")
             .content(jsonMapper.writeValueAsString(soilRequest)))
         .andExpect(status().isOk())
@@ -562,7 +562,7 @@ class CarbonProfileControllerIT {
         CarbonRecordStatus.ACTIVE
     );
     mockMvc.perform(put("/api/v1/carbon/soil-profiles/" + soilProfile.id())
-            .header("Authorization", "Bearer " + adminToken)
+            .header("Authorization", "Bearer " + farmerToken)
             .contentType("application/json")
             .content(jsonMapper.writeValueAsString(updateSoilRequest)))
         .andExpect(status().isOk())
@@ -577,7 +577,7 @@ class CarbonProfileControllerIT {
     );
     mockMvc.perform(multipart("/api/v1/carbon/soil-profiles/" + soilProfile.id() + "/report")
             .file(soilReport)
-            .header("Authorization", "Bearer " + adminToken))
+            .header("Authorization", "Bearer " + farmerToken))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.data.reportFileName").value("soil-lab-report.pdf"))
         .andExpect(jsonPath("$.data.reportContentType").value("application/pdf"))
@@ -587,20 +587,22 @@ class CarbonProfileControllerIT {
 
     MockMultipartFile farmerUploadAttempt = new MockMultipartFile(
         "file",
-        "farmer-soil-report.pdf",
+        "farmer-soil-report-replace.pdf",
         "application/pdf",
         "soil report content".getBytes(StandardCharsets.UTF_8)
     );
     mockMvc.perform(multipart("/api/v1/carbon/soil-profiles/" + soilProfile.id() + "/report")
             .file(farmerUploadAttempt)
             .header("Authorization", "Bearer " + farmerToken))
-        .andExpect(status().isForbidden());
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.reportFileName").value("farmer-soil-report-replace.pdf"));
 
     mockMvc.perform(get("/api/v1/carbon/profiles/" + profile.id() + "/soil-profiles")
             .header("Authorization", "Bearer " + farmerToken))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.data[0].id").value(soilProfile.id().toString()))
-        .andExpect(jsonPath("$.data[0].reportFileName").value("soil-lab-report.pdf"));
+        .andExpect(jsonPath("$.data[0].reportFileName")
+            .value("farmer-soil-report-replace.pdf"));
 
   }
 

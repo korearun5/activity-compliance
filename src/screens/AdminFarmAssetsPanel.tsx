@@ -26,9 +26,13 @@ import {
 } from "../data/soilProfileStore";
 import {
   SoilReportField,
-  SoilReportUploader,
   SoilReportValues
 } from "../shared/components/SoilReportUploader";
+import { SoilManualEntryForm } from "../shared/components/SoilManualEntryForm";
+import {
+  SoilProfileList,
+  SoilProfileListRecord
+} from "../shared/components/SoilProfileList";
 import { StatusBadge } from "../ui/StatusBadge";
 
 type AdminFarmAssetsPanelProps = {
@@ -232,7 +236,7 @@ export function AdminFarmAssetsPanel({ member }: AdminFarmAssetsPanelProps) {
         onSubmit={handleCreateSoilProfile}
       />
 
-      <SoilProfileList soilProfiles={soilProfiles} />
+      <FpoSoilProfileList soilProfiles={soilProfiles} />
     </View>
   );
 }
@@ -629,6 +633,54 @@ function FarmPlotList({
   );
 }
 
+const fpoSoilFields: SoilReportField[] = [
+  "soilOrganicCarbon",
+  "ph",
+  "nitrogen",
+  "phosphorus",
+  "potassium",
+  "reportFileName",
+  "reportUrl",
+  "notes"
+];
+
+function toFpoSoilInput(values: SoilReportValues): SoilProfileInput {
+  return {
+    nitrogen: values.nitrogen?.trim(),
+    notes: values.notes?.trim(),
+    ph: values.ph?.trim(),
+    phosphorus: values.phosphorus?.trim(),
+    potassium: values.potassium?.trim(),
+    reportContentType: values.reportFileName?.trim()
+      ? guessContentType(values.reportFileName)
+      : "",
+    reportFileName: values.reportFileName?.trim(),
+    reportUrl: values.reportUrl?.trim(),
+    soilOrganicCarbon: values.soilOrganicCarbon?.trim()
+  };
+}
+
+function toFpoSoilListRecord(profile: SoilProfile): SoilProfileListRecord {
+  const reportLabel = profile.reportFileName
+    ? profile.reportFileName
+    : profile.reportUrl
+      ? "Linked report URL"
+      : "No report attached";
+
+  return {
+    id: profile.id,
+    metaLines: [
+      formatSoilValues(profile) || "Lab values not entered",
+      profile.reportUrl ?? "",
+      profile.notes ?? ""
+    ].filter(Boolean),
+    reportLabel,
+    statusLabel: "Saved",
+    statusTone: "neutral",
+    title: profile.reportFileName || "Soil profile"
+  };
+}
+
 function SoilProfileForm({
   isSubmitting,
   onSubmit
@@ -636,93 +688,34 @@ function SoilProfileForm({
   isSubmitting: boolean;
   onSubmit: (input: SoilProfileInput) => Promise<boolean>;
 }) {
-  const [values, setValues] = useState<SoilReportValues>({});
-  const [localError, setLocalError] = useState("");
-
-  async function handleSubmit() {
-    const input: SoilProfileInput = {
-      nitrogen: values.nitrogen?.trim(),
-      notes: values.notes?.trim(),
-      ph: values.ph?.trim(),
-      phosphorus: values.phosphorus?.trim(),
-      potassium: values.potassium?.trim(),
-      reportContentType: values.reportFileName?.trim()
-        ? guessContentType(values.reportFileName)
-        : "",
-      reportFileName: values.reportFileName?.trim(),
-      reportUrl: values.reportUrl?.trim(),
-      soilOrganicCarbon: values.soilOrganicCarbon?.trim()
-    };
-    const validationError = validateSoilProfileInput(input);
-
-    if (validationError) {
-      setLocalError(validationError);
-      return;
-    }
-
-    setLocalError("");
-    const created = await onSubmit(input);
-
-    if (created) {
-      setValues({});
-    }
-  }
-
-  function handleChange(field: SoilReportField, value: string) {
-    setValues((current) => ({ ...current, [field]: value }));
-  }
-
   return (
-    <SoilReportUploader
+    <SoilManualEntryForm
+      buildInput={toFpoSoilInput}
+      clearOnSuccess
+      description="Record SOC, pH, NPK, notes, and optional report metadata."
       endpointPrefix="/api/v1/fpo/soil-profiles"
-      error={localError}
-      fields={[
-        "soilOrganicCarbon",
-        "ph",
-        "nitrogen",
-        "phosphorus",
-        "potassium",
-        "reportFileName",
-        "reportUrl",
-        "notes"
-      ]}
+      fields={fpoSoilFields}
+      formTitle="Soil values"
       isSubmitting={isSubmitting}
       module="fpo"
       submitLabel="Add soil profile"
       title="Add soil profile"
-      values={values}
-      onChange={handleChange}
-      onSubmit={handleSubmit}
+      validate={validateSoilProfileInput}
+      onSubmit={onSubmit}
     />
   );
 }
 
-function SoilProfileList({ soilProfiles }: { soilProfiles: SoilProfile[] }) {
+function FpoSoilProfileList({ soilProfiles }: { soilProfiles: SoilProfile[] }) {
+  const records = soilProfiles.map(toFpoSoilListRecord);
+
   return (
     <View style={styles.listSection}>
       <Text style={styles.sectionLabel}>Saved soil profiles</Text>
-      {soilProfiles.length ? (
-        soilProfiles.map((profile) => (
-          <View key={profile.id} style={styles.assetRow}>
-            <View style={styles.assetText}>
-              <Text style={styles.assetTitle}>
-                {profile.reportFileName || "Soil profile"}
-              </Text>
-              <Text style={styles.assetMeta}>
-                {formatSoilValues(profile) || "Lab values not entered"}
-              </Text>
-              {profile.reportUrl ? (
-                <Text style={styles.assetMeta}>{profile.reportUrl}</Text>
-              ) : null}
-              {profile.notes ? (
-                <Text style={styles.assetMeta}>{profile.notes}</Text>
-              ) : null}
-            </View>
-          </View>
-        ))
-      ) : (
-        <Text style={styles.emptyText}>No soil profile saved for this member.</Text>
-      )}
+      <SoilProfileList
+        emptyMessage="No soil profile saved for this member."
+        records={records}
+      />
     </View>
   );
 }

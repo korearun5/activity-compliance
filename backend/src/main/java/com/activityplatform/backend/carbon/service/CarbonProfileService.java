@@ -488,7 +488,12 @@ public class CarbonProfileService {
       CarbonSoilProfileRequest request
   ) {
     requireCarbonModule(currentUser);
-    CarbonProfileEntity profile = requireMutableProfile(currentUser, profileId);
+    CarbonProfileEntity profile = requireAccessibleProfile(currentUser, profileId);
+    CarbonAccessPolicy.requireProfileRecordMutationAccess(
+        currentUser,
+        profile,
+        "You do not have permission to create this Carbon soil profile."
+    );
     CarbonFarmPlotEntity plot = resolvePlot(currentUser, profile, request.carbonFarmPlotId());
     Instant now = Instant.now();
     CarbonSoilProfileEntity soilProfile = new CarbonSoilProfileEntity(
@@ -526,7 +531,7 @@ public class CarbonProfileService {
   ) {
     requireCarbonModule(currentUser);
     CarbonSoilProfileEntity soilProfile = requireSoilProfile(currentUser, soilProfileId);
-    CarbonAccessPolicy.requireProfileMutationAccess(
+    CarbonAccessPolicy.requireProfileRecordMutationAccess(
         currentUser,
         soilProfile.getCarbonProfile(),
         "You do not have permission to update this Carbon soil profile."
@@ -572,7 +577,7 @@ public class CarbonProfileService {
     }
 
     CarbonSoilProfileEntity soilProfile = requireSoilProfile(currentUser, soilProfileId);
-    CarbonAccessPolicy.requireProfileMutationAccess(
+    CarbonAccessPolicy.requireProfileRecordMutationAccess(
         currentUser,
         soilProfile.getCarbonProfile(),
         "You do not have permission to upload this Carbon soil report."
