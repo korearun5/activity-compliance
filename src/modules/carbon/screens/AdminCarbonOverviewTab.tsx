@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { StateCard } from "../../../ui/StateCard";
 import { StatusBadge } from "../../../ui/StatusBadge";
+import { ActivityTimeline } from "../../../shared/components/ActivityTimeline";
 import { CarbonProgramSnapshot, getCarbonProgramSnapshot } from "../data/carbonStore";
 import { CarbonProfileRecord } from "../data/carbonProfileStore";
 import { AdminBankVerification } from "./AdminBankVerification";
@@ -205,28 +206,27 @@ function ActivityVerificationSection({
 }: {
   snapshot: CarbonProgramSnapshot;
 }) {
+  const timelineItems = snapshot.activities.map((activity) => ({
+    id: activity.id,
+    metaLines: [
+      `${activity.crop} - ${activity.inputUsed} - ${activity.quantity}`,
+      `Score ${activity.activityScore} - ${activity.emissionReductionTco2e} tCO2e reduction`,
+      `${activity.evidenceCount} evidence item${
+        activity.evidenceCount === 1 ? "" : "s"
+      }`
+    ],
+    statusLabel: activity.verificationStatus,
+    statusTone: activity.verificationStatus === "Verified" ? "good" as const : "warning" as const,
+    title: activity.category
+  }));
+
   return (
     <View style={styles.panel}>
       <Text style={styles.subsectionTitle}>Activity verification queue</Text>
-      {snapshot.activities.map((activity) => (
-        <View key={activity.id} style={styles.row}>
-          <View style={styles.rowText}>
-            <Text style={styles.rowTitle}>{activity.category}</Text>
-            <Text style={styles.rowMeta}>
-              {activity.crop} - {activity.inputUsed} - {activity.quantity}
-            </Text>
-            <Text style={styles.rowMeta}>
-              Score {activity.activityScore} - {activity.emissionReductionTco2e}{" "}
-              tCO2e reduction - {activity.evidenceCount} evidence item
-              {activity.evidenceCount === 1 ? "" : "s"}
-            </Text>
-          </View>
-          <StatusBadge
-            label={activity.verificationStatus}
-            tone={activity.verificationStatus === "Verified" ? "good" : "warning"}
-          />
-        </View>
-      ))}
+      <ActivityTimeline
+        emptyMessage="No Carbon activities are waiting for verification."
+        items={timelineItems}
+      />
       <StateCard
         message="Approve and reject actions will use the shared evidence review path in CARBON-CLIENT-011."
         tone="info"

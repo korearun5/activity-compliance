@@ -45,6 +45,7 @@ import {
 import { getCachedEnabledModules, PlatformModuleCode } from "../data/moduleStore";
 import { getVisibleFarmerTabs, type FarmerTabId } from "../auth/roleAccess";
 import { getEnabledClientModuleIds } from "../modules";
+import { EvidenceUploader } from "../shared/components/EvidenceUploader";
 import { StatusBadge } from "../ui/StatusBadge";
 import { UserCarbonScreen } from "../modules/carbon";
 
@@ -684,14 +685,21 @@ function CyclesView({
 
                     {selectedProof?.cycleId === cycle.id &&
                     selectedProof.stepId === step.id ? (
-                      <ProofForm
-                        proofError={proofError}
-                        proofNote={proofNote}
-                        proofPhotoUri={proofPhotoUri}
-                        selectedProof={selectedProof}
-                        setProofNote={setProofNote}
+                      <EvidenceUploader
+                        description={`${selectedProof.crop} - ${selectedProof.plot} - ${selectedProof.action}`}
+                        error={proofError}
+                        fileLabel="Proof photo"
+                        filePlaceholder="No photo selected"
+                        fileUri={proofPhotoUri}
+                        module="fpo"
+                        note={proofNote}
+                        notePlaceholder="Example: Irrigation completed for 40 minutes using drip line."
+                        pickLabel="Choose photo"
+                        submitLabel="Mark done"
+                        title="Submit proof"
                         onCancel={onCancelProof}
-                        onPickPhoto={onPickPhoto}
+                        onChangeNote={setProofNote}
+                        onPickFile={onPickPhoto}
                         onSubmit={onSubmitProof}
                       />
                     ) : null}
@@ -929,73 +937,6 @@ function SelfReview({ proof }: { proof: ProofSubmission }) {
       {proof.photoUri ? (
         <Image source={{ uri: proof.photoUri }} style={styles.reviewImage} />
       ) : null}
-    </View>
-  );
-}
-
-function ProofForm({
-  proofError,
-  proofNote,
-  proofPhotoUri,
-  selectedProof,
-  setProofNote,
-  onCancel,
-  onPickPhoto,
-  onSubmit
-}: {
-  proofError: string;
-  proofNote: string;
-  proofPhotoUri: string | null;
-  selectedProof: SelectedProof;
-  setProofNote: (note: string) => void;
-  onCancel: () => void;
-  onPickPhoto: () => void;
-  onSubmit: () => void;
-}) {
-  return (
-    <View style={styles.formCard}>
-      <View style={styles.cardHeader}>
-        <View style={styles.cardHeaderText}>
-          <Text style={styles.cardTitle}>Submit proof</Text>
-          <Text style={styles.cardDescription}>
-            {selectedProof.crop} - {selectedProof.plot} - {selectedProof.action}
-          </Text>
-        </View>
-        <Pressable style={styles.closeButton} onPress={onCancel}>
-          <Text style={styles.closeButtonText}>Cancel</Text>
-        </Pressable>
-      </View>
-
-      <Text style={styles.inputLabel}>Action note</Text>
-      <TextInput
-        multiline
-        numberOfLines={4}
-        onChangeText={setProofNote}
-        placeholder="Example: Irrigation completed for 40 minutes using drip line."
-        style={styles.noteInput}
-        textAlignVertical="top"
-        value={proofNote}
-      />
-
-      <Text style={styles.inputLabel}>Proof photo</Text>
-      {proofPhotoUri ? (
-        <Image source={{ uri: proofPhotoUri }} style={styles.proofImage} />
-      ) : (
-        <View style={styles.photoPlaceholder}>
-          <Text style={styles.photoPlaceholderText}>No photo selected</Text>
-        </View>
-      )}
-
-      {proofError ? <Text style={styles.errorText}>{proofError}</Text> : null}
-
-      <View style={styles.formActions}>
-        <Pressable style={styles.secondaryButton} onPress={onPickPhoto}>
-          <Text style={styles.secondaryButtonText}>Choose photo</Text>
-        </Pressable>
-        <Pressable style={styles.primaryButton} onPress={onSubmit}>
-          <Text style={styles.primaryButtonText}>Mark done</Text>
-        </Pressable>
-      </View>
     </View>
   );
 }

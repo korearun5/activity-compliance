@@ -933,6 +933,21 @@ function PlotsSection({
   livePlots: CarbonFarmPlotRecord[];
   snapshot: FarmerCarbonSnapshot;
 }) {
+  const [selectedPlotId, setSelectedPlotId] = useState<string | null>(null);
+  const selectedPlot =
+    livePlots.find((plot) => plot.id === selectedPlotId) ?? livePlots[0] ?? null;
+
+  useEffect(() => {
+    if (!livePlots.length) {
+      setSelectedPlotId(null);
+      return;
+    }
+
+    if (!selectedPlotId || !livePlots.some((plot) => plot.id === selectedPlotId)) {
+      setSelectedPlotId(livePlots[0].id);
+    }
+  }, [livePlots, selectedPlotId]);
+
   return (
     <>
       <View style={styles.card}>
@@ -948,34 +963,52 @@ function PlotsSection({
       </View>
 
       {livePlots.length ? (
-        livePlots.map((plot) => (
-          <View key={plot.id} style={styles.listRow}>
-            <View style={styles.rowText}>
-              <Text style={styles.rowTitle}>{plot.farmName}</Text>
-              <Text style={styles.rowMeta}>
-                {formatNumber(plot.areaAcres)} ac - {plot.latitude}, {plot.longitude}
-              </Text>
-              <Text style={styles.rowMeta}>
-                {[plot.primaryCrop, plot.irrigationSource, plot.tillageStatus]
-                  .filter(Boolean)
-                  .join(" - ") || "Plot context not set"}
-              </Text>
-              <Text style={styles.rowMeta}>
-                {[
-                  plot.variety,
-                  plot.rootstock ? `Rootstock ${plot.rootstock}` : null,
-                  plot.blockCode ? `Block ${plot.blockCode}` : null,
-                  plot.spacing,
-                  plot.rowCount !== undefined ? `${plot.rowCount} rows` : null,
-                  plot.plantingDate ? `Planted ${formatDate(plot.plantingDate)}` : null
-                ]
-                  .filter(Boolean)
-                  .join(" - ") || "Vineyard details not set"}
-              </Text>
-            </View>
-            <StatusBadge label={plot.status} tone="neutral" />
-          </View>
-        ))
+        <>
+          {livePlots.map((plot) => {
+            const isSelected = selectedPlot?.id === plot.id;
+
+            return (
+              <Pressable
+                key={plot.id}
+                accessibilityRole="button"
+                style={[styles.listRow, isSelected && styles.selectedPlotRow]}
+                onPress={() => setSelectedPlotId(plot.id)}
+              >
+                <PlotMapPlaceholder compact plot={plot} />
+                <View style={styles.rowText}>
+                  <Text style={styles.rowTitle}>{plot.farmName}</Text>
+                  <Text style={styles.rowMeta}>
+                    {formatNumber(plot.areaAcres)} ac - {plot.latitude}, {plot.longitude}
+                  </Text>
+                  <Text style={styles.rowMeta}>
+                    {[plot.primaryCrop, plot.irrigationSource, plot.tillageStatus]
+                      .filter(Boolean)
+                      .join(" - ") || "Plot context not set"}
+                  </Text>
+                  <Text style={styles.rowMeta}>
+                    {[
+                      plot.variety,
+                      plot.rootstock ? `Rootstock ${plot.rootstock}` : null,
+                      plot.blockCode ? `Block ${plot.blockCode}` : null,
+                      plot.spacing,
+                      plot.rowCount !== undefined ? `${plot.rowCount} rows` : null,
+                      plot.plantingDate
+                        ? `Planted ${formatDate(plot.plantingDate)}`
+                        : null
+                    ]
+                      .filter(Boolean)
+                      .join(" - ") || "Vineyard details not set"}
+                  </Text>
+                </View>
+                <StatusBadge
+                  label={isSelected ? "Selected" : plot.status}
+                  tone="neutral"
+                />
+              </Pressable>
+            );
+          })}
+          {selectedPlot ? <PlotDetailCard plot={selectedPlot} /> : null}
+        </>
       ) : (
         <View style={styles.listRow}>
           <View style={styles.rowText}>
@@ -998,6 +1031,59 @@ function PlotsSection({
         tone="info"
       />
     </>
+  );
+}
+
+function PlotDetailCard({ plot }: { plot: CarbonFarmPlotRecord }) {
+  return (
+    <View style={styles.card}>
+      <View style={styles.cardHeader}>
+        <View style={styles.cardHeaderText}>
+          <Text style={styles.sectionTitle}>Plot detail</Text>
+          <Text style={styles.cardDescription}>{plot.farmName}</Text>
+        </View>
+        <StatusBadge label={plot.status} tone="neutral" />
+      </View>
+      <PlotMapPlaceholder plot={plot} />
+      <View style={styles.metricGrid}>
+        <Metric label="Area" value={`${formatNumber(plot.areaAcres)} ac`} />
+        <Metric label="GPS" value={`${plot.latitude}, ${plot.longitude}`} />
+        <Metric label="Variety" value={plot.variety ?? "Not set"} />
+        <Metric label="Rootstock" value={plot.rootstock ?? "Not set"} />
+        <Metric label="Block" value={plot.blockCode ?? "Not set"} />
+        <Metric label="Spacing" value={plot.spacing ?? "Not set"} />
+        <Metric
+          label="Rows"
+          value={plot.rowCount !== undefined ? String(plot.rowCount) : "Not set"}
+        />
+        <Metric
+          label="Planted"
+          value={plot.plantingDate ? formatDate(plot.plantingDate) : "Not set"}
+        />
+      </View>
+    </View>
+  );
+}
+
+function PlotMapPlaceholder({
+  compact = false,
+  plot
+}: {
+  compact?: boolean;
+  plot: CarbonFarmPlotRecord;
+}) {
+  return (
+    <View style={[styles.mapPlaceholder, compact && styles.mapPlaceholderCompact]}>
+      <View style={styles.mapGridLineHorizontal} />
+      <View style={styles.mapGridLineVertical} />
+      <View style={styles.mapPin} />
+      <Text style={styles.mapLabel}>{plot.blockCode ?? plot.farmName}</Text>
+      {!compact ? (
+        <Text style={styles.mapMeta}>
+          {plot.latitude}, {plot.longitude}
+        </Text>
+      ) : null}
+    </View>
   );
 }
 
@@ -1323,6 +1409,64 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     padding: 14
   },
+  mapGridLineHorizontal: {
+    backgroundColor: "#d9e4ea",
+    height: 1,
+    left: 0,
+    position: "absolute",
+    right: 0,
+    top: "50%"
+  },
+  mapGridLineVertical: {
+    backgroundColor: "#d9e4ea",
+    bottom: 0,
+    left: "50%",
+    position: "absolute",
+    top: 0,
+    width: 1
+  },
+  mapLabel: {
+    color: "#172126",
+    fontSize: 12,
+    fontWeight: "800",
+    maxWidth: "88%",
+    textAlign: "center"
+  },
+  mapMeta: {
+    color: "#53666f",
+    fontSize: 12,
+    fontWeight: "700",
+    marginTop: 4,
+    textAlign: "center"
+  },
+  mapPin: {
+    backgroundColor: "#1f6f73",
+    borderColor: "#ffffff",
+    borderRadius: 8,
+    borderWidth: 2,
+    height: 16,
+    marginBottom: 8,
+    width: 16
+  },
+  mapPlaceholder: {
+    alignItems: "center",
+    aspectRatio: 2.8,
+    backgroundColor: "#eef7f7",
+    borderColor: "#b9d8d6",
+    borderRadius: 8,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 112,
+    overflow: "hidden",
+    padding: 12,
+    position: "relative",
+    width: "100%"
+  },
+  mapPlaceholderCompact: {
+    aspectRatio: 1,
+    minHeight: 72,
+    width: 76
+  },
   metric: {
     backgroundColor: "#f4f7fb",
     borderRadius: 8,
@@ -1436,6 +1580,11 @@ const styles = StyleSheet.create({
     color: "#172126",
     fontSize: 18,
     fontWeight: "800"
+  },
+  selectedPlotRow: {
+    backgroundColor: "#eef7f7",
+    borderColor: "#1f6f73",
+    borderWidth: 2
   },
   secondaryDangerButton: {
     alignItems: "center",

@@ -1,4 +1,3 @@
-import * as DocumentPicker from "expo-document-picker";
 import { ReactNode, useEffect, useMemo, useState } from "react";
 import {
   Modal,
@@ -21,6 +20,15 @@ import {
   validateFarmerIdentityInput
 } from "../../../shared/farmers/farmerIdentity";
 import {
+  ActivityTimeline,
+  ActivityTimelineItem
+} from "../../../shared/components/ActivityTimeline";
+import {
+  SoilReportField,
+  SoilReportUploader,
+  SoilReportValues
+} from "../../../shared/components/SoilReportUploader";
+import {
   CARBON_AADHAAR_STATUSES,
   CARBON_BANK_STATUSES,
   CARBON_DOCUMENT_STATUSES,
@@ -35,6 +43,7 @@ import {
   CarbonProfileInput,
   CarbonProfileRecord,
   CarbonSoilProfileInput,
+  CarbonSoilReportFile,
   CarbonSoilProfileRecord,
   createCarbonActivity,
   createCarbonFarmPlot,
@@ -256,29 +265,20 @@ export function CarbonProfileAdminPanel({
     }
   }
 
-  async function handleSoilReportUpload(soilProfile: CarbonSoilProfileRecord) {
+  async function handleSoilReportUpload(
+    soilProfile: CarbonSoilProfileRecord,
+    file: CarbonSoilReportFile
+  ) {
     setUploadingReportId(soilProfile.id);
     setError("");
 
     try {
-      const result = await DocumentPicker.getDocumentAsync({
-        copyToCacheDirectory: true,
-        multiple: false,
-        type: ["application/pdf", "image/*"]
-      });
-
-      if (result.canceled) {
-        return;
-      }
-
-      const asset = result.assets[0];
-      const saved = await uploadCarbonSoilReport(soilProfile.id, {
-        name: asset.name,
-        type: asset.mimeType,
-        uri: asset.uri
-      });
+      const saved = await uploadCarbonSoilReport(soilProfile.id, file);
 
       setSoilProfiles((current) => upsertById(current, saved));
+      setEditingSoilProfile((current) =>
+        current?.id === saved.id ? saved : current
+      );
     } catch (uploadError) {
       setError(getErrorMessage(uploadError, "Unable to upload Carbon soil report."));
     } finally {
@@ -437,10 +437,8 @@ export function CarbonProfileAdminPanel({
                 isFormOpen={activeForm === "soil"}
                 onAdd={() => openSoilForm()}
                 onEdit={(soilProfile) => openSoilForm(soilProfile)}
-                onUploadReport={handleSoilReportUpload}
                 plots={plots}
                 soilProfiles={soilProfiles}
-                uploadingReportId={uploadingReportId}
               />
 
               <ActivityList
@@ -487,6 +485,12 @@ export function CarbonProfileAdminPanel({
           <CarbonSoilProfileForm
             editingSoilProfile={editingSoilProfile}
             isSubmitting={savingKey === "soil"}
+            isUploadingReport={uploadingReportId === editingSoilProfile?.id}
+            onUploadReport={
+              editingSoilProfile
+                ? (file) => handleSoilReportUpload(editingSoilProfile, file)
+                : undefined
+            }
             onSubmit={handleSoilSubmit}
             plots={plots}
           />
@@ -1067,11 +1071,15 @@ function CarbonPlotForm({
 function CarbonSoilProfileForm({
   editingSoilProfile,
   isSubmitting,
+  isUploadingReport,
+  onUploadReport,
   onSubmit,
   plots
 }: {
   editingSoilProfile: CarbonSoilProfileRecord | null;
   isSubmitting: boolean;
+  isUploadingReport: boolean;
+  onUploadReport?: (file: CarbonSoilReportFile) => Promise<void>;
   onSubmit: (input: CarbonSoilProfileInput) => Promise<boolean>;
   plots: CarbonFarmPlotRecord[];
 }) {
@@ -1156,6 +1164,64 @@ function CarbonSoilProfileForm({
     }
   }
 
+  function handleReportFieldChange(field: SoilReportField, value: string) {
+    switch (field) {
+      case "bulkDensity":
+        setBulkDensityGmCm3(value);
+        break;
+      case "electricalConductivity":
+        setElectricalConductivity(value);
+        break;
+      case "labName":
+        setLabName(value);
+        break;
+      case "nitrogen":
+        setNitrogenKgHa(value);
+        break;
+      case "ph":
+        setPh(value);
+        break;
+      case "phosphorus":
+        setPhosphorusKgHa(value);
+        break;
+      case "potassium":
+        setPotassiumKgHa(value);
+        break;
+      case "reportFileName":
+        setReportFileName(value);
+        break;
+      case "reportUrl":
+        setReportUrl(value);
+        break;
+      case "soilOrganicCarbon":
+        setSoilOrganicCarbonPercent(value);
+        break;
+      case "testDate":
+        setTestDate(value);
+        break;
+      case "texture":
+        setTexture(value);
+        break;
+      default:
+        break;
+    }
+  }
+
+  const reportValues: SoilReportValues = {
+    bulkDensity: bulkDensityGmCm3,
+    electricalConductivity,
+    labName,
+    nitrogen: nitrogenKgHa,
+    ph,
+    phosphorus: phosphorusKgHa,
+    potassium: potassiumKgHa,
+    reportFileName,
+    reportUrl,
+    soilOrganicCarbon: soilOrganicCarbonPercent,
+    testDate,
+    texture
+  };
+
   return (
     <View style={styles.formBlock}>
       {plots.length ? (
@@ -1172,66 +1238,11 @@ function CarbonSoilProfileForm({
         />
       ) : null}
 
-      <View style={styles.formGrid}>
-        <FormField label="Test date" value={testDate} onChange={setTestDate} />
-        <FormField
-          label="SOC %"
-          keyboardType="decimal-pad"
-          value={soilOrganicCarbonPercent}
-          onChange={setSoilOrganicCarbonPercent}
-        />
-        <FormField label="pH" keyboardType="decimal-pad" value={ph} onChange={setPh} />
-        <FormField
-          label="N kg/ha"
-          keyboardType="decimal-pad"
-          value={nitrogenKgHa}
-          onChange={setNitrogenKgHa}
-        />
-        <FormField
-          label="P kg/ha"
-          keyboardType="decimal-pad"
-          value={phosphorusKgHa}
-          onChange={setPhosphorusKgHa}
-        />
-        <FormField
-          label="K kg/ha"
-          keyboardType="decimal-pad"
-          value={potassiumKgHa}
-          onChange={setPotassiumKgHa}
-        />
-      </View>
-
       <AdvancedSection
         isOpen={showAdvanced}
         label="More soil report details"
         onToggle={() => setShowAdvanced((current) => !current)}
       >
-        <View style={styles.formGrid}>
-          <FormField label="Lab name" value={labName} onChange={setLabName} />
-          <FormField
-            label="EC"
-            keyboardType="decimal-pad"
-            value={electricalConductivity}
-            onChange={setElectricalConductivity}
-          />
-          <FormField
-            label="Bulk density"
-            keyboardType="decimal-pad"
-            value={bulkDensityGmCm3}
-            onChange={setBulkDensityGmCm3}
-          />
-          <FormField label="Texture" value={texture} onChange={setTexture} />
-          <FormField
-            label="Report filename"
-            value={reportFileName}
-            onChange={setReportFileName}
-          />
-          <FormField
-            label="External report URL"
-            value={reportUrl}
-            onChange={setReportUrl}
-          />
-        </View>
         <OptionGroup
           label="Status"
           options={CARBON_RECORD_STATUSES}
@@ -1239,16 +1250,36 @@ function CarbonSoilProfileForm({
           onChange={setStatus}
         />
       </AdvancedSection>
-      <PrimaryButton
-        disabled={isSubmitting}
-        label={
-          isSubmitting
-            ? "Saving..."
-            : editingSoilProfile
-              ? "Update soil profile"
-              : "Add soil profile"
-        }
-        onPress={handleSubmit}
+      <SoilReportUploader
+        endpointPrefix="/api/v1/carbon/soil-profiles"
+        fields={[
+          "testDate",
+          "soilOrganicCarbon",
+          "ph",
+          "nitrogen",
+          "phosphorus",
+          "potassium",
+          ...(showAdvanced
+            ? ([
+                "labName",
+                "electricalConductivity",
+                "bulkDensity",
+                "texture",
+                "reportFileName",
+                "reportUrl"
+              ] as SoilReportField[])
+            : [])
+        ]}
+        hasUploadedFile={Boolean(editingSoilProfile?.reportStorageKey)}
+        isSubmitting={isSubmitting}
+        isUploadingFile={isUploadingReport}
+        module="carbon"
+        onChange={handleReportFieldChange}
+        onSubmit={handleSubmit}
+        onUploadFile={onUploadReport}
+        submitLabel={editingSoilProfile ? "Update soil profile" : "Add soil profile"}
+        title="Soil report"
+        values={reportValues}
       />
     </View>
   );
@@ -1488,6 +1519,21 @@ function PlotList({
   onEdit: (plot: CarbonFarmPlotRecord) => void;
   plots: CarbonFarmPlotRecord[];
 }) {
+  const [selectedPlotId, setSelectedPlotId] = useState<string | null>(null);
+  const selectedPlot =
+    plots.find((plot) => plot.id === selectedPlotId) ?? plots[0] ?? null;
+
+  useEffect(() => {
+    if (!plots.length) {
+      setSelectedPlotId(null);
+      return;
+    }
+
+    if (!selectedPlotId || !plots.some((plot) => plot.id === selectedPlotId)) {
+      setSelectedPlotId(plots[0].id);
+    }
+  }, [plots, selectedPlotId]);
+
   return (
     <View style={styles.listBlock}>
       <View style={styles.sectionHeaderRow}>
@@ -1503,43 +1549,122 @@ function PlotList({
         />
       </View>
       {plots.length ? (
-        plots.map((plot) => (
-          <View key={plot.id} style={styles.recordRow}>
-            <View style={styles.rowText}>
-              <Text style={styles.rowTitle}>{plot.farmName}</Text>
-              <Text style={styles.rowMeta}>
-                {formatNumber(plot.areaAcres)} ac - {plot.latitude}, {plot.longitude}
-              </Text>
-              <Text style={styles.rowMeta}>
-                {[plot.primaryCrop, plot.irrigationSource, plot.tillageStatus]
-                  .filter(Boolean)
-                  .join(" - ") || "Plot context not set"}
-              </Text>
-              <Text style={styles.rowMeta}>
-                {[
-                  plot.variety,
-                  plot.rootstock ? `Rootstock ${plot.rootstock}` : null,
-                  plot.blockCode ? `Block ${plot.blockCode}` : null,
-                  plot.spacing,
-                  plot.rowCount !== undefined ? `${plot.rowCount} rows` : null,
-                  plot.plantingDate ? `Planted ${formatDate(plot.plantingDate)}` : null
-                ]
-                  .filter(Boolean)
-                  .join(" - ") || "Vineyard details not set"}
-              </Text>
-            </View>
-            <View style={styles.actionColumn}>
-              <StatusBadge label={plot.status} tone="neutral" />
-              <ActionButton
-                label={editingPlotId === plot.id ? "Editing" : "Edit"}
-                onPress={() => onEdit(plot)}
-              />
-            </View>
-          </View>
-        ))
+        <>
+          {plots.map((plot) => {
+            const isSelected = selectedPlot?.id === plot.id;
+
+            return (
+              <View
+                key={plot.id}
+                style={[styles.recordRow, isSelected && styles.selectedRow]}
+              >
+                <PlotMapPlaceholder compact plot={plot} />
+                <View style={styles.rowText}>
+                  <Text style={styles.rowTitle}>{plot.farmName}</Text>
+                  <Text style={styles.rowMeta}>
+                    {formatNumber(plot.areaAcres)} ac - {plot.latitude}, {plot.longitude}
+                  </Text>
+                  <Text style={styles.rowMeta}>
+                    {[plot.primaryCrop, plot.irrigationSource, plot.tillageStatus]
+                      .filter(Boolean)
+                      .join(" - ") || "Plot context not set"}
+                  </Text>
+                  <Text style={styles.rowMeta}>
+                    {[
+                      plot.variety,
+                      plot.rootstock ? `Rootstock ${plot.rootstock}` : null,
+                      plot.blockCode ? `Block ${plot.blockCode}` : null,
+                      plot.spacing,
+                      plot.rowCount !== undefined ? `${plot.rowCount} rows` : null,
+                      plot.plantingDate
+                        ? `Planted ${formatDate(plot.plantingDate)}`
+                        : null
+                    ]
+                      .filter(Boolean)
+                      .join(" - ") || "Vineyard details not set"}
+                  </Text>
+                </View>
+                <View style={styles.actionColumn}>
+                  <StatusBadge label={plot.status} tone="neutral" />
+                  <ActionButton
+                    label={isSelected ? "Selected" : "Details"}
+                    onPress={() => setSelectedPlotId(plot.id)}
+                  />
+                  <ActionButton
+                    label={editingPlotId === plot.id ? "Editing" : "Edit"}
+                    onPress={() => onEdit(plot)}
+                  />
+                </View>
+              </View>
+            );
+          })}
+          {selectedPlot ? <PlotDetailCard plot={selectedPlot} /> : null}
+        </>
       ) : (
         <Text style={styles.emptyText}>No farm plots saved for this farmer.</Text>
       )}
+    </View>
+  );
+}
+
+function PlotDetailCard({ plot }: { plot: CarbonFarmPlotRecord }) {
+  return (
+    <View style={styles.detailCard}>
+      <View style={styles.sectionHeaderRow}>
+        <View style={styles.rowText}>
+          <Text style={styles.sectionLabel}>Plot detail</Text>
+          <Text style={styles.panelMeta}>{plot.farmName}</Text>
+        </View>
+        <StatusBadge label={plot.status} tone="neutral" />
+      </View>
+      <PlotMapPlaceholder plot={plot} />
+      <View style={styles.detailGrid}>
+        <DetailMetric label="Area" value={`${formatNumber(plot.areaAcres)} ac`} />
+        <DetailMetric label="GPS" value={`${plot.latitude}, ${plot.longitude}`} />
+        <DetailMetric label="Variety" value={plot.variety ?? "Not set"} />
+        <DetailMetric label="Rootstock" value={plot.rootstock ?? "Not set"} />
+        <DetailMetric label="Block code" value={plot.blockCode ?? "Not set"} />
+        <DetailMetric label="Spacing" value={plot.spacing ?? "Not set"} />
+        <DetailMetric
+          label="Rows"
+          value={plot.rowCount !== undefined ? String(plot.rowCount) : "Not set"}
+        />
+        <DetailMetric
+          label="Planting date"
+          value={plot.plantingDate ? formatDate(plot.plantingDate) : "Not set"}
+        />
+      </View>
+    </View>
+  );
+}
+
+function PlotMapPlaceholder({
+  compact = false,
+  plot
+}: {
+  compact?: boolean;
+  plot: CarbonFarmPlotRecord;
+}) {
+  return (
+    <View style={[styles.mapPlaceholder, compact && styles.mapPlaceholderCompact]}>
+      <View style={styles.mapGridLineHorizontal} />
+      <View style={styles.mapGridLineVertical} />
+      <View style={styles.mapPin} />
+      <Text style={styles.mapLabel}>{plot.blockCode ?? plot.farmName}</Text>
+      {!compact ? (
+        <Text style={styles.mapMeta}>
+          {plot.latitude}, {plot.longitude}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
+function DetailMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.detailMetric}>
+      <Text style={styles.summaryPillLabel}>{label}</Text>
+      <Text style={styles.summaryPillValue}>{value}</Text>
     </View>
   );
 }
@@ -1549,19 +1674,15 @@ function SoilProfileList({
   isFormOpen,
   onAdd,
   onEdit,
-  onUploadReport,
   plots,
-  soilProfiles,
-  uploadingReportId
+  soilProfiles
 }: {
   editingSoilProfileId?: string;
   isFormOpen: boolean;
   onAdd: () => void;
   onEdit: (profile: CarbonSoilProfileRecord) => void;
-  onUploadReport: (profile: CarbonSoilProfileRecord) => void;
   plots: CarbonFarmPlotRecord[];
   soilProfiles: CarbonSoilProfileRecord[];
-  uploadingReportId: string | null;
 }) {
   return (
     <View style={styles.listBlock}>
@@ -1616,17 +1737,6 @@ function SoilProfileList({
               <View style={styles.actionColumn}>
                 <StatusBadge label={profile.status} tone="neutral" />
                 <ActionButton
-                  disabled={uploadingReportId === profile.id}
-                  label={
-                    uploadingReportId === profile.id
-                      ? "Uploading"
-                      : profile.reportStorageKey
-                        ? "Replace report"
-                        : "Upload report"
-                  }
-                  onPress={() => onUploadReport(profile)}
-                />
-                <ActionButton
                   label={editingSoilProfileId === profile.id ? "Editing" : "Edit"}
                   onPress={() => onEdit(profile)}
                 />
@@ -1654,6 +1764,26 @@ function ActivityList({
   onAdd: () => void;
   onEdit: (activity: CarbonActivityRecord) => void;
 }) {
+  const timelineItems: Array<ActivityTimelineItem & { activity: CarbonActivityRecord }> =
+    activities.map((activity) => ({
+      activity,
+      id: activity.id,
+      metaLines: [
+        [activity.cropName, activity.farmName, formatDate(activity.activityDate)]
+          .filter(Boolean)
+          .join(" - "),
+        [activity.inputUsed, formatActivityQuantity(activity)]
+          .filter(Boolean)
+          .join(" - ") || "Input details not set",
+        `Evidence ${activity.evidenceCount} - ${formatVerificationStatus(
+          activity.verificationStatus
+        )}`
+      ],
+      statusLabel: activity.status,
+      statusTone: "neutral",
+      title: activity.categoryName
+    }));
+
   return (
     <View style={styles.listBlock}>
       <View style={styles.sectionHeaderRow}>
@@ -1668,44 +1798,16 @@ function ActivityList({
           onPress={onAdd}
         />
       </View>
-      {activities.length ? (
-        activities.map((activity) => (
-          <View key={activity.id} style={styles.recordRow}>
-            <View style={styles.rowText}>
-              <Text style={styles.rowTitle}>{activity.categoryName}</Text>
-              <Text style={styles.rowMeta}>
-                {[
-                  activity.cropName,
-                  activity.farmName,
-                  formatDate(activity.activityDate)
-                ]
-                  .filter(Boolean)
-                  .join(" - ")}
-              </Text>
-              <Text style={styles.rowMeta}>
-                {[activity.inputUsed, formatActivityQuantity(activity)]
-                  .filter(Boolean)
-                  .join(" - ") || "Input details not set"}
-              </Text>
-              <Text style={styles.rowMeta}>
-                Evidence {activity.evidenceCount} -{" "}
-                {formatVerificationStatus(activity.verificationStatus)}
-              </Text>
-            </View>
-            <View style={styles.actionColumn}>
-              <StatusBadge label={activity.status} tone="neutral" />
-              <ActionButton
-                label={editingActivityId === activity.id ? "Editing" : "Edit"}
-                onPress={() => onEdit(activity)}
-              />
-            </View>
-          </View>
-        ))
-      ) : (
-        <Text style={styles.emptyText}>
-          No Carbon activities saved for this farmer.
-        </Text>
-      )}
+      <ActivityTimeline
+        emptyMessage="No Carbon activities saved for this farmer."
+        items={timelineItems}
+        renderAction={(item) => (
+          <ActionButton
+            label={editingActivityId === item.activity.id ? "Editing" : "Edit"}
+            onPress={() => onEdit(item.activity)}
+          />
+        )}
+      />
     </View>
   );
 }
@@ -1967,6 +2069,29 @@ const styles = StyleSheet.create({
     minWidth: 360,
     padding: 14
   },
+  detailCard: {
+    backgroundColor: "#ffffff",
+    borderColor: "#d9e4ea",
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 12,
+    padding: 12
+  },
+  detailGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8
+  },
+  detailMetric: {
+    backgroundColor: "#f7fafb",
+    borderColor: "#edf3f6",
+    borderRadius: 8,
+    borderWidth: 1,
+    flex: 1,
+    minWidth: 132,
+    paddingHorizontal: 10,
+    paddingVertical: 8
+  },
   disabledButton: {
     opacity: 0.55
   },
@@ -2035,6 +2160,64 @@ const styles = StyleSheet.create({
   },
   listBlock: {
     gap: 10
+  },
+  mapGridLineHorizontal: {
+    backgroundColor: "#d9e4ea",
+    height: 1,
+    left: 0,
+    position: "absolute",
+    right: 0,
+    top: "50%"
+  },
+  mapGridLineVertical: {
+    backgroundColor: "#d9e4ea",
+    bottom: 0,
+    left: "50%",
+    position: "absolute",
+    top: 0,
+    width: 1
+  },
+  mapLabel: {
+    color: "#172126",
+    fontSize: 12,
+    fontWeight: "800",
+    maxWidth: "88%",
+    textAlign: "center"
+  },
+  mapMeta: {
+    color: "#53666f",
+    fontSize: 12,
+    fontWeight: "700",
+    marginTop: 4,
+    textAlign: "center"
+  },
+  mapPin: {
+    backgroundColor: "#1f6f73",
+    borderColor: "#ffffff",
+    borderRadius: 8,
+    borderWidth: 2,
+    height: 16,
+    marginBottom: 8,
+    width: 16
+  },
+  mapPlaceholder: {
+    alignItems: "center",
+    aspectRatio: 2.8,
+    backgroundColor: "#eef7f7",
+    borderColor: "#b9d8d6",
+    borderRadius: 8,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 112,
+    overflow: "hidden",
+    padding: 12,
+    position: "relative",
+    width: "100%"
+  },
+  mapPlaceholderCompact: {
+    aspectRatio: 1,
+    minHeight: 70,
+    width: 74
   },
   modalBackdrop: {
     bottom: 0,

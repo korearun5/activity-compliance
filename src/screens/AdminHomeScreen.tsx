@@ -11,7 +11,6 @@ import {
 
 import { getErrorMessage } from "../core/errors/AppError";
 import { getEnabledClientModuleIds, isClientModuleEnabled } from "../modules";
-import { EvidenceStatus } from "../core/model/types";
 import {
   ActivityParticipant,
   getActivityParticipants,
@@ -70,6 +69,7 @@ import { AdminInputDemandTab } from "./AdminInputDemandTab";
 import { AdminRolesTab } from "./AdminRolesTab";
 import { AdminWorkflowsTab } from "./AdminWorkflowsTab";
 import { StatusBadge } from "../ui/StatusBadge";
+import { EvidenceReviewQueue } from "../shared/components/EvidenceReviewQueue";
 import { FarmerIdentityFields } from "../shared/farmers/FarmerIdentityFields";
 import {
   emptyFarmerIdentityInput,
@@ -757,66 +757,22 @@ function OverviewTab({
       )}
 
       <Text style={styles.sectionTitle}>Recent proof records</Text>
-      {reviewError ? <Text style={styles.formError}>{reviewError}</Text> : null}
-      {proofRecords.length ? (
-        proofRecords.map((proof) => (
-          <View key={proof.id} style={styles.reviewCard}>
-            <View style={styles.reviewText}>
-              <Text style={styles.cardTitle}>{proof.action}</Text>
-              <Text style={styles.cardDescription}>
-                {proof.participantName ?? proof.farmer} - {proof.crop} - {proof.region}
-              </Text>
-              <Text style={styles.cardMeta}>Submitted {proof.submittedOn}</Text>
-              {proof.note ? (
-                <Text style={styles.cardDescription}>{proof.note}</Text>
-              ) : null}
-            </View>
-            <View style={styles.reviewActions}>
-              <StatusBadge
-                label={evidenceStatusLabel(proof.status)}
-                tone={evidenceStatusTone(proof.status)}
-              />
-              {canReviewEvidence &&
-              (proof.status === "pending" || proof.status === "done") ? (
-                <View style={styles.reviewButtonRow}>
-                  <Pressable
-                    accessibilityRole="button"
-                    disabled={reviewingProofId === proof.id}
-                    style={({ pressed }) => [
-                      styles.approveButton,
-                      (pressed || reviewingProofId === proof.id) &&
-                        styles.actionButtonPressed
-                    ]}
-                    onPress={() => onReviewProof(proof, "APPROVED")}
-                  >
-                    <Text style={styles.approveButtonText}>
-                      {reviewingProofId === proof.id ? "Saving..." : "Approve"}
-                    </Text>
-                  </Pressable>
-                  <Pressable
-                    accessibilityRole="button"
-                    disabled={reviewingProofId === proof.id}
-                    style={({ pressed }) => [
-                      styles.rejectButton,
-                      (pressed || reviewingProofId === proof.id) &&
-                        styles.actionButtonPressed
-                    ]}
-                    onPress={() => onReviewProof(proof, "REJECTED")}
-                  >
-                    <Text style={styles.rejectButtonText}>Reject</Text>
-                  </Pressable>
-                </View>
-              ) : null}
-            </View>
-          </View>
-        ))
-      ) : (
-        <View style={styles.emptyCard}>
-          <Text style={styles.cardDescription}>
-            No proof records have been submitted yet.
-          </Text>
-        </View>
-      )}
+      <EvidenceReviewQueue
+        canReview={canReviewEvidence}
+        emptyMessage="No proof records have been submitted yet."
+        error={reviewError}
+        items={proofRecords.map((proof) => ({
+          ...proof,
+          description: `${proof.participantName ?? proof.farmer} - ${proof.crop} - ${
+            proof.region
+          }`,
+          submittedLabel: `Submitted ${proof.submittedOn}`,
+          title: proof.action
+        }))}
+        module="fpo"
+        reviewingItemId={reviewingProofId}
+        onReview={onReviewProof}
+      />
 
       {showFpoSummary ? (
         <>
@@ -1465,32 +1421,6 @@ function dashboardEyebrow(role: StaffRole, fpoUiEnabled: boolean) {
 
 function formatAge(age: number | undefined) {
   return age === undefined ? "" : `${age} years`;
-}
-
-function evidenceStatusLabel(status: EvidenceStatus) {
-  switch (status) {
-    case "approved":
-      return "Approved";
-    case "rejected":
-      return "Rejected";
-    case "pending":
-      return "Pending review";
-    default:
-      return "Submitted";
-  }
-}
-
-function evidenceStatusTone(status: EvidenceStatus) {
-  switch (status) {
-    case "approved":
-      return "good";
-    case "rejected":
-      return "danger";
-    case "pending":
-      return "warning";
-    default:
-      return "neutral";
-  }
 }
 
 const styles = StyleSheet.create({

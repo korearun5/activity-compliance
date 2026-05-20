@@ -128,7 +128,8 @@ Start here once the user approves implementation.
 | CARBON-CLIENT-004 | P0 | Add bank details table/API/UI. | 003 | `FarmerService`, audit, role guards |
 | CARBON-CLIENT-005 | P0 | Add farmer document table/API/UI with storage. | 003 | storage adapter, upload patterns |
 | CARBON-CLIENT-006 | P0 | Extend Carbon farm plots for vineyard block fields. | 003 | `carbon_farm_plots`, `boundary_geojson` |
-| CARBON-CLIENT-007 | P0 | Build plot list/add/detail UI with map placeholder first. | 006 | Carbon plot APIs |
+| CARBON-CLIENT-006A | P0 | Refactor shared UI reuse before plot-detail work: soil report uploader, evidence uploader/review actions, and activity timeline components shared across Carbon/FPO where data models are not coupled. | 006 | `StateCard`, `StatusBadge`, upload adapter, evidence APIs |
+| CARBON-CLIENT-007 | P0 | Build plot list/add/detail UI with map placeholder first. | 006A | Carbon plot APIs, shared activity/list UI patterns |
 | CARBON-CLIENT-008 | P0 | Promote soil profile into dedicated dashboard/upload/manual entry screens. | 003 | `carbon_soil_profiles`, storage |
 | CARBON-CLIENT-009 | P0 | Seed vineyard workflow definitions for core activities. | 001 | workflow definitions/tasks |
 | CARBON-CLIENT-010 | P0 | Build activity wizard and evidence submission. | 006, 009 | activity, task, evidence APIs |
@@ -145,6 +146,8 @@ Start here once the user approves implementation.
 | CARBON-CLIENT-002 | Done | Carbon shell now follows the P0 dashboard/profile/plots/soil/activities/admin shape. |
 | CARBON-CLIENT-003 | Done | Profile completion endpoint and farmer widget are in place; real table-backed steps are enabled as later slices land. |
 | CARBON-CLIENT-004 | In review | Bank details use the canonical farmer profile path with `PENDING_VERIFICATION` status; MVP stores account numbers in plain text and production must encrypt or tokenize bank identifiers before shared/live use. |
+| CARBON-CLIENT-006A | Done | Added shared UI components for soil report metadata/upload, evidence upload/review actions, and activity timelines; Carbon/FPO keep separate API stores and module guards. |
+| CARBON-CLIENT-007 | Done | Carbon plot list now has selectable detail cards and map placeholders without adding a map provider dependency. |
 
 ## Client Decisions Needed Before Each Sprint
 

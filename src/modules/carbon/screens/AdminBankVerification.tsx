@@ -6,6 +6,7 @@ import {
   listPendingFarmerBankDetails,
   verifyFarmerBankDetails
 } from "../../../shared/farmers/bankDetailsStore";
+import { ApprovalActions } from "../../../shared/components/ApprovalActions";
 import { StateCard } from "../../../ui/StateCard";
 import { StatusBadge } from "../../../ui/StatusBadge";
 
@@ -122,24 +123,11 @@ export function AdminBankVerification() {
                   style={styles.notesInput}
                   value={notesById[details.id] ?? ""}
                 />
-                <View style={styles.buttonRow}>
-                  <Pressable
-                    accessibilityRole="button"
-                    disabled={savingId === details.id}
-                    style={[styles.primaryButton, savingId === details.id && styles.disabledButton]}
-                    onPress={() => handleVerify(details, "VERIFIED")}
-                  >
-                    <Text style={styles.primaryButtonText}>Approve</Text>
-                  </Pressable>
-                  <Pressable
-                    accessibilityRole="button"
-                    disabled={savingId === details.id}
-                    style={[styles.dangerButton, savingId === details.id && styles.disabledButton]}
-                    onPress={() => handleVerify(details, "REJECTED")}
-                  >
-                    <Text style={styles.dangerButtonText}>Reject</Text>
-                  </Pressable>
-                </View>
+                <ApprovalActions
+                  isSubmitting={savingId === details.id}
+                  onApprove={() => handleVerify(details, "VERIFIED")}
+                  onReject={() => handleVerify(details, "REJECTED")}
+                />
               </View>
             </View>
           ))}
@@ -168,27 +156,6 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
     gap: 8,
     minWidth: 220
-  },
-  buttonRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    justifyContent: "flex-end"
-  },
-  dangerButton: {
-    alignItems: "center",
-    backgroundColor: "#fde8e7",
-    borderColor: "#f7b8b2",
-    borderRadius: 8,
-    borderWidth: 1,
-    minHeight: 38,
-    paddingHorizontal: 12,
-    justifyContent: "center"
-  },
-  dangerButtonText: {
-    color: "#b42318",
-    fontSize: 13,
-    fontWeight: "800"
   },
   disabledButton: {
     opacity: 0.55
@@ -227,19 +194,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700",
     marginTop: 4
-  },
-  primaryButton: {
-    alignItems: "center",
-    backgroundColor: "#1f6f73",
-    borderRadius: 8,
-    minHeight: 38,
-    paddingHorizontal: 12,
-    justifyContent: "center"
-  },
-  primaryButtonText: {
-    color: "#ffffff",
-    fontSize: 13,
-    fontWeight: "800"
   },
   row: {
     alignItems: "flex-start",

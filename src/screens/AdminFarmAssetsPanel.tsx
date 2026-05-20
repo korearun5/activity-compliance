@@ -24,6 +24,11 @@ import {
   SoilProfile,
   SoilProfileInput
 } from "../data/soilProfileStore";
+import {
+  SoilReportField,
+  SoilReportUploader,
+  SoilReportValues
+} from "../shared/components/SoilReportUploader";
 import { StatusBadge } from "../ui/StatusBadge";
 
 type AdminFarmAssetsPanelProps = {
@@ -631,27 +636,22 @@ function SoilProfileForm({
   isSubmitting: boolean;
   onSubmit: (input: SoilProfileInput) => Promise<boolean>;
 }) {
-  const [nitrogen, setNitrogen] = useState("");
-  const [notes, setNotes] = useState("");
-  const [ph, setPh] = useState("");
-  const [phosphorus, setPhosphorus] = useState("");
-  const [potassium, setPotassium] = useState("");
-  const [reportFileName, setReportFileName] = useState("");
-  const [reportUrl, setReportUrl] = useState("");
-  const [soilOrganicCarbon, setSoilOrganicCarbon] = useState("");
+  const [values, setValues] = useState<SoilReportValues>({});
   const [localError, setLocalError] = useState("");
 
   async function handleSubmit() {
     const input: SoilProfileInput = {
-      nitrogen: nitrogen.trim(),
-      notes: notes.trim(),
-      ph: ph.trim(),
-      phosphorus: phosphorus.trim(),
-      potassium: potassium.trim(),
-      reportContentType: reportFileName.trim() ? guessContentType(reportFileName) : "",
-      reportFileName: reportFileName.trim(),
-      reportUrl: reportUrl.trim(),
-      soilOrganicCarbon: soilOrganicCarbon.trim()
+      nitrogen: values.nitrogen?.trim(),
+      notes: values.notes?.trim(),
+      ph: values.ph?.trim(),
+      phosphorus: values.phosphorus?.trim(),
+      potassium: values.potassium?.trim(),
+      reportContentType: values.reportFileName?.trim()
+        ? guessContentType(values.reportFileName)
+        : "",
+      reportFileName: values.reportFileName?.trim(),
+      reportUrl: values.reportUrl?.trim(),
+      soilOrganicCarbon: values.soilOrganicCarbon?.trim()
     };
     const validationError = validateSoilProfileInput(input);
 
@@ -664,68 +664,36 @@ function SoilProfileForm({
     const created = await onSubmit(input);
 
     if (created) {
-      setNitrogen("");
-      setNotes("");
-      setPh("");
-      setPhosphorus("");
-      setPotassium("");
-      setReportFileName("");
-      setReportUrl("");
-      setSoilOrganicCarbon("");
+      setValues({});
     }
   }
 
+  function handleChange(field: SoilReportField, value: string) {
+    setValues((current) => ({ ...current, [field]: value }));
+  }
+
   return (
-    <View style={styles.formSection}>
-      <Text style={styles.sectionLabel}>Add soil profile</Text>
-      <View style={styles.formGrid}>
-        <AssetField
-          keyboardType="decimal-pad"
-          label="SOC"
-          value={soilOrganicCarbon}
-          onChange={setSoilOrganicCarbon}
-        />
-        <AssetField keyboardType="decimal-pad" label="pH" value={ph} onChange={setPh} />
-        <AssetField
-          keyboardType="decimal-pad"
-          label="Nitrogen"
-          value={nitrogen}
-          onChange={setNitrogen}
-        />
-        <AssetField
-          keyboardType="decimal-pad"
-          label="Phosphorus"
-          value={phosphorus}
-          onChange={setPhosphorus}
-        />
-        <AssetField
-          keyboardType="decimal-pad"
-          label="Potassium"
-          value={potassium}
-          onChange={setPotassium}
-        />
-        <AssetField
-          label="Report file name"
-          value={reportFileName}
-          onChange={setReportFileName}
-        />
-        <AssetField label="Report URL" value={reportUrl} onChange={setReportUrl} />
-        <AssetField label="Notes" value={notes} onChange={setNotes} />
-      </View>
-
-      {localError ? <Text style={styles.formError}>{localError}</Text> : null}
-
-      <Pressable
-        accessibilityRole="button"
-        disabled={isSubmitting}
-        style={[styles.primaryButton, isSubmitting && styles.disabledButton]}
-        onPress={handleSubmit}
-      >
-        <Text style={styles.primaryButtonText}>
-          {isSubmitting ? "Saving..." : "Add soil profile"}
-        </Text>
-      </Pressable>
-    </View>
+    <SoilReportUploader
+      endpointPrefix="/api/v1/fpo/soil-profiles"
+      error={localError}
+      fields={[
+        "soilOrganicCarbon",
+        "ph",
+        "nitrogen",
+        "phosphorus",
+        "potassium",
+        "reportFileName",
+        "reportUrl",
+        "notes"
+      ]}
+      isSubmitting={isSubmitting}
+      module="fpo"
+      submitLabel="Add soil profile"
+      title="Add soil profile"
+      values={values}
+      onChange={handleChange}
+      onSubmit={handleSubmit}
+    />
   );
 }
 
