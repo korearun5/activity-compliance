@@ -1,6 +1,7 @@
 package com.activityplatform.backend.carbon.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -26,7 +27,10 @@ import com.activityplatform.backend.carbon.repository.CarbonProfileRepository;
 import com.activityplatform.backend.farmer.api.FarmerBankDetailsRequest;
 import com.activityplatform.backend.farmer.api.FarmerBankDetailsResponse;
 import com.activityplatform.backend.farmer.api.FarmerBankDetailsVerificationRequest;
+import com.activityplatform.backend.farmer.api.FarmerDocumentResponse;
+import com.activityplatform.backend.farmer.api.FarmerDocumentVerificationRequest;
 import com.activityplatform.backend.farmer.domain.FarmerBankDetailsStatus;
+import com.activityplatform.backend.farmer.domain.FarmerDocumentStatus;
 import com.activityplatform.backend.farmer.domain.FarmerProfileEntity;
 import com.activityplatform.backend.farmer.domain.FarmerProfileStatus;
 import com.activityplatform.backend.farmer.repository.FarmerProfileRepository;
@@ -162,14 +166,15 @@ class CarbonProfileControllerIT {
             .header("Authorization", "Bearer " + farmerToken))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.data.carbonProfileId").value(profile.id().toString()))
-        .andExpect(jsonPath("$.data.completionPercentage").value(67))
+        .andExpect(jsonPath("$.data.completionPercentage").value(50))
         .andExpect(jsonPath("$.data.completedRequiredSteps").value(2))
-        .andExpect(jsonPath("$.data.totalRequiredSteps").value(3))
+        .andExpect(jsonPath("$.data.totalRequiredSteps").value(4))
         .andExpect(jsonPath("$.data.steps[2].code").value("BANK_DETAILS"))
         .andExpect(jsonPath("$.data.steps[2].status").value("INCOMPLETE"))
         .andExpect(jsonPath("$.data.steps[2].required").value(true))
         .andExpect(jsonPath("$.data.steps[3].code").value("DOCUMENTS"))
-        .andExpect(jsonPath("$.data.steps[3].status").value("COMING_SOON"));
+        .andExpect(jsonPath("$.data.steps[3].status").value("INCOMPLETE"))
+        .andExpect(jsonPath("$.data.steps[3].required").value(true));
 
     FarmerBankDetailsRequest bankDetailsRequest = new FarmerBankDetailsRequest(
         "Carbon Farmer",
@@ -252,13 +257,114 @@ class CarbonProfileControllerIT {
             .header("Authorization", "Bearer " + farmerToken))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.data.carbonProfileId").value(profile.id().toString()))
-        .andExpect(jsonPath("$.data.completionPercentage").value(100))
+        .andExpect(jsonPath("$.data.completionPercentage").value(75))
         .andExpect(jsonPath("$.data.completedRequiredSteps").value(3))
-        .andExpect(jsonPath("$.data.totalRequiredSteps").value(3))
+        .andExpect(jsonPath("$.data.totalRequiredSteps").value(4))
         .andExpect(jsonPath("$.data.steps[2].code").value("BANK_DETAILS"))
         .andExpect(jsonPath("$.data.steps[2].status").value("COMPLETE"))
         .andExpect(jsonPath("$.data.steps[3].code").value("DOCUMENTS"))
-        .andExpect(jsonPath("$.data.steps[3].status").value("COMING_SOON"));
+        .andExpect(jsonPath("$.data.steps[3].status").value("INCOMPLETE"));
+
+    MockMultipartFile aadhaarDocument = new MockMultipartFile(
+        "file",
+        "aadhaar-card.pdf",
+        "application/pdf",
+        "aadhaar document content".getBytes(StandardCharsets.UTF_8)
+    );
+    String documentResponse = mockMvc.perform(multipart("/api/v1/farmer/documents/upload")
+            .file(aadhaarDocument)
+            .param("document_type", "AADHAAR")
+            .header("Authorization", "Bearer " + farmerToken))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.farmerProfileId").value(farmerProfile.getId().toString()))
+        .andExpect(jsonPath("$.data.documentType").value("AADHAAR"))
+        .andExpect(jsonPath("$.data.fileName").value("aadhaar-card.pdf"))
+        .andExpect(jsonPath("$.data.mimeType").value("application/pdf"))
+        .andExpect(jsonPath("$.data.status").value("PENDING_VERIFICATION"))
+        .andExpect(jsonPath("$.data.fileUrl").value(startsWith(
+            tenant.getId() + "/farmer-document/" + farmerProfile.getId() + "/"
+        )))
+        .andReturn()
+        .getResponse()
+        .getContentAsString();
+    FarmerDocumentResponse document = readData(documentResponse, FarmerDocumentResponse.class);
+
+    mockMvc.perform(get("/api/v1/farmer/documents")
+            .header("Authorization", "Bearer " + farmerToken))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data[0].id").value(document.id().toString()))
+        .andExpect(jsonPath("$.data[0].documentType").value("AADHAAR"))
+        .andExpect(jsonPath("$.data[0].status").value("PENDING_VERIFICATION"));
+
+    mockMvc.perform(get("/api/v1/farmer/profile/completion")
+            .header("Authorization", "Bearer " + farmerToken))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.completionPercentage").value(100))
+        .andExpect(jsonPath("$.data.completedRequiredSteps").value(4))
+        .andExpect(jsonPath("$.data.totalRequiredSteps").value(4))
+        .andExpect(jsonPath("$.data.steps[3].code").value("DOCUMENTS"))
+        .andExpect(jsonPath("$.data.steps[3].status").value("COMPLETE"));
+
+    mockMvc.perform(get("/api/v1/admin/documents/pending")
+            .header("Authorization", "Bearer " + adminToken))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data[0].id").value(document.id().toString()))
+        .andExpect(jsonPath("$.data[0].farmerName").value("Carbon Farmer"))
+        .andExpect(jsonPath("$.data[0].farmerMobileNumber").value("9876543210"))
+        .andExpect(jsonPath("$.data[0].documentType").value("AADHAAR"))
+        .andExpect(jsonPath("$.data[0].uploadedAt").exists());
+
+    FarmerDocumentVerificationRequest documentVerificationRequest =
+        new FarmerDocumentVerificationRequest(
+            FarmerDocumentStatus.VERIFIED,
+            "Document verified for UAT."
+        );
+    mockMvc.perform(put("/api/v1/admin/documents/" + document.id() + "/verify")
+            .header("Authorization", "Bearer " + adminToken)
+            .contentType("application/json")
+            .content(jsonMapper.writeValueAsString(documentVerificationRequest)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.status").value("VERIFIED"))
+        .andExpect(jsonPath("$.data.verifiedByUserId").value(adminUser.getId().toString()))
+        .andExpect(jsonPath("$.data.verificationNotes").value("Document verified for UAT."))
+        .andExpect(jsonPath("$.data.verifiedAt").exists());
+
+    mockMvc.perform(get("/api/v1/farmer/documents")
+            .header("Authorization", "Bearer " + farmerToken))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data[0].id").value(document.id().toString()))
+        .andExpect(jsonPath("$.data[0].status").value("VERIFIED"));
+
+    MockMultipartFile pendingLandRecord = new MockMultipartFile(
+        "file",
+        "land-record.pdf",
+        "application/pdf",
+        "land record content".getBytes(StandardCharsets.UTF_8)
+    );
+    String pendingDocumentResponse = mockMvc.perform(multipart("/api/v1/farmer/documents/upload")
+            .file(pendingLandRecord)
+            .param("document_type", "LAND_RECORD")
+            .header("Authorization", "Bearer " + farmerToken))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.documentType").value("LAND_RECORD"))
+        .andExpect(jsonPath("$.data.status").value("PENDING_VERIFICATION"))
+        .andReturn()
+        .getResponse()
+        .getContentAsString();
+    FarmerDocumentResponse pendingDocument = readData(
+        pendingDocumentResponse,
+        FarmerDocumentResponse.class
+    );
+
+    mockMvc.perform(delete("/api/v1/farmer/documents/" + pendingDocument.id())
+            .header("Authorization", "Bearer " + farmerToken))
+        .andExpect(status().isOk());
+
+    mockMvc.perform(get("/api/v1/farmer/documents")
+            .header("Authorization", "Bearer " + farmerToken))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.length()").value(1))
+        .andExpect(jsonPath("$.data[0].id").value(document.id().toString()));
 
     CarbonProfileRequest updateProfileRequest = profileRequest(
         profile.carbonIdentityId(),
@@ -635,6 +741,16 @@ class CarbonProfileControllerIT {
         .andExpect(jsonPath("$.error.code").value("MODULE_NOT_ENABLED"));
 
     mockMvc.perform(get("/api/v1/admin/bank-details/pending")
+            .header("Authorization", "Bearer " + disabledToken))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.error.code").value("MODULE_NOT_ENABLED"));
+
+    mockMvc.perform(get("/api/v1/farmer/documents")
+            .header("Authorization", "Bearer " + disabledFarmerToken))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.error.code").value("MODULE_NOT_ENABLED"));
+
+    mockMvc.perform(get("/api/v1/admin/documents/pending")
             .header("Authorization", "Bearer " + disabledToken))
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$.error.code").value("MODULE_NOT_ENABLED"));

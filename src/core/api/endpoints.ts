@@ -13,6 +13,10 @@ export const endpoints = {
       pending: `${apiRoot}/admin/bank-details/pending`,
       verify: (bankDetailsId: string) =>
         `${apiRoot}/admin/bank-details/${bankDetailsId}/verify`
+    },
+    documents: {
+      pending: `${apiRoot}/admin/documents/pending`,
+      verify: (documentId: string) => `${apiRoot}/admin/documents/${documentId}/verify`
     }
   },
   auth: {
@@ -66,6 +70,11 @@ export const endpoints = {
       current: `${apiRoot}/farmer/bank-details`,
       update: (bankDetailsId: string) =>
         `${apiRoot}/farmer/bank-details/${bankDetailsId}`
+    },
+    documents: {
+      byId: (documentId: string) => `${apiRoot}/farmer/documents/${documentId}`,
+      list: `${apiRoot}/farmer/documents`,
+      upload: `${apiRoot}/farmer/documents/upload`
     },
     profileCompletion: `${apiRoot}/farmer/profile/completion`
   },

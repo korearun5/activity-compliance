@@ -84,6 +84,13 @@ export async function getJson<TResponse>(path: string, options: RequestOptions =
   });
 }
 
+export async function deleteJson<TResponse>(path: string, options: RequestOptions = {}) {
+  return requestJson<TResponse>(path, {
+    accessToken: options.accessToken,
+    method: "DELETE"
+  });
+}
+
 export async function getJsonPaginated<TResponse>(
   path: string,
   pagination: PaginationParams = {},
@@ -178,6 +185,7 @@ function parseApiResponse<TResponse>(text: string) {
 }
 
 export const apiClient = {
+  delete: deleteJson,
   get: getJson,
   getPaginated: getJsonPaginated,
   patch: patchJson,

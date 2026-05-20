@@ -1,3 +1,4 @@
+import * as DocumentPicker from "expo-document-picker";
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
@@ -11,6 +12,16 @@ import {
   getFarmerBankDetails,
   saveFarmerBankDetails
 } from "../../../shared/farmers/bankDetailsStore";
+import {
+  deleteFarmerDocument,
+  documentTypeLabel,
+  FarmerDocumentRecord,
+  FarmerDocumentStatus,
+  FarmerDocumentType,
+  FARMER_DOCUMENT_TYPES,
+  listFarmerDocuments,
+  uploadFarmerDocument
+} from "../../../shared/farmers/documentStore";
 import {
   FarmerProfileCompletionRecord,
   FarmerProfileCompletionStep,
@@ -53,6 +64,7 @@ export function UserCarbonScreen({ username }: UserCarbonScreenProps) {
   const [liveError, setLiveError] = useState("");
   const [liveBankDetails, setLiveBankDetails] =
     useState<FarmerBankDetailsRecord | null>(null);
+  const [liveDocuments, setLiveDocuments] = useState<FarmerDocumentRecord[]>([]);
   const [livePlots, setLivePlots] = useState<CarbonFarmPlotRecord[]>([]);
   const [liveProfile, setLiveProfile] = useState<CarbonProfileRecord | null>(null);
   const [profileCompletion, setProfileCompletion] =
@@ -70,11 +82,13 @@ export function UserCarbonScreen({ username }: UserCarbonScreenProps) {
       try {
         const nextProfile = await getMyCarbonProfile();
         const [
+          nextDocuments,
           nextPlots,
           nextSoilProfiles,
           nextProfileCompletion,
           nextBankDetails
         ] = await Promise.all([
+          listFarmerDocuments(),
           listCarbonFarmPlots(nextProfile.id),
           listCarbonSoilProfiles(nextProfile.id),
           getFarmerProfileCompletion(),
@@ -83,11 +97,13 @@ export function UserCarbonScreen({ username }: UserCarbonScreenProps) {
 
         setLiveProfile(nextProfile);
         setLiveBankDetails(nextBankDetails);
+        setLiveDocuments(nextDocuments);
         setLivePlots(nextPlots);
         setProfileCompletion(nextProfileCompletion);
         setLiveSoilProfiles(nextSoilProfiles);
       } catch (error) {
         setLiveBankDetails(null);
+        setLiveDocuments([]);
         setLiveProfile(null);
         setLivePlots([]);
         setProfileCompletion(null);
@@ -169,9 +185,22 @@ export function UserCarbonScreen({ username }: UserCarbonScreenProps) {
       {activeSection === "profile" ? (
         <ProfileSection
           bankDetails={liveBankDetails}
+          documents={liveDocuments}
           liveProfile={liveProfile}
           onBankDetailsSaved={(details) => {
             setLiveBankDetails(details);
+            getFarmerProfileCompletion()
+              .then(setProfileCompletion)
+              .catch((error) => {
+                setLiveError(
+                  error instanceof Error
+                    ? error.message
+                    : "Profile completion unavailable."
+                );
+              });
+          }}
+          onDocumentsChanged={(documents) => {
+            setLiveDocuments(documents);
             getFarmerProfileCompletion()
               .then(setProfileCompletion)
               .catch((error) => {
@@ -268,14 +297,18 @@ function DashboardSection({
 
 function ProfileSection({
   bankDetails,
+  documents,
   liveProfile,
   onBankDetailsSaved,
+  onDocumentsChanged,
   profileCompletion,
   snapshot
 }: {
   bankDetails: FarmerBankDetailsRecord | null;
+  documents: FarmerDocumentRecord[];
   liveProfile: CarbonProfileRecord | null;
   onBankDetailsSaved: (details: FarmerBankDetailsRecord) => void;
+  onDocumentsChanged: (documents: FarmerDocumentRecord[]) => void;
   profileCompletion: FarmerProfileCompletionRecord | null;
   snapshot: FarmerCarbonSnapshot;
 }) {
@@ -312,18 +345,10 @@ function ProfileSection({
         onSaved={onBankDetailsSaved}
       />
 
-      <View style={styles.cardGrid}>
-        <PlaceholderFeatureCard
-          label="Documents"
-          meta="Coming soon"
-          status="Coming soon"
-        />
-        <PlaceholderFeatureCard
-          label="Aadhaar"
-          meta={profile?.aadhaarStatus ?? snapshot.profile.aadhaarStatus}
-          status="Profile extension"
-        />
-      </View>
+      <DocumentUploadSection
+        documents={documents}
+        onDocumentsChanged={onDocumentsChanged}
+      />
     </>
   );
 }
@@ -473,6 +498,212 @@ function BankDetailsForm({
   );
 }
 
+function DocumentUploadSection({
+  documents,
+  onDocumentsChanged
+}: {
+  documents: FarmerDocumentRecord[];
+  onDocumentsChanged: (documents: FarmerDocumentRecord[]) => void;
+}) {
+  const [deleteCandidate, setDeleteCandidate] =
+    useState<FarmerDocumentRecord | null>(null);
+  const [documentType, setDocumentType] =
+    useState<FarmerDocumentType>("AADHAAR");
+  const [documentError, setDocumentError] = useState("");
+  const [documentMessage, setDocumentMessage] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  async function handleUpload() {
+    setIsUploading(true);
+    setDocumentError("");
+    setDocumentMessage("");
+
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        copyToCacheDirectory: true,
+        multiple: false,
+        type: ["application/pdf", "image/*"]
+      });
+
+      if (result.canceled) {
+        return;
+      }
+
+      const asset = result.assets[0];
+      const validationError = validateDocumentAsset(asset);
+      if (validationError) {
+        setDocumentError(validationError);
+        return;
+      }
+
+      const saved = await uploadFarmerDocument({
+        documentType,
+        file: {
+          name: asset.name,
+          type: asset.mimeType,
+          uri: asset.uri
+        }
+      });
+
+      onDocumentsChanged([saved, ...documents]);
+      setDocumentMessage("Document uploaded. Verification is pending.");
+    } catch (error) {
+      setDocumentError(
+        error instanceof Error ? error.message : "Unable to upload document."
+      );
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
+  async function confirmDelete() {
+    if (!deleteCandidate) {
+      return;
+    }
+
+    setDeletingId(deleteCandidate.id);
+    setDocumentError("");
+    setDocumentMessage("");
+
+    try {
+      await deleteFarmerDocument(deleteCandidate.id);
+      onDocumentsChanged(
+        documents.filter((document) => document.id !== deleteCandidate.id)
+      );
+      setDocumentMessage("Document deleted.");
+    } catch (error) {
+      setDocumentError(
+        error instanceof Error ? error.message : "Unable to delete document."
+      );
+    } finally {
+      setDeletingId(null);
+      setDeleteCandidate(null);
+    }
+  }
+
+  return (
+    <View style={styles.card}>
+      <View style={styles.cardHeader}>
+        <View style={styles.cardHeaderText}>
+          <Text style={styles.sectionTitle}>KYC & Carbon Documents</Text>
+          <Text style={styles.cardDescription}>
+            {documents.length
+              ? `${documents.length} document${documents.length === 1 ? "" : "s"} uploaded`
+              : "No documents uploaded yet."}
+          </Text>
+        </View>
+        <StatusBadge
+          label={documents.length ? "Documents uploaded" : "Pending"}
+          tone={documents.length ? "good" : "warning"}
+        />
+      </View>
+
+      {documentError ? (
+        <StateCard message={documentError} title="Documents" tone="error" />
+      ) : null}
+      {documentMessage ? (
+        <StateCard message={documentMessage} title="Documents" tone="success" />
+      ) : null}
+
+      <View style={styles.documentTypeGrid}>
+        {FARMER_DOCUMENT_TYPES.map((type) => {
+          const selected = documentType === type;
+
+          return (
+            <Pressable
+              key={type}
+              accessibilityRole="button"
+              style={[
+                styles.documentTypeButton,
+                selected && styles.documentTypeButtonSelected
+              ]}
+              onPress={() => setDocumentType(type)}
+            >
+              <Text
+                style={[
+                  styles.documentTypeButtonText,
+                  selected && styles.documentTypeButtonTextSelected
+                ]}
+              >
+                {documentTypeLabel(type)}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      <View style={styles.formActions}>
+        <Pressable
+          accessibilityRole="button"
+          disabled={isUploading}
+          style={[styles.primaryButton, isUploading && styles.buttonDisabled]}
+          onPress={handleUpload}
+        >
+          <Text style={styles.primaryButtonText}>
+            {isUploading ? "Uploading..." : "Upload document"}
+          </Text>
+        </Pressable>
+      </View>
+
+      <View style={styles.documentList}>
+        {documents.length ? (
+          documents.map((document) => (
+            <View key={document.id} style={styles.listRow}>
+              <View style={styles.rowText}>
+                <Text style={styles.rowTitle}>{document.fileName}</Text>
+                <Text style={styles.rowMeta}>
+                  {documentTypeLabel(document.documentType)} -{" "}
+                  {formatDate(document.uploadedAt)}
+                </Text>
+                {document.verificationNotes ? (
+                  <Text style={styles.rowMeta}>{document.verificationNotes}</Text>
+                ) : null}
+              </View>
+              <View style={styles.documentRowActions}>
+                <StatusBadge
+                  label={documentStatusLabel(document.status)}
+                  tone={documentStatusTone(document.status)}
+                />
+                {document.status === "PENDING_VERIFICATION" ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    disabled={deletingId === document.id}
+                    style={[
+                      styles.secondaryDangerButton,
+                      deletingId === document.id && styles.buttonDisabled
+                    ]}
+                    onPress={() => setDeleteCandidate(document)}
+                  >
+                    <Text style={styles.secondaryDangerButtonText}>
+                      {deletingId === document.id ? "Deleting..." : "Delete"}
+                    </Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            </View>
+          ))
+        ) : (
+          <StateCard
+            message="Upload Aadhaar, land record, soil report, bank proof, or another supporting document."
+            tone="empty"
+          />
+        )}
+      </View>
+
+      <ConfirmationModal
+        cancelLabel="Keep"
+        confirmLabel="Delete"
+        message="Delete this pending document?"
+        onCancel={() => setDeleteCandidate(null)}
+        onConfirm={confirmDelete}
+        title="Delete document"
+        visible={Boolean(deleteCandidate)}
+      />
+    </View>
+  );
+}
+
 function FormField({
   autoCapitalize = "none",
   label,
@@ -615,6 +846,84 @@ function bankStatusTone(
   }
 
   return "warning";
+}
+
+function documentStatusLabel(status: FarmerDocumentStatus) {
+  if (status === "VERIFIED") {
+    return "Verified";
+  }
+
+  if (status === "REJECTED") {
+    return "Rejected";
+  }
+
+  return "Pending";
+}
+
+function documentStatusTone(
+  status: FarmerDocumentStatus
+): "good" | "neutral" | "warning" | "danger" {
+  if (status === "VERIFIED") {
+    return "good";
+  }
+
+  if (status === "REJECTED") {
+    return "danger";
+  }
+
+  return "warning";
+}
+
+function validateDocumentAsset(asset: {
+  mimeType?: string | null;
+  name?: string | null;
+  size?: number | null;
+}) {
+  const mimeType = normalizePickedMimeType(asset.mimeType, asset.name);
+
+  if (mimeType !== "application/pdf" && !mimeType.startsWith("image/")) {
+    return "Upload an image or PDF document.";
+  }
+
+  if (!asset.size) {
+    return "";
+  }
+
+  if (mimeType === "application/pdf" && asset.size > 10 * 1024 * 1024) {
+    return "PDF documents must be 10 MB or smaller.";
+  }
+
+  if (mimeType.startsWith("image/") && asset.size > 5 * 1024 * 1024) {
+    return "Image documents must be 5 MB or smaller.";
+  }
+
+  return "";
+}
+
+function normalizePickedMimeType(mimeType?: string | null, filename?: string | null) {
+  const normalized = mimeType?.trim().toLowerCase();
+  if (normalized) {
+    return normalized;
+  }
+
+  const extension = filename?.split(".").pop()?.toLowerCase();
+  switch (extension) {
+    case "heic":
+      return "image/heic";
+    case "heif":
+      return "image/heif";
+    case "jpeg":
+    case "jpg":
+      return "image/jpeg";
+    case "pdf":
+      return "application/pdf";
+    case "png":
+      return "image/png";
+    case "webp":
+      return "image/webp";
+    default:
+      return "application/octet-stream";
+  }
 }
 
 function PlotsSection({
@@ -849,6 +1158,19 @@ function Metric({ label, value }: { label: string; value: number | string }) {
   );
 }
 
+function formatDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric"
+  });
+}
+
 function formatNumber(value: number) {
   return Number.isInteger(value) ? String(value) : value.toFixed(2);
 }
@@ -923,6 +1245,39 @@ const styles = StyleSheet.create({
     color: "#1f6f73",
     fontSize: 20,
     fontWeight: "800"
+  },
+  documentList: {
+    gap: 10
+  },
+  documentRowActions: {
+    alignItems: "flex-end",
+    gap: 8
+  },
+  documentTypeButton: {
+    backgroundColor: "#ffffff",
+    borderColor: "#c9d8df",
+    borderRadius: 8,
+    borderWidth: 1,
+    minHeight: 40,
+    paddingHorizontal: 12,
+    paddingVertical: 9
+  },
+  documentTypeButtonSelected: {
+    backgroundColor: "#e8f3f2",
+    borderColor: "#1f6f73"
+  },
+  documentTypeButtonText: {
+    color: "#53666f",
+    fontSize: 13,
+    fontWeight: "800"
+  },
+  documentTypeButtonTextSelected: {
+    color: "#1f6f73"
+  },
+  documentTypeGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8
   },
   buttonDisabled: {
     opacity: 0.65
@@ -1068,6 +1423,21 @@ const styles = StyleSheet.create({
   sectionTitle: {
     color: "#172126",
     fontSize: 18,
+    fontWeight: "800"
+  },
+  secondaryDangerButton: {
+    alignItems: "center",
+    backgroundColor: "#fff4f2",
+    borderColor: "#f0b8ad",
+    borderRadius: 8,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 34,
+    paddingHorizontal: 12
+  },
+  secondaryDangerButtonText: {
+    color: "#b53b2f",
+    fontSize: 13,
     fontWeight: "800"
   },
   statCard: {

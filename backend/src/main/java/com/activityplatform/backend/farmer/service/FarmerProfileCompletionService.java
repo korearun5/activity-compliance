@@ -9,6 +9,7 @@ import com.activityplatform.backend.farmer.domain.FarmerBankDetailsEntity;
 import com.activityplatform.backend.farmer.domain.FarmerBankDetailsStatus;
 import com.activityplatform.backend.farmer.domain.FarmerProfileEntity;
 import com.activityplatform.backend.farmer.repository.FarmerBankDetailsRepository;
+import com.activityplatform.backend.farmer.repository.FarmerDocumentRepository;
 import com.activityplatform.backend.platform.domain.ModuleCode;
 import com.activityplatform.backend.platform.service.TenantModuleService;
 import com.activityplatform.backend.security.CurrentUser;
@@ -22,22 +23,24 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class FarmerProfileCompletionService {
   private static final String COMPLETE = "COMPLETE";
-  private static final String COMING_SOON = "COMING_SOON";
   private static final String INCOMPLETE = "INCOMPLETE";
 
   private final FarmerBankDetailsRepository bankDetailsRepository;
   private final CarbonProfileRepository carbonProfileRepository;
+  private final FarmerDocumentRepository documentRepository;
   private final FarmerService farmerService;
   private final TenantModuleService tenantModuleService;
 
   public FarmerProfileCompletionService(
       FarmerBankDetailsRepository bankDetailsRepository,
       CarbonProfileRepository carbonProfileRepository,
+      FarmerDocumentRepository documentRepository,
       FarmerService farmerService,
       TenantModuleService tenantModuleService
   ) {
     this.bankDetailsRepository = bankDetailsRepository;
     this.carbonProfileRepository = carbonProfileRepository;
+    this.documentRepository = documentRepository;
     this.farmerService = farmerService;
     this.tenantModuleService = tenantModuleService;
   }
@@ -61,6 +64,10 @@ public class FarmerProfileCompletionService {
         ));
     Optional<FarmerBankDetailsEntity> bankDetails = bankDetailsRepository
         .findByTenantIdAndFarmerProfileId(currentUser.tenantId(), farmerProfile.getId());
+    boolean hasDocuments = documentRepository.existsByTenantIdAndFarmerProfileId(
+        currentUser.tenantId(),
+        farmerProfile.getId()
+    );
 
     List<FarmerProfileCompletionStepResponse> steps = new ArrayList<>();
     steps.add(requiredStep(
@@ -82,10 +89,13 @@ public class FarmerProfileCompletionService {
         bankDetails.map(this::bankDetailsDescription)
             .orElse("Bank account details are pending.")
     ));
-    steps.add(comingSoonStep(
+    steps.add(requiredStep(
         "DOCUMENTS",
         "Documents",
-        "Coming soon in CARBON-CLIENT-005."
+        hasDocuments,
+        hasDocuments
+            ? "KYC or Carbon documents are uploaded."
+            : "Upload at least one KYC or Carbon document."
     ));
 
     int totalRequiredSteps = (int) steps.stream()
@@ -124,22 +134,6 @@ public class FarmerProfileCompletionService {
         complete,
         true,
         false,
-        description
-    );
-  }
-
-  private FarmerProfileCompletionStepResponse comingSoonStep(
-      String code,
-      String label,
-      String description
-  ) {
-    return new FarmerProfileCompletionStepResponse(
-        code,
-        label,
-        COMING_SOON,
-        false,
-        false,
-        true,
         description
     );
   }
