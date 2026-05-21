@@ -1,6 +1,7 @@
 package com.activityplatform.backend.carbon.domain;
 
 import com.activityplatform.backend.auth.domain.TenantEntity;
+import com.activityplatform.backend.auth.domain.UserEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -74,6 +75,20 @@ public class CarbonSoilProfileEntity {
   private String reportUrl;
 
   @Enumerated(EnumType.STRING)
+  @Column(name = "verification_status", nullable = false)
+  private CarbonVerificationStatus verificationStatus;
+
+  @Column(name = "verification_notes")
+  private String verificationNotes;
+
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "verified_by_user_id")
+  private UserEntity verifiedByUser;
+
+  @Column(name = "verified_at")
+  private Instant verifiedAt;
+
+  @Enumerated(EnumType.STRING)
   @Column(nullable = false)
   private CarbonRecordStatus status;
 
@@ -126,6 +141,7 @@ public class CarbonSoilProfileEntity {
     this.reportContentType = reportContentType;
     this.reportStorageKey = reportStorageKey;
     this.reportUrl = reportUrl;
+    this.verificationStatus = CarbonVerificationStatus.PENDING_VERIFICATION;
     this.status = status;
     this.createdAt = now;
     this.updatedAt = now;
@@ -203,6 +219,22 @@ public class CarbonSoilProfileEntity {
     return reportUrl;
   }
 
+  public CarbonVerificationStatus getVerificationStatus() {
+    return verificationStatus;
+  }
+
+  public String getVerificationNotes() {
+    return verificationNotes;
+  }
+
+  public UserEntity getVerifiedByUser() {
+    return verifiedByUser;
+  }
+
+  public Instant getVerifiedAt() {
+    return verifiedAt;
+  }
+
   public CarbonRecordStatus getStatus() {
     return status;
   }
@@ -249,6 +281,7 @@ public class CarbonSoilProfileEntity {
     this.reportContentType = reportContentType;
     this.reportStorageKey = reportStorageKey;
     this.reportUrl = reportUrl;
+    resetVerification();
     this.status = status;
     this.updatedAt = now;
   }
@@ -263,6 +296,27 @@ public class CarbonSoilProfileEntity {
     this.reportContentType = reportContentType;
     this.reportStorageKey = reportStorageKey;
     this.reportUrl = null;
+    resetVerification();
     this.updatedAt = now;
+  }
+
+  public void verify(
+      CarbonVerificationStatus verificationStatus,
+      String verificationNotes,
+      UserEntity verifiedByUser,
+      Instant now
+  ) {
+    this.verificationStatus = verificationStatus;
+    this.verificationNotes = verificationNotes;
+    this.verifiedByUser = verifiedByUser;
+    this.verifiedAt = now;
+    this.updatedAt = now;
+  }
+
+  private void resetVerification() {
+    this.verificationStatus = CarbonVerificationStatus.PENDING_VERIFICATION;
+    this.verificationNotes = null;
+    this.verifiedByUser = null;
+    this.verifiedAt = null;
   }
 }

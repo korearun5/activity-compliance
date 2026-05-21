@@ -145,6 +145,16 @@ public class CarbonProfileController {
     ));
   }
 
+  @GetMapping("/soil-profiles/pending-verification")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER')")
+  ApiResponse<List<CarbonSoilProfileResponse>> listPendingSoilProfiles(
+      Authentication authentication
+  ) {
+    return ApiResponse.success(carbonProfileService.listPendingSoilProfiles(
+        CurrentUser.from(authentication)
+    ));
+  }
+
   @PostMapping("/profiles/{profileId}/soil-profiles")
   @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER','FIELD_COORDINATOR','FARMER')")
   ApiResponse<CarbonSoilProfileResponse> createSoilProfile(
@@ -167,6 +177,20 @@ public class CarbonProfileController {
       @Valid @RequestBody CarbonSoilProfileRequest request
   ) {
     return ApiResponse.success(carbonProfileService.updateSoilProfile(
+        CurrentUser.from(authentication),
+        soilProfileId,
+        request
+    ));
+  }
+
+  @PutMapping("/soil-profiles/{soilProfileId}/verify")
+  @PreAuthorize("hasAnyRole('ADMIN','FPO_MANAGER')")
+  ApiResponse<CarbonSoilProfileResponse> verifySoilProfile(
+      Authentication authentication,
+      @PathVariable UUID soilProfileId,
+      @Valid @RequestBody CarbonSoilProfileVerificationRequest request
+  ) {
+    return ApiResponse.success(carbonProfileService.verifySoilProfile(
         CurrentUser.from(authentication),
         soilProfileId,
         request

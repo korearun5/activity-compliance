@@ -2,6 +2,10 @@ import { Id } from "../../../core/api/contracts";
 
 export type CarbonParticipantType = "AGRONOMIST" | "FARMER" | "FPO_FPC";
 export type CarbonRecordStatus = "ACTIVE" | "ARCHIVED" | "INACTIVE" | "SUSPENDED";
+export type CarbonVerificationStatus =
+  | "PENDING_VERIFICATION"
+  | "REJECTED"
+  | "VERIFIED";
 export type CarbonActivityVerificationStatus =
   | "PENDING_EVIDENCE"
   | "PENDING_REVIEW"
@@ -134,12 +138,15 @@ export type CarbonSoilProfileResponse = {
   carbonProfileId: Id;
   createdAt: string;
   electricalConductivity: number | null;
+  farmName: string | null;
   id: Id;
   labName: string | null;
   nitrogenKgHa: number | null;
   ph: number | null;
   phosphorusKgHa: number | null;
   potassiumKgHa: number | null;
+  profileMobileNumber: string | null;
+  profileName: string | null;
   reportContentType: string | null;
   reportFileName: string | null;
   reportStorageKey: string | null;
@@ -150,6 +157,10 @@ export type CarbonSoilProfileResponse = {
   testDate: string | null;
   texture: string | null;
   updatedAt: string;
+  verificationNotes: string | null;
+  verificationStatus: CarbonVerificationStatus;
+  verifiedAt: string | null;
+  verifiedByUserId: Id | null;
 };
 
 export type CarbonSoilProfileRequest = {
@@ -169,6 +180,11 @@ export type CarbonSoilProfileRequest = {
   status?: CarbonRecordStatus;
   testDate?: string;
   texture?: string;
+};
+
+export type CarbonSoilProfileVerificationRequest = {
+  notes?: string;
+  status: Exclude<CarbonVerificationStatus, "PENDING_VERIFICATION">;
 };
 
 export type CarbonActivityRecordResponse = {

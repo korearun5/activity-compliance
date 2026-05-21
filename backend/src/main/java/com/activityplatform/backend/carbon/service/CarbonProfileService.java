@@ -16,6 +16,7 @@ import com.activityplatform.backend.carbon.api.CarbonProfileRequest;
 import com.activityplatform.backend.carbon.api.CarbonProfileResponse;
 import com.activityplatform.backend.carbon.api.CarbonSoilProfileRequest;
 import com.activityplatform.backend.carbon.api.CarbonSoilProfileResponse;
+import com.activityplatform.backend.carbon.api.CarbonSoilProfileVerificationRequest;
 import com.activityplatform.backend.carbon.domain.CarbonActivityCategoryEntity;
 import com.activityplatform.backend.carbon.domain.CarbonActivityRecordEntity;
 import com.activityplatform.backend.carbon.domain.CarbonFarmPlotEntity;
@@ -23,6 +24,7 @@ import com.activityplatform.backend.carbon.domain.CarbonParticipantType;
 import com.activityplatform.backend.carbon.domain.CarbonProfileEntity;
 import com.activityplatform.backend.carbon.domain.CarbonRecordStatus;
 import com.activityplatform.backend.carbon.domain.CarbonSoilProfileEntity;
+import com.activityplatform.backend.carbon.domain.CarbonVerificationStatus;
 import com.activityplatform.backend.carbon.repository.CarbonActivityCategoryRepository;
 import com.activityplatform.backend.carbon.repository.CarbonActivityRecordRepository;
 import com.activityplatform.backend.carbon.repository.CarbonFarmPlotRepository;
@@ -481,6 +483,26 @@ public class CarbonProfileService {
         .toList();
   }
 
+  @Transactional(readOnly = true)
+  public java.util.List<CarbonSoilProfileResponse> listPendingSoilProfiles(
+      CurrentUser currentUser
+  ) {
+    requireCarbonModule(currentUser);
+    requireCarbonReviewer(
+        currentUser,
+        "Only Carbon reviewers can view pending soil verification records."
+    );
+
+    return soilProfileRepository
+        .findByTenantIdAndVerificationStatusOrderByUpdatedAtDesc(
+            currentUser.tenantId(),
+            CarbonVerificationStatus.PENDING_VERIFICATION
+        )
+        .stream()
+        .map(CarbonSoilProfileResponse::from)
+        .toList();
+  }
+
   @Transactional
   public CarbonSoilProfileResponse createSoilProfile(
       CurrentUser currentUser,
@@ -623,6 +645,41 @@ public class CarbonProfileService {
     return CarbonSoilProfileResponse.from(saved);
   }
 
+  @Transactional
+  public CarbonSoilProfileResponse verifySoilProfile(
+      CurrentUser currentUser,
+      UUID soilProfileId,
+      CarbonSoilProfileVerificationRequest request
+  ) {
+    requireCarbonModule(currentUser);
+    requireCarbonReviewer(
+        currentUser,
+        "Only Carbon reviewers can verify soil profile records."
+    );
+
+    if (request.status() == CarbonVerificationStatus.PENDING_VERIFICATION) {
+      throw validation("Verification status must be VERIFIED or REJECTED.");
+    }
+
+    CarbonSoilProfileEntity soilProfile = requireSoilProfile(currentUser, soilProfileId);
+    UserEntity reviewer = userRepository.findById(currentUser.userId())
+        .orElseThrow(() -> notFound("Reviewer user not found."));
+    soilProfile.verify(request.status(), normalizeOptional(request.notes()), reviewer, Instant.now());
+    CarbonSoilProfileEntity saved = soilProfileRepository.save(soilProfile);
+    auditEventService.record(
+        saved.getTenant(),
+        reviewer,
+        "CARBON_SOIL_PROFILE",
+        saved.getId(),
+        AuditAction.CARBON_SOIL_PROFILE_VERIFIED,
+        Map.of(
+            "profileId", saved.getCarbonProfile().getId().toString(),
+            "verificationStatus", request.status().name()
+        )
+    );
+    return CarbonSoilProfileResponse.from(saved);
+  }
+
   @Transactional(readOnly = true)
   public java.util.List<CarbonActivityCategoryResponse> listActivityCategories(
       CurrentUser currentUser
@@ -730,6 +787,12 @@ public class CarbonProfileService {
 
   private void requireCarbonModule(CurrentUser currentUser) {
     tenantModuleService.requireEnabled(currentUser.tenantId(), ModuleCode.SUSTAINABILITY);
+  }
+
+  private void requireCarbonReviewer(CurrentUser currentUser, String message) {
+    if (!currentUser.hasAnyRole(Role.ADMIN, Role.FPO_MANAGER)) {
+      throw accessDenied(message);
+    }
   }
 
   private CarbonProfileEntity requireProfile(CurrentUser currentUser, UUID profileId) {
@@ -1154,6 +1217,10 @@ public class CarbonProfileService {
 
   private boolean hasText(String value) {
     return value != null && !value.isBlank();
+  }
+
+  private String normalizeOptional(String value) {
+    return value == null || value.isBlank() ? null : value.trim();
   }
 
   private UserEntity resolveCoordinatorForCreate(CurrentUser currentUser, UUID coordinatorUserId) {

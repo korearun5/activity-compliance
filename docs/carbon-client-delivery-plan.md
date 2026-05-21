@@ -1,6 +1,6 @@
 # Carbon Client Delivery Plan
 
-Last updated: 2026-05-20
+Last updated: 2026-05-21
 
 Purpose: translate the client's `Carbon Flow.xlsx` into a delivery plan that
 protects the reusable platform foundation while giving the client a clear
@@ -153,6 +153,9 @@ Start here once the user approves implementation.
 | CARBON-CLIENT-007 | Done | Carbon plot list now has selectable detail cards and map placeholders without adding a map provider dependency. |
 | CARBON-CLIENT-008 | Done | Carbon Soil tab is now a dedicated dashboard/upload/manual-entry workspace using shared soil uploader/dashboard components; linked farmers can create/update/upload their own soil records while staff access remains scoped. |
 | CARBON-CLIENT-008B | Done | FPO and Carbon now share soil manual-entry and soil-list UI components while preserving separate API stores and leaving activity/workflow code untouched. |
+| CARBON-CLIENT-009 | Done | Vineyard workflow definitions are seeded under the Carbon workflow domain for core regenerative activities. |
+| CARBON-CLIENT-010 | Done | Farmer Carbon activity entry uses the shared workflow wizard and submits evidence through the generic evidence table. |
+| CARBON-CLIENT-011 | Done | Admin Carbon verification now includes farmer bank/document queues, Carbon workflow evidence review, and soil profile verification with approve/reject status. |
 
 ## Client Decisions Needed Before Each Sprint
 

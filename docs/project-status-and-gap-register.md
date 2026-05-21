@@ -1,6 +1,6 @@
 # Project Status And Gap Register
 
-Last audited: 2026-05-19
+Last audited: 2026-05-21
 
 This is the single source for current completion estimates, go-live confidence,
 and known gaps. Percentages are engineering confidence estimates based on the
@@ -24,7 +24,7 @@ current repository state, not client acceptance or a commercial commitment.
 | FPO crop planning            |       100% | High       | Catalog, seasons, crop history, seasonal plans, crop year labels, optional expected yield, confirmation timestamp, UI, and tests are aligned; farmer mobile views are Phase 2.                                                                                                                                                                                                                                                                               |
 | FPO input demand             |       100% | High       | Catalog, input rules, confirmed-only calculation, 5% buffer, round-up, summaries, UI, report output, migration, and tests are aligned.                                                                                                                                                                                                                                                                                                                       |
 | FPO advisory                 |       100% | High       | Category, all-members/crop targeting, multiple image links/storage metadata, in-app-only channel validation, UI previews, and focused Testcontainers coverage are aligned.                                                                                                                                                                                                                                                                                   |
-| Carbon app-flow prototype    |        78% | Medium     | Carbon screens/data are enabled by default, dashboard widgets match the App Flow shell, data dictionary/UAT docs exist, durable profile/farm/soil/activity schema is in place, backend profile/plot/soil/activity APIs are Testcontainers-verified, frontend profile/plot/soil/activity forms are wired, and direct soil PDF/image upload uses the storage adapter; methodology, provider integrations, activity evidence upload/review, and exports remain. |
+| Carbon app-flow prototype    |        83% | Medium     | Carbon screens/data are enabled by default, dashboard widgets match the App Flow shell, data dictionary/UAT docs exist, durable profile/farm/soil/activity schema is in place, backend profile/plot/soil/activity APIs are Testcontainers-verified, frontend profile/plot/soil/activity forms are wired, direct soil PDF/image upload uses the storage adapter, Carbon workflow evidence review is wired, and admin farmer/activity/soil verification queues exist; methodology, provider integrations, reports/exports, and UAT seed polish remain. |
 | QA automation                |        90% | High       | JUnit, Spring tests, Testcontainers PostgreSQL, Phase 1 UAT backend smoke and role matrix coverage, CI, lint, typecheck, and local integration verification are green; UI/E2E tests and coverage gates remain hardening.                                                                                                                                                                                                                                     |
 | Production operations        |        60% | Medium     | Production config validation, security scan, env template, and deployment docs exist; backups, monitoring, alerting, and runbooks need target-environment details.                                                                                                                                                                                                                                                                                           |
 | Foundation hardening         |        74% | Medium     | Standards are captured in the [Foundation Hardening Roadmap](foundation-hardening-roadmap.md); canonical `farmer_profiles`, `FarmerService`, FPO/Carbon farmer-profile linkage, shared farmer validation, canonical activity participant registry, common farmer activity dashboard access, assigned farmer activity reads, and audited historical backfill now exist, while broader UI primitives, module relocation, transactions, file consistency, load/E2E tests, observability, backup/restore, and source packaging remain future sprint work. |
@@ -128,10 +128,14 @@ Present now:
   - `mvn test` passed with 44 backend unit/service tests.
   - `npm run test:module-visibility` passed after the participant registry
     frontend changes.
-- Pending user-run verification for `FOUNDATION-UI-001`:
-  - `npm run typecheck`
-  - `npm run lint`
-  - `npm run test:module-visibility`
+- Local verification on 2026-05-21 during `CARBON-CLIENT-011`:
+  - `npm run typecheck` passed through `npm.cmd`.
+  - `npm run lint` passed through `npm.cmd`.
+  - `npm run test:module-visibility` passed through `npm.cmd`.
+  - `mvn -DskipTests compile` passed after adding Carbon soil verification APIs.
+  - `mvn -Dtest=CarbonProfileControllerIT test` passed after Flyway migrated
+    through `V21`, proving Carbon soil pending/verify endpoints and module
+    disabled checks.
 
 Gaps to schedule:
 
@@ -200,7 +204,7 @@ To avoid duplicate or conflicting information:
 | Carbon package tenant setup                 | Pending     | DevOps/Product      | Carbon-first frontend packaging also requires the tenant `SUSTAINABILITY` backend module to be enabled; do not rely on frontend package config alone.                                                                                                              |
 | Carbon API implementation                   | Done        | Backend/QA          | Backend APIs for Carbon profiles, farmer login creation/linking, farm plots, soil profile metadata, soil report upload, activity categories, and activity records are implemented with role/module scoping and focused Testcontainers coverage.                    |
 | Shared farmer and participant foundation    | Done        | Frontend/Backend/QA | Canonical `farmer_profiles`, `FarmerService`, shared validation, canonical participant endpoint, new FPO/Carbon farmer-profile linkage, audited historical backfill, common farmer dashboard access, and assigned farmer activity reads exist; `FOUNDATION-QA-001` remains for broader package-mode regression automation. |
-| Carbon profile frontend wiring              | Done        | Frontend/QA         | Carbon admin/FPO/field-coordinator screens can list/create/update farmer enrollments with shared farmer identity/login fields, plots, soil metadata, and activity records; farmer Carbon screen reads the linked backend profile, plots, soil data, and activity data. |
+| Carbon profile frontend wiring              | Done        | Frontend/QA         | Carbon admin/FPO/field-coordinator screens can list/create/update farmer enrollments with shared farmer identity/login fields, plots, soil metadata, and activity records; farmer Carbon screen reads the linked backend profile, plots, soil data, and activity data; admin verification queues now cover bank details, documents, Carbon activity evidence, and Carbon soil records. |
 | Carbon existing-account picker              | Pending     | Frontend/Backend    | Carbon enrollment can store `userId`/`fpoMemberProfileId`, but the staff UI still needs a friendly picker for existing farmer users/FPO members before client demo polish.                                                                                         |
 | Foundation hardening backlog                | Pending     | Tech Lead/QA/DevOps | [Foundation Hardening Roadmap](foundation-hardening-roadmap.md) captures future UI standards, backend transaction/file consistency, E2E/load tests, production reliability, source packaging, and reusable-code alignment tasks.                                   |
 | OTP/SMS provider                            | Future      | Client/Provider     | Explicitly excluded from Phase 1.                                                                                                                                                                                                                                  |

@@ -77,6 +77,7 @@ export type Activity = {
   tasks: ActivityTask[];
   tenantId?: string;
   unitName: string;
+  workflowDomainKey?: string;
   workflowName: string;
 };
 
@@ -98,5 +99,7 @@ export type Evidence = {
   taskId?: string;
   tenantId?: string;
   taskTitle: string;
+  unitName?: string;
+  workflowDomainKey?: string;
   workflowName: string;
 };

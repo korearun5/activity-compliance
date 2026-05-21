@@ -55,8 +55,11 @@ export const endpoints = {
         `${apiRoot}/carbon/profiles/${profileId}/soil-profiles`,
       listByProfile: (profileId: string) =>
         `${apiRoot}/carbon/profiles/${profileId}/soil-profiles`,
+      pendingVerification: `${apiRoot}/carbon/soil-profiles/pending-verification`,
       report: (soilProfileId: string) =>
-        `${apiRoot}/carbon/soil-profiles/${soilProfileId}/report`
+        `${apiRoot}/carbon/soil-profiles/${soilProfileId}/report`,
+      verify: (soilProfileId: string) =>
+        `${apiRoot}/carbon/soil-profiles/${soilProfileId}/verify`
     }
   },
   evidence: {

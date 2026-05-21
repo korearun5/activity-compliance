@@ -1,6 +1,6 @@
 # Carbon App Flow Task Roadmap
 
-Last updated: 2026-05-17
+Last updated: 2026-05-21
 
 This document is the task-wise execution roadmap for the client-provided
 `App Flow.docx`. It should be used for Carbon app sequencing only.
@@ -115,8 +115,8 @@ Goal: Turn regenerative practices into auditable activity records.
 | -------------- | ------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | CARBON-ACT-001 | Done    | Seed carbon activity categories               | `carbon_activity_categories` seeds land preparation, sowing, fertigation, irrigation, biological application, compost addition, pruning biomass incorporation, and harvesting. |
 | CARBON-ACT-002 | Done    | Add carbon activity entry flow                | User selects farm, crop, activity category, date, input quantity, and remarks; evidence count/status is tracked for the next upload/review slice.                              |
-| CARBON-ACT-003 | Pending | Reuse evidence upload and review              | Photos/documents can be uploaded, reviewed, approved, or rejected.                                                                                                             |
-| CARBON-ACT-004 | Pending | Add verification queue for admins/agronomists | Reviewers can see pending carbon activity evidence with filters and status changes.                                                                                            |
+| CARBON-ACT-003 | Done    | Reuse evidence upload and review              | Carbon workflow evidence is uploaded through the shared activity evidence path and reviewed from the Carbon admin queue.                                                       |
+| CARBON-ACT-004 | Done    | Add verification queue for admins/agronomists | Admin/FPO-manager reviewers can see Carbon evidence, farmer bank/document queues, and pending Carbon soil verification records with approve/reject actions.                    |
 | CARBON-ACT-005 | Pending | Add provisional practice score                | Score is shown as provisional until methodology is approved.                                                                                                                   |
 
 ## Phase C4: Advisory And Expert Query Workflow
@@ -187,6 +187,8 @@ Completed in this sprint:
 | `CARBON-SHELL-004`   | Carbon screens now use journey sections so client-facing pages are not mixed with admin data-entry forms.                                                 |
 | `CARBON-SOIL-002`    | Soil report PDF/image upload now stores files through the shared storage adapter and updates soil report metadata.                                        |
 | `CARBON-ACT-002`     | Carbon activity category listing and durable activity entry are wired through backend APIs and frontend forms.                                            |
+| `CARBON-ACT-003`     | Carbon workflow evidence upload/review is wired through shared evidence APIs and the Carbon admin activity evidence queue.                                |
+| `CARBON-ACT-004`     | Farmer bank/document, activity evidence, and soil verification queues are available from the Carbon admin workspace.                                      |
 
 Committed sprint tasks remaining:
 
@@ -195,14 +197,13 @@ Committed sprint tasks remaining:
 | 1     | `CARBON-SHELL-004`   | Manual review of the new journey sections and any final wording/navigation corrections from client-demo perspective.                    |
 | 2     | `CARBON-PROFILE-005` | Add a staff-friendly farmer account/member picker for existing Carbon enrollment links; keep raw IDs advanced/internal only until then. |
 | 3     | `CARBON-MOD-006`     | Carbon source distribution package definition so client handover is Carbon-only by contract and structure.                              |
-| 4     | `CARBON-ACT-003`     | Reuse evidence upload/review for Carbon activity records.                                                                               |
+| 4     | `CARBON-CLIENT-012`  | Add the first Carbon reports/export dashboard over profile, soil, activity, and verification state.                                     |
 
 Stretch tasks, only after committed tasks are green:
 
 | ID               | Target outcome                                                               |
 | ---------------- | ---------------------------------------------------------------------------- |
 | `CARBON-GEO-001` | GPS point capture for Carbon farm plots if the profile flow is stable early. |
-| `CARBON-ACT-003` | Evidence upload/review reuse after the basic activity entry flow is working. |
 | `CARBON-MOD-005` | Polished disabled-module empty states and upgrade CTA copy.                  |
 
 Sprint exit criteria:

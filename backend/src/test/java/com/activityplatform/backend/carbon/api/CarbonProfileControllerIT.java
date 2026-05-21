@@ -23,6 +23,7 @@ import com.activityplatform.backend.auth.service.JwtService;
 import com.activityplatform.backend.carbon.domain.CarbonParticipantType;
 import com.activityplatform.backend.carbon.domain.CarbonProfileEntity;
 import com.activityplatform.backend.carbon.domain.CarbonRecordStatus;
+import com.activityplatform.backend.carbon.domain.CarbonVerificationStatus;
 import com.activityplatform.backend.carbon.repository.CarbonProfileRepository;
 import com.activityplatform.backend.farmer.api.FarmerBankDetailsRequest;
 import com.activityplatform.backend.farmer.api.FarmerBankDetailsResponse;
@@ -595,14 +596,43 @@ class CarbonProfileControllerIT {
             .file(farmerUploadAttempt)
             .header("Authorization", "Bearer " + farmerToken))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.data.reportFileName").value("farmer-soil-report-replace.pdf"));
+        .andExpect(jsonPath("$.data.reportFileName").value("farmer-soil-report-replace.pdf"))
+        .andExpect(jsonPath("$.data.verificationStatus").value("PENDING_VERIFICATION"));
+
+    mockMvc.perform(get("/api/v1/carbon/soil-profiles/pending-verification")
+            .header("Authorization", "Bearer " + adminToken))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data[0].id").value(soilProfile.id().toString()))
+        .andExpect(jsonPath("$.data[0].profileName").value("Updated Carbon Farmer"))
+        .andExpect(jsonPath("$.data[0].verificationStatus").value("PENDING_VERIFICATION"));
+
+    CarbonSoilProfileVerificationRequest soilVerificationRequest =
+        new CarbonSoilProfileVerificationRequest(
+            CarbonVerificationStatus.VERIFIED,
+            "Lab report matched the manual values."
+        );
+    mockMvc.perform(put("/api/v1/carbon/soil-profiles/" + soilProfile.id() + "/verify")
+            .header("Authorization", "Bearer " + adminToken)
+            .contentType("application/json")
+            .content(jsonMapper.writeValueAsString(soilVerificationRequest)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.verificationStatus").value("VERIFIED"))
+        .andExpect(jsonPath("$.data.verificationNotes")
+            .value("Lab report matched the manual values."))
+        .andExpect(jsonPath("$.data.verifiedByUserId").value(adminUser.getId().toString()));
+
+    mockMvc.perform(get("/api/v1/carbon/soil-profiles/pending-verification")
+            .header("Authorization", "Bearer " + adminToken))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.length()").value(0));
 
     mockMvc.perform(get("/api/v1/carbon/profiles/" + profile.id() + "/soil-profiles")
             .header("Authorization", "Bearer " + farmerToken))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.data[0].id").value(soilProfile.id().toString()))
         .andExpect(jsonPath("$.data[0].reportFileName")
-            .value("farmer-soil-report-replace.pdf"));
+            .value("farmer-soil-report-replace.pdf"))
+        .andExpect(jsonPath("$.data[0].verificationStatus").value("VERIFIED"));
 
   }
 
@@ -777,6 +807,11 @@ class CarbonProfileControllerIT {
         .andExpect(jsonPath("$.error.code").value("MODULE_NOT_ENABLED"));
 
     mockMvc.perform(get("/api/v1/admin/documents/pending")
+            .header("Authorization", "Bearer " + disabledToken))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.error.code").value("MODULE_NOT_ENABLED"));
+
+    mockMvc.perform(get("/api/v1/carbon/soil-profiles/pending-verification")
             .header("Authorization", "Bearer " + disabledToken))
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$.error.code").value("MODULE_NOT_ENABLED"));

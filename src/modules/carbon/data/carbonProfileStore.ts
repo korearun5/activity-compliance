@@ -15,7 +15,9 @@ import {
   CarbonProfileResponse,
   CarbonRecordStatus,
   CarbonSoilProfileRequest,
-  CarbonSoilProfileResponse
+  CarbonSoilProfileResponse,
+  CarbonSoilProfileVerificationRequest,
+  CarbonVerificationStatus
 } from "../api/carbonContracts";
 
 export const CARBON_PARTICIPANT_TYPES: CarbonParticipantType[] = [
@@ -153,12 +155,15 @@ export type CarbonSoilProfileRecord = {
   carbonProfileId: string;
   createdAt: string;
   electricalConductivity?: number;
+  farmName?: string;
   id: string;
   labName?: string;
   nitrogenKgHa?: number;
   ph?: number;
   phosphorusKgHa?: number;
   potassiumKgHa?: number;
+  profileMobileNumber?: string;
+  profileName?: string;
   reportContentType?: string;
   reportFileName?: string;
   reportStorageKey?: string;
@@ -169,6 +174,10 @@ export type CarbonSoilProfileRecord = {
   testDate?: string;
   texture?: string;
   updatedAt: string;
+  verificationNotes?: string;
+  verificationStatus: CarbonVerificationStatus;
+  verifiedAt?: string;
+  verifiedByUserId?: string;
 };
 
 export type CarbonActivityCategoryRecord = {
@@ -235,6 +244,11 @@ export type CarbonActivityInput = {
 };
 
 export type CarbonSoilReportFile = UploadFileInput;
+
+export type CarbonSoilProfileVerificationInput = {
+  notes?: string;
+  status: Exclude<CarbonVerificationStatus, "PENDING_VERIFICATION">;
+};
 
 export async function listCarbonProfiles(): Promise<CarbonProfileRecord[]> {
   try {
@@ -364,6 +378,20 @@ export async function listCarbonSoilProfiles(
   }
 }
 
+export async function listPendingCarbonSoilProfiles(): Promise<
+  CarbonSoilProfileRecord[]
+> {
+  try {
+    const response = await apiClient.get<CarbonSoilProfileResponse[]>(
+      endpoints.carbon.soilProfiles.pendingVerification
+    );
+
+    return response.map(toCarbonSoilProfile);
+  } catch (error) {
+    throw toCarbonError(error, "Unable to load pending Carbon soil profiles.");
+  }
+}
+
 export async function createCarbonSoilProfile(
   profileId: string,
   input: CarbonSoilProfileInput
@@ -412,6 +440,25 @@ export async function uploadCarbonSoilReport(
     );
   } catch (error) {
     throw toCarbonError(error, "Unable to upload Carbon soil report.");
+  }
+}
+
+export async function verifyCarbonSoilProfile(
+  soilProfileId: string,
+  input: CarbonSoilProfileVerificationInput
+): Promise<CarbonSoilProfileRecord> {
+  try {
+    return toCarbonSoilProfile(
+      await apiClient.put<
+        CarbonSoilProfileVerificationRequest,
+        CarbonSoilProfileResponse
+      >(endpoints.carbon.soilProfiles.verify(soilProfileId), {
+        notes: input.notes?.trim() || undefined,
+        status: input.status
+      })
+    );
+  } catch (error) {
+    throw toCarbonError(error, "Unable to update Carbon soil verification.");
   }
 }
 
@@ -532,12 +579,15 @@ function toCarbonSoilProfile(
     carbonProfileId: response.carbonProfileId,
     createdAt: response.createdAt,
     electricalConductivity: response.electricalConductivity ?? undefined,
+    farmName: response.farmName ?? undefined,
     id: response.id,
     labName: response.labName ?? undefined,
     nitrogenKgHa: response.nitrogenKgHa ?? undefined,
     ph: response.ph ?? undefined,
     phosphorusKgHa: response.phosphorusKgHa ?? undefined,
     potassiumKgHa: response.potassiumKgHa ?? undefined,
+    profileMobileNumber: response.profileMobileNumber ?? undefined,
+    profileName: response.profileName ?? undefined,
     reportContentType: response.reportContentType ?? undefined,
     reportFileName: response.reportFileName ?? undefined,
     reportStorageKey: response.reportStorageKey ?? undefined,
@@ -547,7 +597,11 @@ function toCarbonSoilProfile(
     tenantId: response.tenantId,
     testDate: response.testDate ?? undefined,
     texture: response.texture ?? undefined,
-    updatedAt: response.updatedAt
+    updatedAt: response.updatedAt,
+    verificationNotes: response.verificationNotes ?? undefined,
+    verificationStatus: response.verificationStatus,
+    verifiedAt: response.verifiedAt ?? undefined,
+    verifiedByUserId: response.verifiedByUserId ?? undefined
   };
 }
 

@@ -74,6 +74,7 @@ type BackendActivity = {
   unitName: string;
   updatedAt: string;
   workflowDefinitionId: string;
+  workflowDomainKey: string | null;
   workflowName: string;
 };
 
@@ -82,6 +83,7 @@ type BackendEvidence = {
   activityTaskId: string;
   contentType: string;
   id: string;
+  locationName: string | null;
   note: string | null;
   originalFilename: string;
   participantName: string | null;
@@ -95,6 +97,9 @@ type BackendEvidence = {
   taskCode: string;
   taskTitle: string;
   tenantId: string;
+  unitName: string;
+  workflowDomainKey: string | null;
+  workflowName: string;
 };
 
 export type StartBackendActivityInput = {
@@ -232,11 +237,19 @@ export async function startBackendActivity(input: StartBackendActivityInput) {
   return toCropCycle(activity);
 }
 
-export async function getBackendProofs(activities: CropCycle[] = []) {
+export async function getBackendProofs(
+  activities: CropCycle[] = [],
+  domain?: WorkflowDomain
+) {
   const evidence = await apiClient.get<BackendEvidence[]>(endpoints.evidence.list);
   const activityById = new Map(activities.map((activity) => [activity.id, activity]));
+  const filteredEvidence = domain
+    ? evidence.filter(
+        (item) => normalizeWorkflowDomain(item.workflowDomainKey) === domain
+      )
+    : evidence;
 
-  return evidence.map((item) =>
+  return filteredEvidence.map((item) =>
     toProofSubmission(item, activityById.get(item.activityId))
   );
 }
@@ -349,6 +362,7 @@ function toCropCycle(activity: BackendActivity): CropCycle {
     tasks: steps,
     tenantId: activity.tenantId,
     unitName: activity.unitName,
+    workflowDomainKey: activity.workflowDomainKey ?? undefined,
     workflowName: activity.workflowName
   };
 }
@@ -368,8 +382,13 @@ function toProofSubmission(
 ): ProofSubmission {
   const submittedAt = Date.parse(evidence.submittedAt);
   const participantName = evidence.participantName ?? "Participant";
-  const crop = activity?.crop ?? activity?.workflowName ?? "Workflow evidence";
-  const region = activity?.region ?? activity?.locationName ?? "Unassigned location";
+  const crop =
+    activity?.crop ?? activity?.workflowName ?? evidence.workflowName ?? "Workflow evidence";
+  const region =
+    activity?.region ??
+    activity?.locationName ??
+    evidence.locationName ??
+    "Unassigned location";
 
   return {
     action: evidence.taskTitle,
@@ -392,6 +411,8 @@ function toProofSubmission(
     submittedOn: toDisplayDate(evidence.submittedAt),
     taskId: evidence.activityTaskId,
     taskTitle: evidence.taskTitle,
+    unitName: activity?.unitName ?? evidence.unitName,
+    workflowDomainKey: evidence.workflowDomainKey ?? undefined,
     workflowName: crop
   };
 }
@@ -448,4 +469,12 @@ function toDisplayDate(value: string) {
     month: "short",
     year: "numeric"
   });
+}
+
+function normalizeWorkflowDomain(domainKey: string | null) {
+  if (!domainKey) {
+    return undefined;
+  }
+
+  return domainKey.toUpperCase() as WorkflowDomain;
 }
