@@ -8,6 +8,8 @@ import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface CarbonSoilProfileRepository extends JpaRepository<CarbonSoilProfileEntity, UUID> {
+  List<CarbonSoilProfileEntity> findByTenantIdOrderByCreatedAtDesc(UUID tenantId);
+
   List<CarbonSoilProfileEntity> findByTenantIdAndCarbonProfileIdOrderByCreatedAtDesc(
       UUID tenantId,
       UUID carbonProfileId

@@ -20,12 +20,14 @@ import {
 import { AdminBankVerification } from "./AdminBankVerification";
 import { AdminDocumentVerification } from "./AdminDocumentVerification";
 import { CarbonProfileAdminPanel } from "./CarbonProfileAdminPanel";
+import { CarbonReportsPanel } from "./CarbonReportsPanel";
 
 type AdminCarbonSectionId =
   | "activityVerification"
   | "dashboard"
   | "farmerVerification"
   | "farmers"
+  | "reports"
   | "soilVerification";
 
 const adminCarbonSections: { id: AdminCarbonSectionId; label: string }[] = [
@@ -33,7 +35,8 @@ const adminCarbonSections: { id: AdminCarbonSectionId; label: string }[] = [
   { id: "farmers", label: "Farmer management" },
   { id: "farmerVerification", label: "Farmer verification" },
   { id: "activityVerification", label: "Activity verification" },
-  { id: "soilVerification", label: "Soil verification" }
+  { id: "soilVerification", label: "Soil verification" },
+  { id: "reports", label: "Reports" }
 ];
 
 type AdminCarbonOverviewTabProps = {
@@ -144,6 +147,8 @@ export function AdminCarbonOverviewTab({
       {activeSection === "farmerVerification" ? <FarmerVerificationSection /> : null}
 
       {activeSection === "soilVerification" ? <SoilVerificationSection /> : null}
+
+      {activeSection === "reports" ? <CarbonReportsPanel /> : null}
     </View>
   );
 }

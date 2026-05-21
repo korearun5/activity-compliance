@@ -10,6 +10,10 @@ public interface CarbonActivityRecordRepository
     extends JpaRepository<CarbonActivityRecordEntity, UUID> {
   Optional<CarbonActivityRecordEntity> findByIdAndTenantId(UUID id, UUID tenantId);
 
+  List<CarbonActivityRecordEntity> findByTenantIdOrderByActivityDateDescCreatedAtDesc(
+      UUID tenantId
+  );
+
   List<CarbonActivityRecordEntity> findByTenantIdAndCarbonProfileIdOrderByActivityDateDescCreatedAtDesc(
       UUID tenantId,
       UUID carbonProfileId

@@ -2,6 +2,7 @@ package com.activityplatform.backend.carbon.repository;
 
 import com.activityplatform.backend.carbon.domain.CarbonProfileEntity;
 import com.activityplatform.backend.carbon.domain.CarbonRecordStatus;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -9,6 +10,13 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface CarbonProfileRepository extends JpaRepository<CarbonProfileEntity, UUID> {
+  List<CarbonProfileEntity> findByTenantIdOrderByCreatedAtDesc(UUID tenantId);
+
+  List<CarbonProfileEntity> findByTenantIdAndCoordinatorUserIdOrderByCreatedAtDesc(
+      UUID tenantId,
+      UUID coordinatorUserId
+  );
+
   Page<CarbonProfileEntity> findByTenantId(UUID tenantId, Pageable pageable);
 
   Page<CarbonProfileEntity> findByTenantIdAndStatus(

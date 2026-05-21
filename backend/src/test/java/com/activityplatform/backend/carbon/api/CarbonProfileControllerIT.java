@@ -46,6 +46,7 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -700,6 +701,113 @@ class CarbonProfileControllerIT {
     CarbonProfileEntity savedProfile = profileRepository.findById(profile.id()).orElseThrow();
     assertThat(savedProfile.getFarmerProfileId()).isEqualTo(farmerProfile.getId());
     assertThat(farmerProfile.getDisplayName()).isEqualTo("Carbon Login Farmer");
+  }
+
+  @Test
+  void testCarbonReportsSummaryAndExportWorkbook() throws Exception {
+    enableModule(tenant, ModuleCode.REPORT_EXPORT);
+    CarbonProfileResponse profile = createProfile(
+        adminToken,
+        "CAR-REP-" + UUID.randomUUID().toString().substring(0, 8)
+    );
+
+    CarbonFarmPlotRequest plotRequest = new CarbonFarmPlotRequest(
+        "Wagholi report block",
+        "SUR-REP-101",
+        new BigDecimal("2.2500"),
+        new BigDecimal("18.5800000"),
+        new BigDecimal("73.9800000"),
+        "Drip",
+        "Paddy",
+        "Reduced tillage",
+        "Thompson Seedless",
+        "110R",
+        LocalDate.of(2022, 6, 15),
+        "REP-101",
+        "3m x 3m",
+        40,
+        CarbonRecordStatus.ACTIVE
+    );
+    String plotResponse = mockMvc.perform(post("/api/v1/carbon/profiles/" + profile.id() + "/plots")
+            .header("Authorization", "Bearer " + adminToken)
+            .contentType("application/json")
+            .content(jsonMapper.writeValueAsString(plotRequest)))
+        .andExpect(status().isOk())
+        .andReturn()
+        .getResponse()
+        .getContentAsString();
+    CarbonFarmPlotResponse plot = readData(plotResponse, CarbonFarmPlotResponse.class);
+
+    CarbonSoilProfileRequest soilRequest = new CarbonSoilProfileRequest(
+        plot.id(),
+        LocalDate.of(2026, 5, 15),
+        "Pune Soil Lab",
+        new BigDecimal("0.7200"),
+        new BigDecimal("6.90"),
+        null,
+        new BigDecimal("180.0000"),
+        new BigDecimal("22.5000"),
+        new BigDecimal("132.0000"),
+        null,
+        "Clay loam",
+        "soil-report.pdf",
+        "application/pdf",
+        "carbon/soil/soil-report.pdf",
+        "https://storage.example.com/carbon/soil/soil-report.pdf",
+        CarbonRecordStatus.ACTIVE
+    );
+    mockMvc.perform(post("/api/v1/carbon/profiles/" + profile.id() + "/soil-profiles")
+            .header("Authorization", "Bearer " + farmerToken)
+            .contentType("application/json")
+            .content(jsonMapper.writeValueAsString(soilRequest)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.verificationStatus").value("PENDING_VERIFICATION"));
+
+    UUID compostCategoryId = UUID.fromString("00000000-0000-0000-0000-000000000306");
+    CarbonActivityRecordRequest activityRequest = new CarbonActivityRecordRequest(
+        plot.id(),
+        compostCategoryId,
+        LocalDate.of(2026, 5, 16),
+        "Paddy",
+        "Farmyard compost",
+        new BigDecimal("30.0000"),
+        "kg",
+        "Applied compost before sowing.",
+        CarbonRecordStatus.ACTIVE
+    );
+    mockMvc.perform(post("/api/v1/carbon/profiles/" + profile.id() + "/activities")
+            .header("Authorization", "Bearer " + farmerToken)
+            .contentType("application/json")
+            .content(jsonMapper.writeValueAsString(activityRequest)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.categoryName").value("Compost Addition"));
+
+    mockMvc.perform(get("/api/v1/carbon/reports/summary")
+            .header("Authorization", "Bearer " + adminToken))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.totalProfiles").value(1))
+        .andExpect(jsonPath("$.data.totalPlots").value(1))
+        .andExpect(jsonPath("$.data.soilProfileCount").value(1))
+        .andExpect(jsonPath("$.data.pendingSoilProfiles").value(1))
+        .andExpect(jsonPath("$.data.activityCount").value(1))
+        .andExpect(jsonPath("$.data.villageBreakdowns[0].label").value("Wagholi"))
+        .andExpect(jsonPath("$.data.activityBreakdowns[0].categoryName")
+            .value("Compost Addition"));
+
+    CarbonReportExportRequest exportRequest = new CarbonReportExportRequest(
+        Map.of("village", "Wagholi", "crop", "Paddy")
+    );
+    mockMvc.perform(post("/api/v1/carbon/reports/export")
+            .header("Authorization", "Bearer " + adminToken)
+            .contentType("application/json")
+            .content(jsonMapper.writeValueAsString(exportRequest)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.reportType").value("CARBON_OPERATIONS"))
+        .andExpect(jsonPath("$.data.format").value("XLSX"))
+        .andExpect(jsonPath("$.data.status").value("COMPLETED"))
+        .andExpect(jsonPath("$.data.storageKey").value(startsWith(
+            tenant.getId() + "/carbon-reports/"
+        )));
   }
 
   @Test

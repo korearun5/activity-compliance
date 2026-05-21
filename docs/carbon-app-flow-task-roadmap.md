@@ -155,8 +155,8 @@ eventual credit-readiness workflows.
 | CARBON-CALC-002 | Pending | Add provisional calculator service | Uses clearly marked provisional logic until `CARBON-CALC-001` is approved.                 |
 | CARBON-CALC-003 | Pending | Add calculator UI                  | Shows CO2e estimate, score, practice impact, and assumptions.                              |
 | CARBON-REP-001  | Pending | Add farmer carbon report           | Farmer view summarizes profile, soil, activities, advisories, and estimated potential.     |
-| CARBON-REP-002  | Pending | Add FPO/admin carbon dashboard     | Aggregates farmers, hectares, soil score, pending verifications, and potential credits.    |
-| CARBON-REP-003  | Pending | Add carbon Excel export            | Export is scoped by tenant, role, date range, village, crop, and activity status.          |
+| CARBON-REP-002  | In review | Add FPO/admin carbon dashboard   | Admin/FPO/field-coordinator report dashboard aggregates farmers, hectares, SOC, pending verifications, and activity state; potential credits remain blocked by methodology. |
+| CARBON-REP-003  | Done    | Add carbon Excel export            | Export is scoped by tenant, role, date range, village, crop, and activity status.          |
 
 ## Phase C7: External Integrations And Production Go-Live
 
@@ -189,6 +189,7 @@ Completed in this sprint:
 | `CARBON-ACT-002`     | Carbon activity category listing and durable activity entry are wired through backend APIs and frontend forms.                                            |
 | `CARBON-ACT-003`     | Carbon workflow evidence upload/review is wired through shared evidence APIs and the Carbon admin activity evidence queue.                                |
 | `CARBON-ACT-004`     | Farmer bank/document, activity evidence, and soil verification queues are available from the Carbon admin workspace.                                      |
+| `CARBON-CLIENT-012`  | Carbon reports/export dashboard summarizes profile, plot, soil, activity, and verification state and writes scoped XLSX workbooks through report storage. |
 
 Committed sprint tasks remaining:
 
@@ -197,7 +198,6 @@ Committed sprint tasks remaining:
 | 1     | `CARBON-SHELL-004`   | Manual review of the new journey sections and any final wording/navigation corrections from client-demo perspective.                    |
 | 2     | `CARBON-PROFILE-005` | Add a staff-friendly farmer account/member picker for existing Carbon enrollment links; keep raw IDs advanced/internal only until then. |
 | 3     | `CARBON-MOD-006`     | Carbon source distribution package definition so client handover is Carbon-only by contract and structure.                              |
-| 4     | `CARBON-CLIENT-012`  | Add the first Carbon reports/export dashboard over profile, soil, activity, and verification state.                                     |
 
 Stretch tasks, only after committed tasks are green:
 

@@ -156,6 +156,7 @@ Start here once the user approves implementation.
 | CARBON-CLIENT-009 | Done | Vineyard workflow definitions are seeded under the Carbon workflow domain for core regenerative activities. |
 | CARBON-CLIENT-010 | Done | Farmer Carbon activity entry uses the shared workflow wizard and submits evidence through the generic evidence table. |
 | CARBON-CLIENT-011 | Done | Admin Carbon verification now includes farmer bank/document queues, Carbon workflow evidence review, and soil profile verification with approve/reject status. |
+| CARBON-CLIENT-012 | Done | Carbon reports now include staff summary metrics, village/activity breakdowns, and scoped XLSX export over profile, plot, soil, activity, and verification state without credit calculations. |
 
 ## Client Decisions Needed Before Each Sprint
 

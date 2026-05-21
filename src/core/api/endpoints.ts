@@ -41,6 +41,10 @@ export const endpoints = {
       list: `${apiRoot}/carbon/profiles`,
       me: `${apiRoot}/carbon/profiles/me`
     },
+    reports: {
+      export: `${apiRoot}/carbon/reports/export`,
+      summary: `${apiRoot}/carbon/reports/summary`
+    },
     plots: {
       byId: (plotId: string) => `${apiRoot}/carbon/plots/${plotId}`,
       createForProfile: (profileId: string) =>
